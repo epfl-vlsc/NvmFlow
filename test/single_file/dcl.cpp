@@ -71,8 +71,3 @@ struct Dcl {
     valid = 1;
   }
 };
-
-void x(){
-  Dcl dcl;
-  
-}

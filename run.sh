@@ -2,7 +2,7 @@
 
 #inputs
 MODE=$1 #full build, run tool: pair, pptr, log
-TEST_NAME=$2 
+TEST_NAME=$2 #under single file
 
 #directories
 BASE_DIR=$(dirname $(realpath "$0"))
@@ -10,7 +10,7 @@ BUILD_DIR="${BASE_DIR}/dfbuild"
 TEST_DIR="${BASE_DIR}/test"
 SINGLE_FILE_REPO=${TEST_DIR}/single_file
 
-LLVM_BASE_DIR=~/llvm_compiler8/
+LLVM_BASE_DIR=~/llvm_compiler8
 COMPILER_DIR=${LLVM_BASE_DIR}/bin
 LLVM_DIR=${LLVM_BASE_DIR}/build/lib/cmake/llvm/
 
@@ -21,10 +21,10 @@ init_build(){
 	cd ${BASE_DIR}
 	mkdir ${BUILD_DIR}
 	cd ${BUILD_DIR}
-	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=True \
-		-DLLVM_DIR=${LLVM_DIR} \
-		-DCMAKE_C_COMPILER=${COMPILER_DIR}/clang \ 
-		-DCMAKE_CXX_COMPILER=${COMPILER_DIR}/clang++ ..
+	cmake -v -DCMAKE_EXPORT_COMPILE_COMMANDS=True \
+-DLLVM_DIR=${LLVM_DIR} \
+-DCMAKE_C_COMPILER=${COMPILER_DIR}/clang \
+-DCMAKE_CXX_COMPILER=${COMPILER_DIR}/clang++ ..
   cd ${BASE_DIR}
 }
 
@@ -35,8 +35,7 @@ run_make(){
 }
 
 remove_build(){
-	cd ${BASE_DIR}
-	rm -r $BUILD_DIR
+	if [ -d "$BUILD_DIR" ]; then rm -r $BUILD_DIR; fi
 }
 
 run_fullbuild(){
@@ -48,8 +47,8 @@ run_fullbuild(){
 create_ir(){
 	cd ${SINGLE_FILE_REPO}
 	echo "${SINGLE_FILE_REPO}"
-	clang++ -g -c -O3 -emit-llvm ${TEST_NAME}.cpp -o ${TEST_NAME}.bc
-	clang++ -g -c -O3 -emit-llvm -S ${TEST_NAME}.cpp -o ${TEST_NAME}.ll
+	clang++ -g -c -O3 -emit-llvm -femit-all-decls -fstandalone-debug ${TEST_NAME}.cpp -o ${TEST_NAME}.bc
+	clang++ -g -c -O3 -emit-llvm -femit-all-decls -fstandalone-debug -S ${TEST_NAME}.cpp -o ${TEST_NAME}.ll
 	cd ${BASE_DIR}
 }
 

@@ -33,11 +33,3 @@ struct Log {
     data = 5;
   }
 };
-
-void x(){
-  Log log;
-  log.correct();
-  log.notLogged();
-  log.doubleLogged();
-  log.outsideTx();
-}
