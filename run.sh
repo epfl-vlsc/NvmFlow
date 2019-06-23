@@ -57,7 +57,7 @@ run_tool(){
 }
 
 #commands----------------------------------------------------
-if [ "$MODE" == "pair" ] || [ "$MODE" == "pptr" ] || [ "$MODE" == "log" ];then
+if [ "$MODE" == "pair" ] || [ "$MODE" == "pptr" ] || [ "$MODE" == "log" ] || [ "$MODE" == "exp" ];then
 	run_make
 	run_tool
 elif [ "$MODE" == "make" ] ;then

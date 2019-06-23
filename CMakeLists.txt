@@ -48,7 +48,7 @@ add_definitions(${LLVM_DEFINITIONS})
 ############## FINAL PROJECT CONFIG #################
 
 # And the project header and library paths
-include_directories(${CMAKE_SOURCE_DIR}/ordering/include)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 link_directories(${LIBRARY_OUTPUT_PATH})
 set(CMAKE_TEMP_LIBRARY_PATH "${PROJECT_BINARY_DIR}/lib")
 # TODO: Add install path to the list....

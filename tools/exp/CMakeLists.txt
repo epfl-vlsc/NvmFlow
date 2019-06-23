@@ -6,7 +6,7 @@ target_include_directories(exp PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 llvm_map_components_to_libnames(REQ_LLVM_LIBRARIES ${LLVM_TARGETS_TO_BUILD}
         asmparser core linker bitreader irreader ipo scalaropts
-        analysis support
+        analysis support object
 )
 
 target_link_libraries(exp ${REQ_LLVM_LIBRARIES})
