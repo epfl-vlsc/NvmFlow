@@ -3,7 +3,7 @@
 void flush(void* ptr) { (*(int*)ptr) = 0; }
 
 struct Bobj {
-  int c;
+  __attribute((annotate("cann"))) int c;
   int* cp;
 
   Bobj() : c(0), cp(nullptr) {}
@@ -16,7 +16,7 @@ struct Bobj {
   int loadc() { return c; }
 
   int* loadcp() { return cp; }
-};
+} __attribute((annotate("Bobjann")));
 
 struct Aobj {
   int a;
@@ -62,7 +62,7 @@ void fs(Aobj* o) {
 }
 
 void fl(Aobj* obj) {
-    Aobj& o = *obj;
+  Aobj& o = *obj;
   int z1 = o.a;
   int* z2 = o.ap;
   Bobj z3 = o.b;
