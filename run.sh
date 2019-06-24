@@ -53,7 +53,8 @@ create_ir(){
 }
 
 run_tool(){
-    $BUILD_DIR/bin/$TOOL_NAME ${SINGLE_FILE_REPO}/${TEST_NAME}.bc
+		opt -analyze -load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
+${SINGLE_FILE_REPO}/${TEST_NAME}.bc
 }
 
 #commands----------------------------------------------------

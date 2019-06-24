@@ -4,7 +4,7 @@ void flush(void* ptr) { (*(int*)ptr) = 0; }
 
 struct Bobj {
   __attribute((annotate("cann"))) int c;
-  int* cp;
+  __attribute((annotate("cpann"))) int* cp;
 
   Bobj() : c(0), cp(nullptr) {}
 
@@ -16,13 +16,13 @@ struct Bobj {
   int loadc() { return c; }
 
   int* loadcp() { return cp; }
-} __attribute((annotate("Bobjann")));
+};
 
 struct Aobj {
-  int a;
-  int* ap;
-  Bobj b;
-  Bobj* bp;
+  __attribute((annotate("aann"))) int a;
+  __attribute((annotate("apann"))) int* ap;
+  __attribute((annotate("bann"))) Bobj b;
+  __attribute((annotate("bpann"))) Bobj* bp;
 
   void store() {
     a = 1;
