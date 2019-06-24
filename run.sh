@@ -46,14 +46,20 @@ run_fullbuild(){
 
 create_ir(){
 	cd ${SINGLE_FILE_REPO}
-	echo "${SINGLE_FILE_REPO}"
-	clang++ -g -c -O3 -emit-llvm -femit-all-decls -fstandalone-debug ${TEST_NAME}.cpp -o ${TEST_NAME}.bc
-	clang++ -g -c -O3 -emit-llvm -femit-all-decls -fstandalone-debug -S ${TEST_NAME}.cpp -o ${TEST_NAME}.ll
+	make all -j$(nproc)
 	cd ${BASE_DIR}
 }
 
+clean_ir(){
+	cd ${SINGLE_FILE_REPO}
+	make clean
+	cd ${BASE_DIR}
+}
+
+#--debug-pass=Structure
 run_tool(){
-		opt -analyze -load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
+		opt -analyze \
+-load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
 ${SINGLE_FILE_REPO}/${TEST_NAME}.bc
 }
 
@@ -67,6 +73,8 @@ elif [ "$MODE" == "build" ] ;then
   run_fullbuild
 elif [ "$MODE" == "ir" ] ;then
 	create_ir
+elif [ "$MODE" == "rem_ir" ] ;then
+	clean_ir
 else
 	echo "pair/log/pptr, build, ir"
 fi

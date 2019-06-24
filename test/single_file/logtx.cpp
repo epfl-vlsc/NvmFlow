@@ -3,24 +3,22 @@
 struct Log {
   log_field int data;
 
-  void analyze_logging correct() {
+  void log_fnc correct() {
     tx_begin();
     log(&data);
     data = 6;
     tx_end();
   }
 
-  void analyze_logging notLogged() {
+  void log_fnc notLogged() {
     tx_begin();
     data = 5;
     tx_end();
   }
 
-  void logData(){
-    log(&data);
-  }
+  void logData() { log(&data); }
 
-  void analyze_logging doubleLogged() {
+  void log_fnc doubleLogged() {
     tx_begin();
     log(&data);
     logData();
@@ -28,7 +26,7 @@ struct Log {
     tx_end();
   }
 
-  void analyze_logging outsideTx() {
+  void log_fnc outsideTx() {
     log(&data);
     data = 5;
   }
