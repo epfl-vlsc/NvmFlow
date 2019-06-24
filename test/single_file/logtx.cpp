@@ -1,7 +1,12 @@
 #include "annot.h"
 
+struct Obj {
+  int data;
+};
+
 struct Log {
   log_field int data;
+  log_field Obj obj;
 
   void log_fnc correct() {
     tx_begin();
@@ -30,4 +35,13 @@ struct Log {
     log(&data);
     data = 5;
   }
+
+  void writeObj() { obj.data = 5; }
 };
+
+void log_fnc correctWriteObj(Log* l) {
+  tx_begin();
+  log(l);
+  l->writeObj();
+  tx_end();
+}

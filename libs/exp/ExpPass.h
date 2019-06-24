@@ -8,9 +8,9 @@ struct ExpPass : public ModulePass {
 
   ExpPass() : ModulePass(ID) {}
 
-  bool runOnModule(Module& m) override;
+  bool runOnModule(Module& M) override;
 
-  void print(raw_ostream &OS, const Module *M) const override;
+  void print(raw_ostream &OS, const Module *m) const override;
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 };

@@ -1,18 +1,14 @@
-struct A;
-
-
 struct A {
   int* a;
-  int b;
+  int* b;
 
-  void __attribute__ ((noinline)) setA() {
-    a = &b;
-    b = 2;
+  void __attribute__((noinline)) setA(int* x, int* y) {
+    a = x;
+    b = y;
   }
 };
 
 void set(A* o) {
-  int* x = new int;
-  o->setA();
-  o->a = x;
+  o->setA(new int, new int);
+  o->a = new int;
 }
