@@ -11,6 +11,8 @@ struct ExpPass : public ModulePass {
   bool runOnModule(Module& m) override;
 
   void print(raw_ostream &OS, const Module *M) const override;
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
 };
 
 } // namespace llvm
