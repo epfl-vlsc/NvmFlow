@@ -65,6 +65,7 @@ ${SINGLE_FILE_REPO}/${TEST_NAME}.bc
 
 #commands----------------------------------------------------
 if [ "$MODE" == "pair" ] || [ "$MODE" == "pptr" ] || [ "$MODE" == "log" ] || [ "$MODE" == "exp" ];then
+	create_ir
 	run_make
 	run_tool
 elif [ "$MODE" == "make" ] ;then
