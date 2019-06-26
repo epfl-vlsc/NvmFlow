@@ -2,65 +2,63 @@
 
 #include "ExpPass.h"
 #include "Common.h"
+#include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 #include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 #include "llvm/Analysis/MemoryLocation.h"
+#include "llvm/Analysis/MemorySSA.h"
 
 namespace llvm {
 
-void traverse(Function& f, std::set<StoreInst*>& ptrs) {
+template <typename AA> void traverse(Function& f, AA& aa) {
+
   for (auto& bb : f) {
     for (auto& i : bb) {
-      // if (i.getType()->isPointerTy()) {
-      if (auto si = dyn_cast<StoreInst>(&i)) {
-        llvm::errs() << si << "\n";
-        ptrs.insert(si);
-      } else if (auto ci = dyn_cast<CallInst>(&i)) {
-        auto f2 = ci->getCalledFunction();
-        if (f2) {
-          traverse(*f2, ptrs);
-        }
+      auto* x = aa.getMemoryAccess(&i);
+      if (!x) {
+        continue;
       }
+
+      x->print(llvm::errs());
+      llvm::errs() << i << "\n";
+
+      auto* d = x->getDefiningAccess();
+      if (!d) {
+        continue;
+      }
+
+      d->print(llvm::errs());
+      llvm::errs() << "lol\n";
+
     }
   }
 }
 
-template<typename AA>
-void traverse(Function& f, AA& aa) {
-  std::set<StoreInst*> ptrs;
-
-  traverse(f, ptrs);
-
-  for (auto p1 : ptrs) {
-    for (auto p2 : ptrs) {
-      auto m1 = MemoryLocation::get(p1);
-      auto m2 = MemoryLocation::get(p2);
-      bool res = aa.alias(m1, m2);
-      llvm::errs() << (int)res << " " << *p1 << " " << *p2 << "\n";
-    }
-  }
+template <typename AA> void traverse(Module& M, AA& aa) {
+  auto f = M.getFunction("_Z1mR1A");
+  traverse(*f, aa);
 }
 
 void ExpPass::print(raw_ostream& OS, const Module* m) const { OS << "lol\n"; }
 
 bool ExpPass::runOnModule(Module& M) {
+  // auto& aa = getAnalysis<CFLSteensAAWrapperPass>().getResult();
+  // auto& aa = getAnalysis<CFLAndersAAWrapperPass>().getResult();
 
-  auto f = M.getFunction("_Z3setP1A");
+  auto f = M.getFunction("_Z1mR1A");
   if (!f)
     return false;
 
-  auto& aa = getAnalysis<CFLSteensAAWrapperPass>().getResult();
-
-  traverse(*f, aa);
-
-  for (auto& x : M.aliases()) {
-    llvm::errs() << x.getName() << "\n";
-  }
+  auto& aa = getAnalysis<MemorySSAWrapperPass>(*f).getMSSA();
+  aa.print(llvm::errs());
+  traverse(M, aa);
 
   return false;
 }
 
 void ExpPass::getAnalysisUsage(AnalysisUsage& AU) const {
-  AU.addRequired<CFLSteensAAWrapperPass>();
+  // AU.addRequired<CFLSteensAAWrapperPass>();
+  // AU.addRequired<CFLAndersAAWrapperPass>();
+  AU.addRequired<MemorySSAWrapperPass>();
   AU.setPreservesAll();
 }
 

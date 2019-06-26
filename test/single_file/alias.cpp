@@ -1,14 +1,12 @@
-struct A {
-  int* a;
-  int* b;
+volatile int z;
 
-  void __attribute__((noinline)) setA(int* x, int* y) {
-    a = x;
-    b = y;
-  }
+struct A {
+  int a;
+  int b;
 };
 
-void set(A* o) {
-  o->setA(new int, new int);
-  o->a = new int;
+void m(A& b) {
+  A* ptr = &b;
+  ptr->a = 5;
+  z = ptr->a;
 }
