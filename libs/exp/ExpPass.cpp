@@ -34,7 +34,7 @@ template <typename AA> void traverse(Function& f, AA& aa) {
 }
 
 template <typename AA> void traverse(Module& M, AA& aa) {
-  auto f = M.getFunction("_Z1mR1A");
+  auto f = M.getFunction("_Z2m3P1A");
   traverse(*f, aa);
 }
 
@@ -44,7 +44,7 @@ bool ExpPass::runOnModule(Module& M) {
   // auto& aa = getAnalysis<CFLSteensAAWrapperPass>().getResult();
   // auto& aa = getAnalysis<CFLAndersAAWrapperPass>().getResult();
 
-  auto f = M.getFunction("_Z1mR1A");
+  auto f = M.getFunction("_Z2m3P1A");
   if (!f)
     return false;
 
