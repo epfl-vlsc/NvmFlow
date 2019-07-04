@@ -11,9 +11,8 @@ protected:
   virtual const char* getName() const = 0;
 
 public:
-  void insertNamedFunction(Function* f) {
-    StringRef name = f->getName();
-    if (sameName(name)) {
+  void insertNamedFunction(Function* f, StringRef realName) {
+    if (sameName(realName)) {
       fs.insert(f);
     }
   }
@@ -26,14 +25,14 @@ public:
 
 class PfenceFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("Z6pfencev"); }
+  bool sameName(StringRef name) const { return name.equals("pfence"); }
 
   const char* getName() const { return "pfence"; }
 };
 
 class VfenceFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("Z6vfencev"); }
+  bool sameName(StringRef name) const { return name.equals("vfence"); }
 
   const char* getName() const { return "vfence"; }
 };
@@ -41,36 +40,36 @@ public:
 class FlushFunctions : public NamedFunctions {
 public:
   bool sameName(StringRef name) const {
-    return name.equals("Z10clflushoptPKv");
+    return name.equals("clflushopt") || name.equals("clwb");
   }
 
-  const char* getName() const { return "flush"; }
+  const char* getName() const { return "clflushopt"; }
 };
 
 class FlushfenceFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("Z7clflushPKv"); }
+  bool sameName(StringRef name) const { return name.equals("clflush"); }
 
   const char* getName() const { return "flushfence"; }
 };
 
 class TxbeginFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("_Z8tx_beginv"); }
+  bool sameName(StringRef name) const { return name.equals("tx_begin"); }
 
   const char* getName() const { return "txbegin"; }
 };
 
 class TxendFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("_Z6tx_endv"); }
+  bool sameName(StringRef name) const { return name.equals("tx_end"); }
 
   const char* getName() const { return "txend"; }
 };
 
 class LoggingFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("_Z3logPv"); }
+  bool sameName(StringRef name) const { return name.equals("log"); }
 
   const char* getName() const { return "logging"; }
 };

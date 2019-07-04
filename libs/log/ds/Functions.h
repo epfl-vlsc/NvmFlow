@@ -6,7 +6,7 @@
 
 namespace llvm {
 
-class LogFunctions {
+class Functions {
 public:
   static constexpr const char* LOG = "LogCode";
   static constexpr const char* SKIP = "SkipCode";
@@ -22,7 +22,7 @@ protected:
   bool useTx;
 
 public:
-  LogFunctions()
+  Functions()
       : analyzedFunctions(LOG), skippedFunctions(SKIP), useTx(false) {}
 
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
@@ -71,10 +71,10 @@ public:
     skippedFunctions.insertAnnotatedFunction(f, annotation);
   }
 
-  void insertNamedFunction(Function* f) {
-    loggingFunctions.insertNamedFunction(f);
-    txbeginFunctions.insertNamedFunction(f);
-    txendFunctions.insertNamedFunction(f);
+  void insertNamedFunction(Function* f, StringRef realName) {
+    loggingFunctions.insertNamedFunction(f, realName);
+    txbeginFunctions.insertNamedFunction(f, realName);
+    txendFunctions.insertNamedFunction(f, realName);
   }
 };
 

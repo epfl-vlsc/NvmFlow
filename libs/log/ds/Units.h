@@ -1,15 +1,17 @@
 #pragma once
 
-#include "LogFunctions.h"
-#include "LogVariables.h"
+#include "Functions.h"
+#include "Variables.h"
 
 namespace llvm {
 
-class LogUnits : public LogFunctions, public LogVariables {
+class Units : public Functions, public Variables {
 
 public:
   void print(raw_ostream& O) const {
     printFunctions(O);
+    O << "\n";
+    printVariables(O);
     O << "\n";
   }
 };

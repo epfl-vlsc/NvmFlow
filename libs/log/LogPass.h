@@ -1,6 +1,6 @@
 #pragma once
 #include "Common.h"
-#include "LogAnalyzer.h"
+#include "Analyzer.h"
 
 namespace llvm {
 

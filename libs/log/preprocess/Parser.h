@@ -1,15 +1,17 @@
 #pragma once
 #include "Common.h"
 
-#include "ds/LogUnits.h"
+#include "ds/Units.h"
+#include "global_util/DbgInfo.h"
 
 namespace llvm {
 
-class LogParser {
+class Parser {
   static const constexpr char* GLOBAL_ANNOT = "llvm.global.annotations";
 
   Module& M;
-  LogUnits& units;
+  DbgInfo& dbgInfo;
+  Units& units;
 
   void insertAnnotatedFunctions() {
     for (Module::global_iterator I = M.global_begin(), E = M.global_end();
@@ -35,12 +37,19 @@ class LogParser {
 
   void insertNamedFunctions() {
     for (auto& F : M) {
-      units.insertNamedFunction(&F);
+      auto* f = &F;
+      if (f->isIntrinsic()) {
+        continue;
+      }
+      auto mangledName = f->getName();
+      auto realName = dbgInfo.getFunctionName(mangledName);
+      units.insertNamedFunction(f, realName);
     }
   }
 
 public:
-  LogParser(Module& M_, LogUnits& units_) : M(M_), units(units_) {
+  Parser(Module& M_, DbgInfo& dbgInfo_, Units& units_)
+      : M(M_), dbgInfo(dbgInfo_), units(units_) {
     insertAnnotatedFunctions();
     insertNamedFunctions();
   }

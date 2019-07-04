@@ -1,5 +1,3 @@
-
-
 #include "LogPass.h"
 
 namespace llvm {
@@ -9,14 +7,7 @@ void LogPass::print(raw_ostream& OS, const Module* m) const {
 }
 
 bool LogPass::runOnModule(Module& M) {
-
-  LogAnalyzer analyzer(M);
-
-  analyzer.parse();
-
-  analyzer.dataflow();
-
-  analyzer.report();
+  Analyzer analyzer(M);
   return false;
 }
 
