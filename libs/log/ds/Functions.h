@@ -1,8 +1,8 @@
 #pragma once
 #include "Common.h"
 
-#include "global_util/AnnotatedFunctions.h"
-#include "global_util/NamedFunctions.h"
+#include "data_util/AnnotatedFunctions.h"
+#include "data_util/NamedFunctions.h"
 
 namespace llvm {
 

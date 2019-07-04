@@ -7,7 +7,7 @@ void LogPass::print(raw_ostream& OS, const Module* m) const {
 }
 
 bool LogPass::runOnModule(Module& M) {
-  Analyzer analyzer(M);
+  Analyzer analyzer(M, this);
   return false;
 }
 
