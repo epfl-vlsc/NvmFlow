@@ -18,11 +18,11 @@
 
 #define log_field __attribute((annotate("LogField")))
 
-void vfence() {}
-void pfence() {}
-void clflushopt(void const* p) {}
-void clflush(void const* p) {}
+void vfence();
+void pfence();
+void clflushopt(void const* p);
+void clflush(void const* p);
 
-void log(void* ptr) {}
-void tx_begin() {}
-void tx_end() {}
+void log(void* ptr);
+void tx_begin();
+void tx_end();
