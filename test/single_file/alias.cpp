@@ -1,12 +1,23 @@
-volatile int z;
+#include "annot.h"
 
 struct A {
-  int a;
-  int b;
+  log_field int a;
+  log_field A* b;
 };
 
-void m(A& b) {
-  A* ptr = &b;
-  ptr->a = 5;
-  z = ptr->a;
+void m1(A* a) {
+  a->a = 5;
+  a->b = a;
+}
+
+void m2(A& a) {
+  a.a = 5;
+  a.b = &a;
+}
+
+void m3(A* a) { m1(a); }
+
+void m3(A* a, int b) {
+  a->a = b;
+  m1(a);
 }
