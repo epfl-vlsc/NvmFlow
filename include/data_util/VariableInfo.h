@@ -20,7 +20,7 @@ public:
 
   bool operator<(const VariableInfo& X) const { return st < X.st || idx < X.idx; }
 
-  bool operator==(const VariableInfo& X) const { return st == X.st || idx == X.idx; }
+  bool operator==(const VariableInfo& X) const { return st == X.st && idx == X.idx; }
 };
 
 } // namespace llvm

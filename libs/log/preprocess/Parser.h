@@ -112,7 +112,9 @@ public:
 
     // parse variables
     insertAnnotatedVariables();
+
+    units.print(llvm::errs());
   }
-}; // namespace llvm
+};
 
 } // namespace llvm
