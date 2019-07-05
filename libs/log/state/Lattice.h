@@ -21,13 +21,13 @@ public:
 
   bool inTx() const { return tx > 0; }
 
-  static TxValue getTxbegin(const TxValue& X) {
+  static TxValue getBeginTx(const TxValue& X) {
     TxValue value(X);
     value.tx++;
     return value;
   }
 
-  static TxValue getTxend(const TxValue& X) {
+  static TxValue getEndTx(const TxValue& X) {
     TxValue value(X);
     value.tx--;
     return value;
@@ -52,11 +52,108 @@ public:
 
   LogValue() : log(Unseen) {}
 
+  bool operator<(const LogValue& X) const { return log < X.log; }
+
+  bool operator==(const LogValue& X) const { return log == X.log; }
+
+  bool isLogged() const { return log == Logged; }
+
   static LogValue getInit() { return LogValue(); }
 
   static LogValue getLogged() { return LogValue(Logged); }
 
   void print(raw_ostream& O) const { O << " log: " << LogStr[(int)log]; }
+};
+
+class Lattice {
+  enum LatticeType { LogType, TxType, None } type;
+  union LatticeValue {
+    LogValue logValue;
+    TxValue txValue;
+
+    LatticeValue(LatticeType latticeType) {
+      if (latticeType == LogType) {
+        new (&logValue) LogValue();
+      } else if (latticeType == TxType) {
+        new (&txValue) TxValue();
+      } else {
+        report_fatal_error("check lattice type");
+      }
+    }
+
+    LatticeValue() {}
+  } val;
+
+public:
+  Lattice() : type(None) {}
+
+  Lattice(const Lattice& X) { *this = X; }
+
+  Lattice(LatticeType latticeType) : type(latticeType), val(latticeType) {}
+
+  static Lattice getInitLog() { return Lattice(LogType); }
+
+  static Lattice getInitTx() { return Lattice(TxType); }
+
+  static Lattice getLogged() {
+    Lattice lattice;
+    lattice.val.logValue = LogValue::getLogged();
+    return lattice;
+  }
+
+  static Lattice getBeginTx(const Lattice& X) {
+    assert(X.type == TxType);
+    Lattice lattice;
+    lattice.val.txValue = TxValue::getBeginTx(X.val.txValue);
+    return lattice;
+  }
+
+  static Lattice getEndTx(const Lattice& X) {
+    assert(X.type == TxType);
+    Lattice lattice;
+    lattice.val.txValue = TxValue::getBeginTx(X.val.txValue);
+    return lattice;
+  }
+
+  void print(raw_ostream& O) const {
+    if (type == LogType) {
+      val.logValue.print(O);
+    } else if (type == TxType) {
+      val.txValue.print(O);
+    } else {
+      report_fatal_error("check lattice type");
+    }
+  }
+
+  bool operator<(const Lattice& X) const {
+    if (type == LogType) {
+      return val.logValue < X.val.logValue;
+    } else if (type == TxType) {
+      return val.txValue < X.val.txValue;
+    } else {
+      report_fatal_error("check lattice type");
+    }
+  }
+
+  bool operator==(const Lattice& X) const {
+    if (type == LogType) {
+      return val.logValue == X.val.logValue;
+    } else if (type == TxType) {
+      return val.txValue == X.val.txValue;
+    } else {
+      report_fatal_error("check lattice type");
+    }
+  }
+
+  bool inTx() const {
+    assert(type == TxType);
+    return val.txValue.inTx();
+  }
+
+  bool isLogged() const {
+    assert(type == LogType);
+    return val.logValue.isLogged();
+  }
 };
 
 } // namespace llvm
