@@ -145,7 +145,7 @@ public:
     }
   }
 
-  bool inTx() const {
+  bool isInTx() const {
     assert(type == TxType);
     return val.txValue.inTx();
   }
