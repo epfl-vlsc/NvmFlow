@@ -2,6 +2,7 @@
 
 #include "Functions.h"
 #include "Variables.h"
+#include "data_util/DbgInfo.h"
 
 namespace llvm {
 
@@ -27,7 +28,10 @@ public:
     functions.print(O);
   }
 
-  void printActiveFunction(raw_ostream& O) const { activeFunction->print(O); }
+  void printActiveFunction(raw_ostream& O) const {
+    activeFunction->print(O);
+    O << "----------------------\n";
+  }
 };
 
 } // namespace llvm

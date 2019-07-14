@@ -5,11 +5,7 @@
 #include "data_util/DbgInfo.h"
 #include "ds/Units.h"
 #include "preprocess/Parser.h"
-
-/*
 #include "state/StateMachine.h"
-#include "analysis_util/DataflowAnalysis.h"
- */
 
 namespace llvm {
 
@@ -26,16 +22,11 @@ public:
   }
 
   void dataflow() {
-    for(auto* function: units.getAnalyzedFunctions()){
-      units.setActiveFunction(function);
-      units.printActiveFunction(llvm::errs());
-    }
-    
-    /*
-    StateMachine stateMachine(M, units);
+    StateMachine stateMachine(units);
 
-    //stateMachine.analyze();
-     */
+    for (auto* function : stateMachine.getAnalyzedFunctions()) {
+      stateMachine.analyze(function);
+    }
   }
 
   void parse() { Parser parser(M, units); }

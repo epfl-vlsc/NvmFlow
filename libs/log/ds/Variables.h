@@ -28,6 +28,8 @@ struct InstructionInfo {
     return name;
   }
 
+  bool isCallInstr() const { return iType == CallInstr; }
+
   void print(raw_ostream& O) const { O << this->getName(); }
 };
 
@@ -54,6 +56,14 @@ public:
 
   bool isUsedInstruction(Instruction* instr) const {
     return instrToInfo.count(instr) > 0;
+  }
+
+  bool isCallInstruction(Instruction* instr) const {
+    if (instrToInfo.count(instr)) {
+      auto& info = instrToInfo.at(instr);
+      return info.isCallInstr();
+    }
+    return false;
   }
 
   auto insertVariable(StructType* st, int idx) {

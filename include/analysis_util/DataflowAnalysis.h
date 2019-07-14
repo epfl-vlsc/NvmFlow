@@ -7,11 +7,11 @@ namespace llvm {
 template <typename StateMachine> class DataflowAnalysis {
   // df results
   using AbstractState = typename StateMachine::AbstractState;
-  using FunctionResults = typename StateMachine::FunctionResults;
-  using DataflowResults = typename StateMachine::DataflowResults;
+  using FunctionResults = std::map<Value*, AbstractState>;
+  using DataflowResults = std::map<Context, FunctionResults>;
 
   // context helpers
-  using FunctionContext = std::pair<Function*, PlContext>;
+  using FunctionContext = std::pair<Function*, Context>;
   using FunctionContextSet = std::set<FunctionContext>;
   using FunctionContextMap = std::map<FunctionContext, FunctionContextSet>;
 
@@ -32,24 +32,23 @@ template <typename StateMachine> class DataflowAnalysis {
 
   void initTopEntryValues(Function* function, FunctionResults& results) {
     // initialize entry block
-    auto* entryBlockKey = Forward::getEntryBlock(function);
-    AbstractState& state = results[entryBlockKey];
+    auto* blockEntryKey = Forward::getBlockEntryKey(function);
+    AbstractState& state = results[blockEntryKey];
 
     // initialize all tracked variables for the entry block
     stateMachine.initLatticeValues(state);
   }
 
   void initCalleeEntryValues(Function* function, FunctionResults& results) {
-    auto* entryBlockKey = Forward::getEntryBlock(function);
-    AbstractState& state = results[entryBlockKey];
+    auto* blockEntryKey = Forward::getBlockEntryKey(function);
+    AbstractState& state = results[blockEntryKey];
 
     // initialize from the function entry state
     auto* functionEntryKey = Forward::getFunctionEntryKey(function);
     state = results[functionEntryKey];
   }
 
-  FunctionResults& getFunctionResults(Function* function,
-                                      const PlContext& context) {
+  auto& getFunctionResults(Function* function, const Context& context) {
     FunctionResults& results = allResults[context];
     auto* functionEntryKey = Forward::getFunctionEntryKey(function);
 
@@ -63,12 +62,12 @@ template <typename StateMachine> class DataflowAnalysis {
   }
 
   void addBlocksToWorklist(Function* function, BlockWorklist& blockWorkList) {
-    for (auto* bb : Forward::getBlocks(function)) {
-      blockWorkList.push_back(bb);
+    for (auto& BB : Forward::getBlocks(function)) {
+      blockWorkList.insert(&BB);
     }
   }
 
-  AbstractState mergePrevStates(Value* blockEntryKey,
+  AbstractState mergePrevStates(BasicBlock* block, Value* blockEntryKey,
                                 FunctionResults& results) {
     AbstractState mergedState;
     AbstractState& inState = results[blockEntryKey];
@@ -77,8 +76,8 @@ template <typename StateMachine> class DataflowAnalysis {
     mergeInState(mergedState, inState);
 
     // get all prev blocks
-    for (auto* pred_block : Forward::getPredecessorBlocks(blockEntryKey)) {
-      auto* blockExitKey = Forward::getExitKey(pred_block);
+    for (auto* pred_block : Forward::getPredecessorBlocks(block)) {
+      auto* blockExitKey = Forward::getBlockExitKey(pred_block);
       if (results.count(blockExitKey)) {
         AbstractState& predecessorState = results[blockExitKey];
         mergeInState(mergedState, predecessorState);
@@ -102,9 +101,9 @@ template <typename StateMachine> class DataflowAnalysis {
     }
   }
 
-  bool analyzeCall(CallInst* ci, AbstractState& callerState, Function* caller,
-                   const PlContext& context) {
-    PlContext newContext(context, ci);
+  bool analyzeCall(CallInst* ci, AbstractState& state, Function* caller,
+                   const Context& context) {
+    Context newContext(context, ci);
     Function* callee = ci->getCalledFunction();
     if (!callee)
       return false;
@@ -121,12 +120,12 @@ template <typename StateMachine> class DataflowAnalysis {
     auto& calleeResults = allResults[newContext];
     AbstractState& calleeEntryState = calleeResults[calleeEntryKey];
 
-    if (active.count(toCall) || callerState == calleeEntryState) {
+    if (active.count(toCall) || state == calleeEntryState) {
       return false;
     }
 
     // update function entry
-    calleeEntryState = callerState;
+    calleeEntryState = state;
 
     // do dataflow inter-procedurally
     computeDataflow(callee, newContext);
@@ -135,12 +134,12 @@ template <typename StateMachine> class DataflowAnalysis {
     AbstractState& calleeExitState = calleeResults[calleeExitKey];
 
     // if same result do not update
-    if (callerState == calleeExitState) {
+    if (state == calleeExitState) {
       return false;
     }
 
     // update caller state
-    callerState = calleeExitState;
+    state = calleeExitState;
     callers[toCall].insert(toUpdate);
 
     return true;
@@ -151,8 +150,10 @@ template <typename StateMachine> class DataflowAnalysis {
   }
 
   bool analyzeStmt(Instruction* i, AbstractState& state, Function* caller,
-                   const PlContext& context) {
-    if (auto* ci = stateMachine.getCiAnalyzed(i)) {
+                   const Context& context) {
+
+    if (stateMachine.isIpaInstruction(i)) {
+      auto* ci = dyn_cast<CallInst>(i);
       return analyzeCall(ci, state, caller, context);
     } else {
       return applyTransfer(i, state);
@@ -161,16 +162,18 @@ template <typename StateMachine> class DataflowAnalysis {
 
   void analyzeStmts(BasicBlock* block, AbstractState& state,
                     FunctionResults& results, Function* caller,
-                    const PlContext& context) {
-    for (auto* i : Forward::getElements(block)) {
+                    const Context& context) {
+    for (auto& I : Forward::getInstructions(block)) {
+      auto* i = &I;
+
       if (analyzeStmt(i, state, caller, context)) {
-        auto* stmtKey = Forward::getStmtKey(i);
-        results[stmtKey] = state;
+        auto* instKey = Forward::getInstructionKey(i);
+        results[instKey] = state;
       }
     }
   }
 
-  void computeDataflow(Function* function, PlContext& context) {
+  void computeDataflow(Function* function, Context& context) {
     active.insert({function, context});
 
     // initialize results
@@ -183,15 +186,15 @@ template <typename StateMachine> class DataflowAnalysis {
     while (!blockWorklist.empty()) {
       auto* block = blockWorklist.pop_back_val();
 
-      auto* blockEntryKey = Forward::getEntryKey(block);
-      auto* blockExitKey = Forward::getExitKey(block);
+      auto* blockEntryKey = Forward::getBlockEntryKey(block);
+      auto* blockExitKey = Forward::getBlockExitKey(block);
 
       // get previously computed states
       AbstractState& oldEntryState = results[blockEntryKey];
       AbstractState oldExitState = results[blockExitKey];
 
       // get current state
-      AbstractState state = mergePrevStates(blockEntryKey, results);
+      AbstractState state = mergePrevStates(block, blockEntryKey, results);
 
       // skip block if same result
       if (state == oldEntryState && !state.empty()) {
@@ -214,7 +217,7 @@ template <typename StateMachine> class DataflowAnalysis {
 
       // do data flow for successive blocks
       for (auto* succBlock : Forward::getSuccessorBlocks(block)) {
-        blockWorklist.push_back(succBlock);
+        blockWorklist.insert(succBlock);
       }
     }
 
@@ -225,7 +228,7 @@ template <typename StateMachine> class DataflowAnalysis {
     if (oldResults != results) {
       oldResults = results;
       for (const FunctionContext& caller : callers[{function, context}]) {
-        contextWork.push_back(caller);
+        contextWork.insert(caller);
       }
     }
 
@@ -242,8 +245,21 @@ template <typename StateMachine> class DataflowAnalysis {
 public:
   DataflowAnalysis(Function* function, StateMachine& stateMachine_)
       : topFunction(function), stateMachine(stateMachine_) {
-    contextWork.push_back({function, PlContext()});
+    contextWork.insert({function, Context()});
     computeDataflow();
+  }
+
+  void print(raw_ostream& O) const {
+    O << "all results:\n";
+    for (auto& [context, functionResults] : allResults) {
+      O << context.getName() << "\n";
+      for (auto& [location, state] : functionResults) {
+        printLocation(location);
+        for (auto& [latVar, latVal] : state) {
+          O << latVar->getName() << " " << latVal.getName();
+        }
+      }
+    }
   }
 };
 
