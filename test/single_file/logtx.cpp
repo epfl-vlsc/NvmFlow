@@ -32,4 +32,11 @@ struct Log {
     log(&valid);
     valid = 5;
   }
+
+  void log_fnc correctObj() {
+    tx_begin();
+    log(this);
+    valid = 5;
+    tx_end();
+  }
 };

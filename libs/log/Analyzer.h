@@ -1,30 +1,44 @@
 #pragma once
 
 #include "Common.h"
+
 #include "data_util/DbgInfo.h"
 #include "ds/Units.h"
 #include "preprocess/Parser.h"
+
+/*
+#include "state/StateMachine.h"
+#include "analysis_util/DataflowAnalysis.h"
+ */
 
 namespace llvm {
 
 class Analyzer {
   Module& M;
-  ModulePass* pass;
-  DbgInfo dbgInfo;
   Units units;
 
 public:
-  Analyzer(Module& M_, ModulePass* pass_) : M(M_), pass(pass_), dbgInfo(M) {
-    dbgInfo.print(llvm::errs());
+  Analyzer(Module& M_) : M(M_), units(M_) {
     parse();
-  }
-
-  void dataflow() {}
-
-  void parse() {
-    Parser parser(M, pass, dbgInfo, units);
     units.print(llvm::errs());
+
+    dataflow();
   }
+
+  void dataflow() {
+    for(auto* function: units.getAnalyzedFunctions()){
+      units.setActiveFunction(function);
+      units.printActiveFunction(llvm::errs());
+    }
+    
+    /*
+    StateMachine stateMachine(M, units);
+
+    //stateMachine.analyze();
+     */
+  }
+
+  void parse() { Parser parser(M, units); }
 
   void report() {}
 };

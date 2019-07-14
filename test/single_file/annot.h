@@ -18,11 +18,13 @@
 
 #define log_field __attribute((annotate("LogField")))
 
-void vfence();
-void pfence();
-void clflushopt(void const* p);
-void clflush(void const* p);
+#define no_inline __attribute__((noinline))
 
-void log(void* ptr);
-void tx_begin();
-void tx_end();
+void no_inline vfence(){}
+void no_inline pfence(){}
+void no_inline clflushopt(void const* p){}
+void no_inline clflush(void const* p){}
+
+void no_inline log(void* ptr){}
+void no_inline tx_begin(){}
+void no_inline tx_end(){}

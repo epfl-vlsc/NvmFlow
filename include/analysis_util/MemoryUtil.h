@@ -3,6 +3,18 @@
 
 namespace llvm {
 
+auto getUncasted(Value* v) {
+  auto* inst = v;
+
+  while (true) {
+    if (auto* ci = dyn_cast<CastInst>(inst)) {
+      inst = ci->getOperand(0);
+    } else {
+      return inst;
+    }
+  }
+}
+
 IntrinsicInst* getII(Value* v) {
   auto* inst = v;
 
@@ -58,7 +70,7 @@ auto getFieldInfo(IntrinsicInst* ii) {
   ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
   assert(index);
 
-  unsigned idx = (unsigned)index->getValue().getZExtValue();
+  int idx = (int)index->getValue().getZExtValue();
 
   return std::pair(structType, idx);
 }

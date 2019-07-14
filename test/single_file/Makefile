@@ -4,15 +4,15 @@ LL_DIR := .
 SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
 BC_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(BC_DIR)/%.bc,$(SRC_FILES))
 LL_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(LL_DIR)/%.ll,$(SRC_FILES))
-CPPFLAGS := -g -c -O3 -emit-llvm -femit-all-decls -fstandalone-debug
+CPPFLAGS := -ggdb -c -emit-llvm -femit-all-decls -fstandalone-debug
 
 $(BC_DIR)/%.bc: $(SRC_DIR)/%.cpp
 	clang++ $(CPPFLAGS) -o $@ $<
 
-$(LL_DIR)/%.ll: $(SRC_DIR)/%.cpp
-	clang++ $(CPPFLAGS) -S -o $@ $<
+$(LL_DIR)/%.ll: $(SRC_DIR)/%.bc
+	llvm-dis -o $@ $<
 
 all: $(BC_FILES) $(LL_FILES)
 
 clean:
-	rm *.bc *.ll *.o
+	rm *.bc *.ll

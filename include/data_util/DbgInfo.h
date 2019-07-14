@@ -112,6 +112,10 @@ public:
     return variableNames[variableInfo];
   }
 
+  bool functionExists(StringRef mangledName) const {
+    return functionNames.count(mangledName) > 0;
+  }
+
   void print(raw_ostream& O) const {
     O << "Debug Info\n";
     O << "function names: ";

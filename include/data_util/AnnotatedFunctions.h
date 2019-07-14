@@ -22,9 +22,10 @@ public:
     }
   }
 
-  void print(raw_ostream& O) const{
+  void print(raw_ostream& O) const {
     O << functionAnnotation << ": ";
     FunctionSet::print(O);
+    O << "\n";
   }
 };
 

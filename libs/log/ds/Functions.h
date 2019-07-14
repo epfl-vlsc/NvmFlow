@@ -11,7 +11,7 @@ public:
   static constexpr const char* LOG = "LogCode";
   static constexpr const char* SKIP = "SkipCode";
 
-protected:
+private:
   AnnotatedFunctions analyzedFunctions;
   AnnotatedFunctions skippedFunctions;
 
@@ -48,14 +48,6 @@ public:
 
   bool isTxendFunction(Function* f) const { return txendFunctions.count(f); }
 
-  void printFunctions(raw_ostream& O) const {
-    analyzedFunctions.print(O);
-    skippedFunctions.print(O);
-    loggingFunctions.print(O);
-    txbeginFunctions.print(O);
-    txendFunctions.print(O);
-  }
-
   void setTxMode() {
     useTx = !txbeginFunctions.empty() && !txendFunctions.empty();
     if (useTx) {
@@ -75,6 +67,17 @@ public:
     loggingFunctions.insertNamedFunction(f, realName);
     txbeginFunctions.insertNamedFunction(f, realName);
     txendFunctions.insertNamedFunction(f, realName);
+  }
+
+  void print(raw_ostream& O) const {
+    O << "functions\n"; 
+    analyzedFunctions.print(O);
+    skippedFunctions.print(O);
+    loggingFunctions.print(O);
+    if(useTx){
+      txbeginFunctions.print(O);
+      txendFunctions.print(O);
+    }
   }
 };
 

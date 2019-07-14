@@ -20,6 +20,7 @@ public:
   void print(raw_ostream& O) const {
     O << getName() << ": ";
     FunctionSet::print(O);
+    O << "\n";
   }
 };
 
@@ -55,21 +56,21 @@ public:
 
 class TxbeginFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("_Z8tx_beginv"); }
+  bool sameName(StringRef name) const { return name.equals("tx_begin"); }
 
   const char* getName() const { return "txbegin"; }
 };
 
 class TxendFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("_Z6tx_endv"); }
+  bool sameName(StringRef name) const { return name.equals("tx_end"); }
 
   const char* getName() const { return "txend"; }
 };
 
 class LoggingFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("_Z3logPv"); }
+  bool sameName(StringRef name) const { return name.equals("log"); }
 
   const char* getName() const { return "logging"; }
 };

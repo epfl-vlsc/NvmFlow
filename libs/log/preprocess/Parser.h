@@ -2,7 +2,6 @@
 #include "Common.h"
 
 #include "analysis_util/MemoryUtil.h"
-#include "data_util/DbgInfo.h"
 
 #include "ds/Units.h"
 
@@ -13,8 +12,6 @@ class Parser {
   static constexpr const char* FIELD_ANNOT = "LogField";
 
   Module& M;
-  ModulePass* pass;
-  DbgInfo& dbgInfo;
   Units& units;
 
   void insertAnnotatedFunctions() {
@@ -33,7 +30,8 @@ class Parser {
           Function* annotatedFunction =
               dyn_cast<Function>(CS->getOperand(0)->getOperand(0));
 
-          units.insertAnnotatedFunction(annotatedFunction, annotation);
+          units.functions.insertAnnotatedFunction(annotatedFunction,
+                                                  annotation);
         }
       }
     }
@@ -42,13 +40,18 @@ class Parser {
   void insertNamedFunctions() {
     for (auto& F : M) {
       auto* f = &F;
-      if (f->isIntrinsic()) {
+      auto mangledName = f->getName();
+
+      if (!units.dbgInfo.functionExists(mangledName)) {
         continue;
       }
-      auto mangledName = f->getName();
-      // auto realName = dbgInfo.getFunctionName(mangledName);
-      units.insertNamedFunction(f, mangledName);
+
+      auto realName = units.dbgInfo.getFunctionName(mangledName);
+      units.functions.insertNamedFunction(f, realName);
     }
+
+    // ensure tx are properly used
+    units.functions.setTxMode();
   }
 
   void insertSi(StoreInst* si) {
@@ -59,25 +62,55 @@ class Parser {
 
     auto [st, idx] = getFieldInfo(ii);
 
-    units.insertVariable(si, st, idx);
+    auto* variable = units.activeFunction->insertVariable(st, idx);
+    assert(variable);
+
+    units.activeFunction->insertInstruction(InstructionInfo::WriteInstr, si,
+                                            variable);
   }
 
-  void insertCi(CallInst* ci) {
-    auto* callee = ci->getCalledFunction();
-    if (!callee || !units.isLoggingFunction(callee)) {
-      return;
-    }
-
+  void insertLogging(CallInst* ci) {
     auto* arg0 = ci->getArgOperand(0);
     auto* ii = getII(arg0);
-    llvm::errs() << *ii << "\n";
 
+    // todo get struct
     if (!ii || !isAnnotatedField(ii, FIELD_ANNOT)) {
       return;
     }
 
+    // get field
     auto [st, idx] = getFieldInfo(ii);
-    units.insertVariable(ci, st, idx);
+
+    // get variable
+    auto* variable = units.activeFunction->insertVariable(st, idx);
+    assert(variable);
+
+    units.activeFunction->insertInstruction(InstructionInfo::LoggingInstr, ci,
+                                            variable);
+
+    units.activeFunction->insertVariable(st, -1);
+  }
+
+  void insertCi(CallInst* ci) {
+    auto* callee = ci->getCalledFunction();
+
+    if (!callee || callee->isIntrinsic() ||
+        units.functions.isSkippedFunction(callee)) {
+      return;
+    } else if (units.functions.isTxbeginFunction(callee)) {
+      units.activeFunction->insertInstruction(InstructionInfo::TxBegInstr, ci,
+                                              nullptr);
+    } else if (units.functions.isTxendFunction(callee)) {
+      units.activeFunction->insertInstruction(InstructionInfo::TxEndInstr, ci,
+                                              nullptr);
+    } else if (units.functions.isLoggingFunction(callee)) {
+      // parse log
+      insertLogging(ci);
+    } else {
+      // go to callee
+      units.activeFunction->insertInstruction(InstructionInfo::CallInstr, ci,
+                                              nullptr);
+    }
   }
 
   void insertI(Instruction* i) {
@@ -88,14 +121,10 @@ class Parser {
     }
   }
 
-  void insertAnnotatedVariables() {
-    for (auto& F : M) {
-      auto* f = &F;
-      if (units.isSkippedFunction(f) || f->isDeclaration()) {
-        continue;
-      }
-
-      for (auto& BB : F) {
+  void insertFields() {
+    for (auto* function : units.functions.getAnalyzedFunctions()) {
+      units.setActiveFunction(function);
+      for (auto& BB : *function) {
         for (auto& I : BB) {
           insertI(&I);
         }
@@ -103,17 +132,57 @@ class Parser {
     }
   }
 
+  void insertCiObj(CallInst* ci) {
+    auto* callee = ci->getCalledFunction();
+
+    if (!callee || callee->isIntrinsic() ||
+        units.functions.isSkippedFunction(callee)) {
+      return;
+    } else if (units.functions.isLoggingFunction(callee)) {
+      // parse log
+      auto* arg0 = ci->getArgOperand(0);
+      auto* uncastedArg0 = getUncasted(arg0);
+      auto* argType = uncastedArg0->getType();
+      // must be ptr
+      assert(argType->isPointerTy());
+      auto* objType = argType->getPointerElementType();
+      if (auto* st = dyn_cast<StructType>(objType)) {
+        auto* variable = units.activeFunction->insertVariable(st, -1);
+        assert(variable);
+
+        units.activeFunction->insertInstruction(InstructionInfo::LoggingInstr,
+                                                ci, variable);
+      }
+    }
+  }
+
+  void insertObjects() {
+    for (auto* function : units.functions.getAnalyzedFunctions()) {
+      units.setActiveFunction(function);
+      for (auto& BB : *function) {
+        for (auto& I : BB) {
+          auto* i = &I;
+          if (units.activeFunction->isUsedInstruction(i)) {
+            continue;
+          }
+
+          if (auto* ci = dyn_cast<CallInst>(i)) {
+            insertCiObj(ci);
+          }
+        }
+      }
+    }
+  }
+
 public:
-  Parser(Module& M_, ModulePass* pass_, DbgInfo& dbgInfo_, Units& units_)
-      : M(M_), pass(pass_), dbgInfo(dbgInfo_), units(units_) {
+  Parser(Module& M_, Units& units_) : M(M_), units(units_) {
     // parse functions
     insertAnnotatedFunctions();
     insertNamedFunctions();
 
     // parse variables
-    insertAnnotatedVariables();
-
-    units.print(llvm::errs());
+    insertFields();
+    insertObjects();
   }
 };
 
