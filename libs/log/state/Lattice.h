@@ -88,7 +88,7 @@ public:
   Lattice(LatticeType latticeType) : type(latticeType), val(latticeType) {}
 
   Lattice meet(const Lattice& X) {
-    assert(X.type == TxType);
+    assert(type == X.type);
     Lattice lattice = *this;
     switch (type) {
     case LogType:

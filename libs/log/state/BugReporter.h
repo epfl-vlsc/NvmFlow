@@ -53,10 +53,10 @@ class BugReporter {
       }
 
       msg += " at " + getSourceLocation(bugInstr);
-      if(bugType == DoubleLog){
+      if (bugType == DoubleLog) {
         msg += " at " + getSourceLocation(logInstr);
       }
-      
+
       msg += "\n";
 
       return msg;
@@ -71,15 +71,18 @@ class BugReporter {
   BugDataList* bugDataList;
   LastLocationMap* lastLocationMap;
   BuggedVars* buggedVars;
+  Function* currentFunction;
 
 public:
   BugReporter() {
     bugDataList = nullptr;
     lastLocationMap = nullptr;
     buggedVars = nullptr;
+    currentFunction = nullptr;
   }
 
-  void initUnit() {
+  void initUnit(Function* function) {
+    currentFunction = function;
     if (bugDataList) {
       delete bugDataList;
     }
@@ -101,7 +104,7 @@ public:
   }
 
   void print(raw_ostream& O) const {
-    O << "bugs\n";
+    O << currentFunction->getName() << " bugs\n";
     for (auto& bugData : *bugDataList) {
       errs() << bugData.getMsg();
     }
@@ -132,7 +135,6 @@ public:
       buggedVars->insert(currentVar);
       Instruction* logInstr = (*lastLocationMap)[currentVar];
       auto bugData = BugData::getDoubleLogBug(bugInstr, logInstr, currentVar);
-      errs() << logInstr << "\n";
       bugDataList->push_back(bugData);
     }
   }

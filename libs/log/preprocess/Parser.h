@@ -121,7 +121,12 @@ class Parser {
     }
   }
 
-  void insertFields(Function* function) {
+  void insertFields(Function* function, std::set<Function*>& visited) {
+    if (visited.count(function)) {
+      return;
+    }
+    visited.insert(function);
+
     for (auto& BB : *function) {
       for (auto& I : BB) {
         auto* i = &I;
@@ -130,7 +135,7 @@ class Parser {
         if (auto* ci = dyn_cast<CallInst>(i)) {
           auto* f = ci->getCalledFunction();
           if (!f->isDeclaration() && !units.functions.isSkippedFunction(f)) {
-            insertFields(f);
+            insertFields(f, visited);
           }
         }
       }
@@ -140,13 +145,13 @@ class Parser {
   void insertFields() {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      insertFields(function);
+      std::set<Function*> visited;
+      insertFields(function, visited);
     }
   }
 
   void insertCiObj(CallInst* ci) {
     auto* callee = ci->getCalledFunction();
-
     if (!callee || callee->isIntrinsic() ||
         units.functions.isSkippedFunction(callee)) {
       return;
@@ -168,7 +173,12 @@ class Parser {
     }
   }
 
-  void insertObjects(Function* function) {
+  void insertObjects(Function* function, std::set<Function*>& visited) {
+    if (visited.count(function)) {
+      return;
+    }
+    visited.insert(function);
+
     for (auto& BB : *function) {
       for (auto& I : BB) {
         auto* i = &I;
@@ -177,11 +187,11 @@ class Parser {
         }
 
         if (auto* ci = dyn_cast<CallInst>(i)) {
+          insertCiObj(ci);
+
           auto* f = ci->getCalledFunction();
-          if (!f->isDeclaration() && !units.functions.isSkippedFunction(f)) {
-            insertObjects(f);
-          } else {
-            insertCiObj(ci);
+          if (!f->isDeclaration() && !units.functions.skipFunction(f)) {
+            insertObjects(f, visited);
           }
         }
       }
@@ -191,7 +201,8 @@ class Parser {
   void insertObjects() {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      insertObjects(function);
+      std::set<Function*> visited;
+      insertObjects(function, visited);
     }
   }
 

@@ -107,7 +107,9 @@ template <typename StateMachine> class DataflowAnalysis {
     if (!callee || callee->isDeclaration())
       return false;
 
+#ifdef DBGMODE
     errs() << "Analyze call " << callee->getName() << "\n";
+#endif
 
     // prepare function contexts for caller and callee
     FunctionContext toCall = std::pair(callee, newContext);

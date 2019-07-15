@@ -16,6 +16,14 @@ struct Log {
     tx_end();
   }
 
+  void log_fnc correct2() {
+    tx_begin();
+    log(&valid);
+    if (valid == 5)
+      valid = 6;
+    tx_end();
+  }
+
   void log_fnc notLogged() {
     tx_begin();
     valid = 5;
@@ -43,7 +51,7 @@ struct Log {
   void log_fnc missLog() {
     tx_begin();
     if (valid == 6) {
-      log(this);
+      log(&valid);
     }
     valid = 1;
     tx_end();
@@ -68,6 +76,13 @@ struct Log {
     tx_begin();
     condLog();
     valid = 1;
+    tx_end();
+  }
+
+  void log_fnc recurse() {
+    tx_begin();
+    log(&valid);
+    recurse();
     tx_end();
   }
 };

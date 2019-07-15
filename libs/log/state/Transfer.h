@@ -51,7 +51,7 @@ private:
   }
 
   bool handleTxEnd(InstructionInfo* ii, AbstractState& state) {
-    state[txLatVar] = LatVal::getBeginTx(state[txLatVar]);
+    state[txLatVar] = LatVal::getEndTx(state[txLatVar]);
     return true;
   }
 
@@ -84,7 +84,9 @@ public:
     if (!ii)
       return false;
 
+#ifdef DBGMODE
     errs() << "Analyze " << *i << "\n";
+#endif
 
     switch (ii->iType) {
     case InstructionInfo::LoggingInstr:

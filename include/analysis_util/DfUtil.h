@@ -98,6 +98,8 @@ public:
   static auto getSuccessorBlocks(BasicBlock* bb) { return successors(bb); }
 
   static auto getPredecessorBlocks(BasicBlock* bb) { return predecessors(bb); }
+
+  static auto getPredecessorBlocks(PHINode* phi) { return phi->blocks(); }
 };
 
 } // namespace llvm

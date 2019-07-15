@@ -59,7 +59,6 @@ public:
   void setFunction(Function* function_) { function = function_; }
 
   auto& getAffectedVariables(StructType* st) {
-    assert(affectedVariables.count(st));
     return affectedVariables[st];
   }
 

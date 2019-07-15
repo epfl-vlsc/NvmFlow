@@ -28,11 +28,17 @@ public:
 
   void analyze(Function* function) {
     units.setActiveFunction(function);
+    breporter.initUnit(function);
+
+#ifdef DBGMODE
     units.printActiveFunction(errs());
-    breporter.initUnit();
+#endif
 
     DataflowAnalysis dataflow(function, *this);
+
+#ifdef DBGMODE
     dataflow.print(errs());
+#endif
     breporter.print(errs());
   }
 
