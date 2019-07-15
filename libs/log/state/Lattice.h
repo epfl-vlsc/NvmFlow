@@ -32,8 +32,8 @@ struct TxValue {
 };
 
 struct LogValue {
-  enum LogState { Logged, Unseen };
-  static const constexpr char* LogStr[] = {"Logged", "Unseen"};
+  enum LogState { Unseen, Logged };
+  static const constexpr char* LogStr[] = {"Unseen", "Logged"};
 
   LogState log;
 

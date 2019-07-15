@@ -53,6 +53,10 @@ class BugReporter {
       }
 
       msg += " at " + getSourceLocation(bugInstr);
+      if(bugType == DoubleLog){
+        msg += " at " + getSourceLocation(logInstr);
+      }
+      
       msg += "\n";
 
       return msg;
@@ -92,7 +96,7 @@ public:
     buggedVars = new BuggedVars();
   }
 
-  void updateLastLocation(LatVar var, Instruction* i) {
+  void updateLastLocation(Instruction* i, LatVar var) {
     (*lastLocationMap)[var] = i;
   }
 
@@ -128,6 +132,7 @@ public:
       buggedVars->insert(currentVar);
       Instruction* logInstr = (*lastLocationMap)[currentVar];
       auto bugData = BugData::getDoubleLogBug(bugInstr, logInstr, currentVar);
+      errs() << logInstr << "\n";
       bugDataList->push_back(bugData);
     }
   }

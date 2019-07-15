@@ -121,14 +121,26 @@ class Parser {
     }
   }
 
+  void insertFields(Function* function) {
+    for (auto& BB : *function) {
+      for (auto& I : BB) {
+        auto* i = &I;
+        insertI(i);
+
+        if (auto* ci = dyn_cast<CallInst>(i)) {
+          auto* f = ci->getCalledFunction();
+          if (!f->isDeclaration() && !units.functions.isSkippedFunction(f)) {
+            insertFields(f);
+          }
+        }
+      }
+    }
+  }
+
   void insertFields() {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      for (auto& BB : *function) {
-        for (auto& I : BB) {
-          insertI(&I);
-        }
-      }
+      insertFields(function);
     }
   }
 
@@ -156,21 +168,30 @@ class Parser {
     }
   }
 
-  void insertObjects() {
-    for (auto* function : units.functions.getAnalyzedFunctions()) {
-      units.setActiveFunction(function);
-      for (auto& BB : *function) {
-        for (auto& I : BB) {
-          auto* i = &I;
-          if (units.activeFunction->isUsedInstruction(i)) {
-            continue;
-          }
+  void insertObjects(Function* function) {
+    for (auto& BB : *function) {
+      for (auto& I : BB) {
+        auto* i = &I;
+        if (units.activeFunction->isUsedInstruction(i)) {
+          continue;
+        }
 
-          if (auto* ci = dyn_cast<CallInst>(i)) {
+        if (auto* ci = dyn_cast<CallInst>(i)) {
+          auto* f = ci->getCalledFunction();
+          if (!f->isDeclaration() && !units.functions.isSkippedFunction(f)) {
+            insertObjects(f);
+          } else {
             insertCiObj(ci);
           }
         }
       }
+    }
+  }
+
+  void insertObjects() {
+    for (auto* function : units.functions.getAnalyzedFunctions()) {
+      units.setActiveFunction(function);
+      insertObjects(function);
     }
   }
 

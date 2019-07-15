@@ -107,7 +107,7 @@ template <typename StateMachine> class DataflowAnalysis {
     if (!callee || callee->isDeclaration())
       return false;
 
-    errs() << "Analyze " << callee->getName() << "\n";
+    errs() << "Analyze call " << callee->getName() << "\n";
 
     // prepare function contexts for caller and callee
     FunctionContext toCall = std::pair(callee, newContext);
@@ -147,7 +147,6 @@ template <typename StateMachine> class DataflowAnalysis {
   }
 
   bool applyTransfer(Instruction* i, AbstractState& state) {
-    errs() << "Analyze " << *i << "\n";
     return stateMachine.handleInstruction(i, state);
   }
 
@@ -167,7 +166,6 @@ template <typename StateMachine> class DataflowAnalysis {
                     const Context& context) {
     for (auto& I : Forward::getInstructions(block)) {
       auto* i = &I;
-      errs() << "lol\n";
 
       if (analyzeStmt(i, state, caller, context)) {
         auto* instKey = Forward::getInstructionKey(i);

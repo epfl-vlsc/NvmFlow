@@ -19,6 +19,7 @@ private:
     if (variable->isField()) {
       breporter.checkDoubleLogBug(instruction, variable, txLatVar, state);
       state[variable] = LatVal::getLogged();
+      breporter.updateLastLocation(instruction, variable);
       return true;
     } else if (variable->isObj()) {
       auto* st = variable->getStType();
@@ -26,6 +27,7 @@ private:
       for (auto* affectedVar : units.activeFunction->getAffectedVariables(st)) {
         breporter.checkDoubleLogBug(instruction, affectedVar, txLatVar, state);
         state[affectedVar] = LatVal::getLogged();
+        breporter.updateLastLocation(instruction, affectedVar);
         stateChanged = true;
       }
       return stateChanged;
@@ -81,6 +83,8 @@ public:
     auto* ii = units.activeFunction->getInstructionInfo(i);
     if (!ii)
       return false;
+
+    errs() << "Analyze " << *i << "\n";
 
     switch (ii->iType) {
     case InstructionInfo::LoggingInstr:
