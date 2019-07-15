@@ -34,7 +34,7 @@ struct InstructionInfo {
 
   auto* getVariable() { return variable; }
 
-  auto* getInstruction() { return variable; }
+  auto* getInstruction() { return instruction; }
 };
 
 class FunctionVariables {

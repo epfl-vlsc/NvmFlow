@@ -22,10 +22,12 @@ public:
   }
 
   void dataflow() {
-    StateMachine stateMachine(units);
+    StateMachine stateMachine(M, units);
 
     for (auto* function : stateMachine.getAnalyzedFunctions()) {
       stateMachine.analyze(function);
+
+      break;
     }
   }
 

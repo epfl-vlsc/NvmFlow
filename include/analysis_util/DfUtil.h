@@ -16,9 +16,7 @@ public:
     return e;
   }
 
-  bool empty() const{
-    return worklist.empty();
-  }
+  bool empty() const { return worklist.empty(); }
 };
 
 const char* getCIStr(CallInst* ci) {
@@ -74,6 +72,12 @@ public:
   };
 
   static Value* getInstructionKey(Instruction* i) { return i; }
+
+  static bool isEntryBlock(BasicBlock* bb) {
+    auto* f = bb->getParent();
+    auto* entryBlock = &f->front();
+    return bb == entryBlock;
+  }
 
   static Value* getBlockEntryKey(BasicBlock* bb) { return bb; }
 

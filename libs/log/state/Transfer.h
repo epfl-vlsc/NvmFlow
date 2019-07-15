@@ -1,5 +1,5 @@
 #pragma once
-//#include "Report.h"
+#include "BugReporter.h"
 #include "Common.h"
 #include "FlowTypes.h"
 
@@ -13,17 +13,18 @@ class Transfer {
 private:
   bool handleLogging(InstructionInfo* ii, AbstractState& state) {
     auto* variable = ii->getVariable();
+    auto* instruction = ii->getInstruction();
     assert(variable);
 
     if (variable->isField()) {
-      // bug check
+      breporter.checkDoubleLogBug(instruction, variable, txLatVar, state);
       state[variable] = LatVal::getLogged();
       return true;
     } else if (variable->isObj()) {
       auto* st = variable->getStType();
       bool stateChanged = false;
       for (auto* affectedVar : units.activeFunction->getAffectedVariables(st)) {
-        // bug check
+        breporter.checkDoubleLogBug(instruction, affectedVar, txLatVar, state);
         state[affectedVar] = LatVal::getLogged();
         stateChanged = true;
       }
@@ -34,7 +35,11 @@ private:
   }
 
   bool handleWrite(InstructionInfo* ii, AbstractState& state) {
-    // bug check
+    auto* variable = ii->getVariable();
+    auto* instruction = ii->getInstruction();
+    assert(variable);
+
+    breporter.checkNotLoggedBug(instruction, variable, txLatVar, state);
     return false;
   }
 
@@ -48,40 +53,13 @@ private:
     return true;
   }
 
-  /*
-    // handle----------------------------------------------------
-    bool handleWrite(StoreInst* si, LatVar var, AbstractState& state) {
-      report.checkNotLoggedBug(si, var, state);
-      return false;
-    }
-
-    bool handleLog(CallInst* ci, LatVar var, AbstractState& state) {
-      report.checkDoubleLogBug(ci, var, state);
-
-      state[var] = LatVal::getLogged();
-      report.updateLastLocation(var, ci);
-
-      return true;
-    }
-
-    bool handleTxBegin(CallInst* ci, AbstractState& state) {
-      state[nullptr] = LatVal::getBeginTx(state[nullptr]);
-
-      return true;
-    }
-
-    bool handleTxEnd(CallInst* ci, AbstractState& state) {
-      state[nullptr] = LatVal::getEndTx(state[nullptr]);
-
-      return true;
-    }
-   */
   Units& units;
+  BugReporter& breporter;
   Variable* txLatVar;
-  // Report& report;
 
 public:
-  Transfer(Module& M_, Units& units_) : units(units_) {
+  Transfer(Module& M_, Units& units_, BugReporter& breporter_)
+      : units(units_), breporter(breporter_) {
     auto& llvmContext = M_.getContext();
     auto* st = StructType::create(llvmContext);
     txLatVar = new Variable(st, 0);

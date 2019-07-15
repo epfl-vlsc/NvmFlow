@@ -104,8 +104,10 @@ template <typename StateMachine> class DataflowAnalysis {
                    const Context& context) {
     Context newContext(context, ci);
     Function* callee = ci->getCalledFunction();
-    if (!callee)
+    if (!callee || callee->isDeclaration())
       return false;
+
+    errs() << "Analyze " << callee->getName() << "\n";
 
     // prepare function contexts for caller and callee
     FunctionContext toCall = std::pair(callee, newContext);
@@ -145,6 +147,7 @@ template <typename StateMachine> class DataflowAnalysis {
   }
 
   bool applyTransfer(Instruction* i, AbstractState& state) {
+    errs() << "Analyze " << *i << "\n";
     return stateMachine.handleInstruction(i, state);
   }
 
@@ -164,6 +167,7 @@ template <typename StateMachine> class DataflowAnalysis {
                     const Context& context) {
     for (auto& I : Forward::getInstructions(block)) {
       auto* i = &I;
+      errs() << "lol\n";
 
       if (analyzeStmt(i, state, caller, context)) {
         auto* instKey = Forward::getInstructionKey(i);
@@ -185,6 +189,7 @@ template <typename StateMachine> class DataflowAnalysis {
     while (!blockWorklist.empty()) {
       auto* block = blockWorklist.pop_val();
 
+      bool isEntryBlock = Forward::isEntryBlock(block);
       auto* blockEntryKey = Forward::getBlockEntryKey(block);
       auto* blockExitKey = Forward::getBlockExitKey(block);
 
@@ -196,7 +201,7 @@ template <typename StateMachine> class DataflowAnalysis {
       AbstractState state = mergePrevStates(block, blockEntryKey, results);
 
       // skip block if same result
-      if (state == oldEntryState && !state.empty()) {
+      if (state == oldEntryState && !state.empty() && !isEntryBlock) {
         continue;
       }
 
@@ -249,6 +254,7 @@ public:
   }
 
   void print(raw_ostream& O) const {
+    O << "---------------------------------\n";
     O << "all results:\n";
     for (auto& [context, functionResults] : allResults) {
       O << context.getName() << "\n";
@@ -260,7 +266,7 @@ public:
         O << "\n";
       }
     }
-    O << "---------------------\n";
+    O << "---------------------------------\n";
   }
 };
 

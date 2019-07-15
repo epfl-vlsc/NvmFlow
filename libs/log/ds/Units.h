@@ -31,8 +31,9 @@ public:
   }
 
   void printActiveFunction(raw_ostream& O) const {
+    O << "*********************************\n";
     activeFunction->print(O);
-    O << "----------------------\n";
+    O << "---------------------------------\n";
   }
 };
 

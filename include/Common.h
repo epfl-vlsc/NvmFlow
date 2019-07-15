@@ -16,4 +16,17 @@ void printLocation(Value* v, raw_ostream& O) {
   }
 }
 
+auto getSourceLocation(Instruction* instruction) {
+  auto& debugInfo = instruction->getDebugLoc();
+  std::string name;
+  name.reserve(50);
+  name += debugInfo->getDirectory().str() + "/";
+  name += debugInfo->getFilename().str() + ":";
+  int line = debugInfo->getLine();
+  int column = debugInfo->getColumn();
+
+  name += std::to_string(line) + ":" + std::to_string(column);
+  return name;
+}
+
 } // namespace llvm
