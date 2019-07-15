@@ -31,6 +31,10 @@ struct InstructionInfo {
   bool isCallInstr() const { return iType == CallInstr; }
 
   void print(raw_ostream& O) const { O << this->getName(); }
+
+  auto* getVariable() { return variable; }
+
+  auto* getInstruction() { return variable; }
 };
 
 class FunctionVariables {
@@ -54,6 +58,11 @@ class FunctionVariables {
 public:
   void setFunction(Function* function_) { function = function_; }
 
+  auto& getAffectedVariables(StructType* st) {
+    assert(affectedVariables.count(st));
+    return affectedVariables[st];
+  }
+
   bool isUsedInstruction(Instruction* instr) const {
     return instrToInfo.count(instr) > 0;
   }
@@ -74,12 +83,19 @@ public:
 
   void insertInstruction(InstrType instrType, Instruction* instr,
                          Variable* variable) {
-    if (variable && !variable->useObj()) {
+    if (variable && !variable->isObj()) {
       variables.insert(variable);
-      auto* st = variable->getType();
+      auto* st = variable->getStType();
       affectedVariables[st].insert(variable);
     }
     instrToInfo[instr] = {instrType, instr, variable};
+  }
+
+  auto* getInstructionInfo(Instruction* i) {
+    if (instrToInfo.count(i)) {
+      return (InstructionInfo*)&instrToInfo[i];
+    }
+    return (InstructionInfo*)nullptr;
   }
 
   auto& getVariables() { return variables; }

@@ -2,10 +2,12 @@
 #include "Common.h"
 
 //#include "Report.h"
-//#include "Transfer.h"
+//
 #include "FlowTypes.h"
 #include "Lattice.h"
 #include "ds/Units.h"
+
+#include "Transfer.h"
 
 #include "analysis_util/DataflowAnalysis.h"
 
@@ -14,28 +16,29 @@ namespace llvm {
 class StateMachine {
 private:
   Units& units;
+  Transfer transfer;
 
 public:
   using AbstractState = AbstractState;
 
-  StateMachine(Units& units_) : units(units_) {}
+  StateMachine(Module& M, Units& units_) : units(units_), transfer(M, units_) {}
 
   void setUnit(Function* function) {}
 
   void analyze(Function* function) {
     units.setActiveFunction(function);
-    units.printActiveFunction(llvm::errs());
+    units.printActiveFunction(errs());
 
-    // DataflowAnalysis dataflow(function, *this);
+    DataflowAnalysis dataflow(function, *this);
+    dataflow.print(errs());
   }
 
   void initLatticeValues(AbstractState& state) {
-    // transfer.initLatticeValues(state);
+    transfer.initLatticeValues(state);
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
-    // return transfer.handleStmt(i, state);
-    return false;
+    return transfer.handleInstruction(i, state);
   }
 
   bool isIpaInstruction(Instruction* i) const {

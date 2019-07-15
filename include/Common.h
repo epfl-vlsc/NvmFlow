@@ -11,6 +11,8 @@ void printLocation(Value* v, raw_ostream& O) {
     O << "bb:" << bb;
   } else if (auto* f = dyn_cast<Function>(v)) {
     O << "function:" << f->getName();
+  } else if (v == nullptr) {
+    O << "0x:";
   }
 }
 

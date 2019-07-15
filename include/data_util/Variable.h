@@ -12,9 +12,11 @@ public:
     assert(idx > -2);
   }
 
-  auto getType() const { return st; }
+  auto getStType() const { return st; }
 
-  bool useObj() const { return idx == -1; }
+  bool isObj() const { return idx == -1; }
+
+  bool isField() const { return idx != -1; }
 
   std::string getName() const {
     return st->getName().str() + ":" + std::to_string(idx);

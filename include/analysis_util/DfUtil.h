@@ -3,12 +3,29 @@
 
 namespace llvm {
 
+template <typename Type> class Worklist {
+  std::set<Type> worklist;
 
+public:
+  void insert(Type e) { worklist.insert(e); }
+
+  Type pop_val() {
+    auto it = worklist.begin();
+    Type e = *it;
+    worklist.erase(it);
+    return e;
+  }
+
+  bool empty() const{
+    return worklist.empty();
+  }
+};
 
 const char* getCIStr(CallInst* ci) {
   if (ci) {
+    auto* f = ci->getCalledFunction();
     // data may not be a null terminating ptr
-    return ci->getName().data();
+    return f->getName().data();
   } else {
     return "None";
   }

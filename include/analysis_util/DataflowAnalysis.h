@@ -16,7 +16,6 @@ template <typename StateMachine> class DataflowAnalysis {
   using FunctionContextMap = std::map<FunctionContext, FunctionContextSet>;
 
   // worklist
-  template <typename WorkElement> using Worklist = SetVector<WorkElement>;
   using ContextWorklist = Worklist<FunctionContext>;
   using BlockWorklist = Worklist<BasicBlock*>;
 
@@ -184,7 +183,7 @@ template <typename StateMachine> class DataflowAnalysis {
     addBlocksToWorklist(function, blockWorklist);
 
     while (!blockWorklist.empty()) {
-      auto* block = blockWorklist.pop_back_val();
+      auto* block = blockWorklist.pop_val();
 
       auto* blockEntryKey = Forward::getBlockEntryKey(block);
       auto* blockExitKey = Forward::getBlockExitKey(block);
@@ -237,7 +236,7 @@ template <typename StateMachine> class DataflowAnalysis {
 
   void computeDataflow() {
     while (!contextWork.empty()) {
-      auto [function, context] = contextWork.pop_back_val();
+      auto [function, context] = contextWork.pop_val();
       computeDataflow(function, context);
     }
   }
@@ -254,12 +253,14 @@ public:
     for (auto& [context, functionResults] : allResults) {
       O << context.getName() << "\n";
       for (auto& [location, state] : functionResults) {
-        printLocation(location);
+        printLocation(location, O);
         for (auto& [latVar, latVal] : state) {
-          O << latVar->getName() << " " << latVal.getName();
+          O << " " << latVar->getName() << " " << latVal.getName() << ",";
         }
+        O << "\n";
       }
     }
+    O << "---------------------\n";
   }
 };
 

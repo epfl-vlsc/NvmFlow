@@ -23,6 +23,8 @@ public:
 
   auto& getAnalyzedFunctions() { return functions.getAnalyzedFunctions(); }
 
+  auto& getVariables() { return activeFunction->getVariables(); }
+
   void print(raw_ostream& O) const {
     dbgInfo.print(O);
     functions.print(O);

@@ -3,12 +3,10 @@
 
 namespace llvm {
 
-class TxValue {
-protected:
+struct TxValue {
   using TxState = int;
   TxState tx;
 
-public:
   TxValue(int tx_) : tx(tx_) {}
 
   TxValue(const TxValue& X) : tx(X.tx) {}
@@ -19,33 +17,26 @@ public:
 
   bool operator==(const TxValue& X) const { return tx == X.tx; }
 
-  bool inTx() const { return tx > 0; }
-
-  static TxValue getBeginTx(const TxValue& X) {
-    TxValue value(X);
-    value.tx++;
-    return value;
+  void meetValue(const TxValue& X) {
+    if (tx > X.tx) {
+      tx = X.tx;
+    }
   }
 
-  static TxValue getEndTx(const TxValue& X) {
-    TxValue value(X);
-    value.tx--;
-    return value;
+  auto getName() const {
+    auto name = std::string("tx:") + std::to_string(tx);
+    return name;
   }
 
-  static TxValue getInit() { return TxValue(); }
-
-  void print(raw_ostream& O) const { O << " tx: " << tx; }
+  void print(raw_ostream& O) const { O << getName(); }
 };
 
-class LogValue {
-protected:
+struct LogValue {
   enum LogState { Logged, Unseen };
   static const constexpr char* LogStr[] = {"Logged", "Unseen"};
 
   LogState log;
 
-public:
   LogValue(LogState log_) : log(log_) {}
 
   LogValue(const LogValue& X) : log(X.log) {}
@@ -56,13 +47,18 @@ public:
 
   bool operator==(const LogValue& X) const { return log == X.log; }
 
-  bool isLogged() const { return log == Logged; }
+  void meetValue(const LogValue& X) {
+    if (log > X.log) {
+      log = X.log;
+    }
+  }
 
-  static LogValue getInit() { return LogValue(); }
+  auto getName() const {
+    auto name = std::string("log:") + LogStr[(int)log];
+    return name;
+  }
 
-  static LogValue getLogged() { return LogValue(Logged); }
-
-  void print(raw_ostream& O) const { O << " log: " << LogStr[(int)log]; }
+  void print(raw_ostream& O) const { O << getName(); }
 };
 
 class Lattice {
@@ -91,28 +87,66 @@ public:
 
   Lattice(LatticeType latticeType) : type(latticeType), val(latticeType) {}
 
+  Lattice meet(const Lattice& X) {
+    assert(X.type == TxType);
+    Lattice lattice = *this;
+    switch (type) {
+    case LogType:
+      lattice.val.logValue.meetValue(X.val.logValue);
+      break;
+    case TxType:
+      lattice.val.txValue.meetValue(X.val.txValue);
+      break;
+    default:
+      report_fatal_error("wrong lattice type");
+    }
+
+    return lattice;
+  }
+
   static Lattice getInitLog() { return Lattice(LogType); }
 
   static Lattice getInitTx() { return Lattice(TxType); }
 
   static Lattice getLogged() {
-    Lattice lattice;
-    lattice.val.logValue = LogValue::getLogged();
+    Lattice lattice(LogType);
+    lattice.val.logValue.log = LogValue::Logged;
     return lattice;
   }
 
   static Lattice getBeginTx(const Lattice& X) {
     assert(X.type == TxType);
-    Lattice lattice;
-    lattice.val.txValue = TxValue::getBeginTx(X.val.txValue);
+    Lattice lattice(X);
+    lattice.val.txValue.tx += 1;
     return lattice;
   }
 
   static Lattice getEndTx(const Lattice& X) {
     assert(X.type == TxType);
-    Lattice lattice;
-    lattice.val.txValue = TxValue::getBeginTx(X.val.txValue);
+    Lattice lattice(X);
+    lattice.val.txValue.tx -= 1;
     return lattice;
+  }
+
+  bool inTx() const {
+    assert(type == TxType);
+    return val.txValue.tx > 0;
+  }
+
+  bool isLogged() const {
+    assert(type == LogType);
+    return val.logValue.log == LogValue::Logged;
+  }
+
+  auto getName() const {
+    if (type == LogType) {
+      return val.logValue.getName();
+    } else if (type == TxType) {
+      return val.txValue.getName();
+    } else {
+      report_fatal_error("check lattice type");
+      return std::string("");
+    }
   }
 
   void print(raw_ostream& O) const {
@@ -143,16 +177,6 @@ public:
     } else {
       report_fatal_error("check lattice type");
     }
-  }
-
-  bool isInTx() const {
-    assert(type == TxType);
-    return val.txValue.inTx();
-  }
-
-  bool isLogged() const {
-    assert(type == LogType);
-    return val.logValue.isLogged();
   }
 };
 
