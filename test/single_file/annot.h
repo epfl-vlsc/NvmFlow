@@ -5,9 +5,8 @@
 #define MACRO_PARAM_STRINGIFY(x) #x
 #define MACRO_TOSTRING(x) MACRO_PARAM_STRINGIFY(x)
 
-#define sentinelp(CHECKER)                                                     \
+#define sentinel(CHECKER)                                                     \
   __attribute((annotate("pair-" MACRO_TOSTRING(CHECKER))))
-#define sentinel __attribute((annotate("sent")))
 
 // pointer checker
 #define p_ptr __attribute((annotate("FlushedPtr")))
