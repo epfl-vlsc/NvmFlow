@@ -16,6 +16,8 @@ public:
 
   Units(Module& M) : dbgInfo(M) {}
 
+  void initDbgInfo() { dbgInfo.initDbgInfo(); }
+
   void setActiveFunction(Function* function) {
     activeFunction = &funcVars[function];
     activeFunction->setFunction(function);
@@ -25,9 +27,12 @@ public:
 
   auto& getVariables() { return activeFunction->getVariables(); }
 
-  void print(raw_ostream& O) const {
-    dbgInfo.print(O);
+  void printFunctions(raw_ostream& O) const {
     functions.print(O);
+  }
+
+  void printDbgInfo(raw_ostream& O) const {
+    dbgInfo.print(O);
   }
 
   void printActiveFunction(raw_ostream& O) const {

@@ -15,11 +15,7 @@ class Analyzer {
 
 public:
   Analyzer(Module& M_) : M(M_), units(M_) {
-    //parse();
-
-#ifdef DBGMODE
-    units.print(llvm::errs());
-#endif
+    parse();
 
     // dataflow();
   }
@@ -37,7 +33,17 @@ public:
      */
   }
 
-  void parse() { Parser parser(M, units); }
+  void parse() {
+    units.initDbgInfo();
+#ifdef DBGMODE
+    units.printDbgInfo(errs());
+#endif
+
+    Parser parser(M, units);
+#ifdef DBGMODE
+    units.printFunctions(errs());
+#endif
+  }
 
   void report() {}
 };

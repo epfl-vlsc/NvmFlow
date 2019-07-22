@@ -8,7 +8,7 @@ class Variable {
   int idx;
 
 public:
-  Variable(StructType* st_, unsigned idx_) : st(st_), idx(idx_) {
+  Variable(StructType* st_, int idx_) : st(st_), idx(idx_) {
     assert(idx > -2);
   }
 
