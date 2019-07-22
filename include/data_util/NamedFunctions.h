@@ -47,11 +47,11 @@ public:
   const char* getName() const { return "clflushopt"; }
 };
 
-class FlushfenceFunctions : public NamedFunctions {
+class FlushFenceFunctions : public NamedFunctions {
 public:
   bool sameName(StringRef name) const { return name.equals("clflush"); }
 
-  const char* getName() const { return "flushfence"; }
+  const char* getName() const { return "flush fence"; }
 };
 
 class TxbeginFunctions : public NamedFunctions {
