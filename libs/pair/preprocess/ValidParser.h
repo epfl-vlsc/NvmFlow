@@ -11,7 +11,6 @@ class ValidParser {
   static constexpr const char* SCL_ANNOT = "scl";
   static constexpr const char* SEP = "-";
 
-  Module& M;
   Units& units;
 
   std::pair<std::string, bool> parseAnnotation(StringRef annotation) {
@@ -100,7 +99,7 @@ class ValidParser {
   }
 
 public:
-  ValidParser(Module& M_, Units& units_) : M(M_), units(units_) {
+  ValidParser(Units& units_) : units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
       std::set<Function*> visited;

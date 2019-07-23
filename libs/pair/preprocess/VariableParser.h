@@ -9,10 +9,10 @@ namespace llvm {
 class VariableParser {
 
 public:
-  VariableParser(Module& M, Units& units) {
+  VariableParser(Units& units) {
     // ordering matters!
-    ValidParser vParser(M, units);
-    DataParser dParser(M, units);
+    ValidParser vParser(units);
+    DataParser dParser(units);
   }
 };
 

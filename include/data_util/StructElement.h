@@ -15,6 +15,8 @@ protected:
     assert(st && idx >= OBJ_ID);
   }
 
+  virtual ~StructElementBase() {}
+
 public:
   auto getStType() const { return st; }
 
@@ -46,6 +48,8 @@ public:
   StructElement(StructType* st_, int idx_, Type* fieldType_)
       : StructElementBase(st_, idx_), fieldType(fieldType_) {
     assert(fieldType_);
+    // field type can be useful
+    (void)(fieldType);
   }
 
   StructElement(StructType* st_, int idx_) : StructElementBase(st_, idx_) {

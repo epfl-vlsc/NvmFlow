@@ -13,7 +13,7 @@ struct Dcl {
     pfence();
   }
 
-  void correctCircular() {
+  void nvm_fnc correctCircular() {
     valid = 1;
     clflush(&valid);
     data = 1;
@@ -22,13 +22,13 @@ struct Dcl {
     valid = 1;
   }
 
-  void fenceNotFlushedData() {
+  void nvm_fnc fenceNotFlushedData() {
     data = 1;
     pfence();
     valid = 1;
   }
 
-  void wrongWriteUnFlushedData() {
+  void nvm_fnc writeUncommittedData() {
     data = 1;
     clflushopt(&data);
     data = 1;
@@ -36,7 +36,7 @@ struct Dcl {
     valid = 1;
   }
 
-  void correctBranch(bool useNvm) {
+  void nvm_fnc correctBranch(bool useNvm) {
     data = 1;
     if (useNvm) {
       clflushopt(&data);
@@ -45,7 +45,7 @@ struct Dcl {
     }
   }
 
-  void branchNoFence(bool useNvm) {
+  void nvm_fnc branchNoFence(bool useNvm) {
     data = 1;
     if (useNvm) {
       clflush(&data);
@@ -53,12 +53,12 @@ struct Dcl {
     valid = 1;
   }
 
-  void writeData(){
+  void nvm_fnc correctWriteData(){
     data = 1;
   }
 
-  void wrongIpa(bool useNvm) {
-    writeData();
+  void nvm_fnc wrongIpa(bool useNvm) {
+    correctWriteData();
     if (useNvm) {
       clflush(&data);
     }

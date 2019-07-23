@@ -7,11 +7,10 @@
 namespace llvm {
 
 class DataParser {
-  Module& M;
   Units& units;
 
   void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
-    static const int InvalidIdx = 0;
+    // static const int InvalidIdx = 0;
     auto* gepi = getGEPI(i);
     if (!gepi) {
       return;
@@ -75,7 +74,7 @@ class DataParser {
   }
 
 public:
-  DataParser(Module& M_, Units& units_) : M(M_), units(units_) {
+  DataParser(Units& units_) : units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
       std::set<Function*> visited;

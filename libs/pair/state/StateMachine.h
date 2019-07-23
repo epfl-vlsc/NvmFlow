@@ -20,8 +20,8 @@ private:
   Transfer transfer;
 
 public:
-  StateMachine(Module& M, Units& units_)
-      : units(units_), transfer(M, units_, breporter) {}
+  StateMachine(Module& M_, Units& units_)
+      : units(units_), breporter(units_), transfer(M_, units_, breporter) {}
 
   void analyze(Function* function) {
     units.setActiveFunction(function);

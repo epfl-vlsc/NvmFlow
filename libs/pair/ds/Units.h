@@ -20,6 +20,10 @@ struct Units {
 
   auto& getVariables() { return variables.getVariables(); }
 
+  auto& getPairs(Variable* var) {
+    return variables.getPairs(var);
+  }
+
   void printFunctions(raw_ostream& O) const { functions.print(O); }
 
   void printDbgInfo(raw_ostream& O) const { dbgInfo.print(O); }

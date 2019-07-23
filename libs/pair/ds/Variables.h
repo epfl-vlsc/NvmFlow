@@ -82,7 +82,7 @@ public:
   void insertPair(Variable* data, Variable* valid, bool useDcl) {
     variables.insert(data);
     variables.insert(valid);
-    
+
     auto [pvIt, _] = pairVariables.emplace(data, valid, useDcl);
     assert(pvIt != pairVariables.end());
     auto* pairVariable = (PairVariable*)&(*pvIt);
@@ -107,6 +107,11 @@ public:
   }
 
   auto& getVariables() { return variables; }
+
+  auto& getPairs(Variable* var) {
+    assert(varToPairs.count(var));
+    return varToPairs[var];
+  }
 
   bool isData(StructElement* se) const { return dataSet.count(se); }
 
@@ -157,6 +162,11 @@ public:
     return activeFunction->getVariables();
   }
 
+  auto& getPairs(Variable* var) {
+    assert(activeFunction);
+    return activeFunction->getPairs(var);
+  }
+
   void setFunction(Function* function) {
     assert(function);
     activeFunction = &funcVars[function];
@@ -169,15 +179,18 @@ public:
   }
 
   void insertPair(StructElement* data, StructElement* valid, bool useDcl) {
+    assert(activeFunction);
     activeFunction->insertPair(data, valid, useDcl);
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
                          StructElement* se) {
+    assert(activeFunction);
     activeFunction->insertInstruction(instrType, instr, se);
   }
 
   auto* getInstructionInfo(Instruction* i) {
+    assert(activeFunction);
     return activeFunction->getInstructionInfo(i);
   }
 

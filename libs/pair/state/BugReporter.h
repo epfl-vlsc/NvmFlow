@@ -9,10 +9,10 @@ class BugReporter {
   struct BugData {
     Instruction* bugInstr;
     Variable* bugVar;
-    PairVariable* pairVar;
+    Variable* pairVar;
 
     static BugData getNotCommitted(Instruction* bugInstr_, Variable* bugVar_,
-                                   PairVariable* pairVar_) {
+                                   Variable* pairVar_) {
       return {bugInstr_, bugVar_, pairVar_};
     }
 
@@ -20,10 +20,7 @@ class BugReporter {
       std::string name;
       name.reserve(200);
 
-      auto* pair = pairVar->getPair(bugVar);
-
-      name += "Not committed " + pair->getName() + " for " + bugVar->getName();
-
+      name += "Commit " + pairVar->getName() + " for " + bugVar->getName();
       name += " at " + DbgInstr::getSourceLocation(bugInstr);
       name += "\n";
 
@@ -56,13 +53,14 @@ class BugReporter {
   using BuggedVars = std::set<Variable*>;
 
   // data structures
+  Units& units;
   Function* currentFunction;
   BugDataList* bugDataList;
   // LastLocationMap* lastLocationMap;
   BuggedVars* buggedVars;
 
 public:
-  BugReporter() {
+  BugReporter(Units& units_) : units(units_) {
     currentFunction = nullptr;
     bugDataList = nullptr;
     // lastLocationMap = nullptr;
@@ -90,13 +88,26 @@ public:
   }
 
   void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
-    /*
-    auto& lv = state[currentVar];
+    auto* var = ii->getVariable();
+    auto* instr = ii->getInstruction();
+    assert(var && instr);
+    if (buggedVars->count(var))
+      return;
 
-    buggedVars->insert(currentVar);
-    auto bugData = BugData::getOutsideTx(bugInstr, currentVar);
-    bugDataList->push_back(bugData);
-     */
+    for (auto* pair : units.variables.getPairs(var)) {
+      auto* pairVar = pair->getPair(var);
+      if (buggedVars->count(pairVar))
+        continue;
+
+      auto& pairVal = state[pairVar];
+      if (pairVal.isWriteDcl() || pairVal.isWriteScl()) {
+        buggedVars->insert(var);
+        buggedVars->insert(pairVar);
+
+        auto bugData = BugData::getNotCommitted(instr, var, pairVar);
+        bugDataList->push_back(bugData);
+      }
+    }
   }
 };
 
