@@ -1,16 +1,19 @@
 #pragma once
 #include "Common.h"
+#include "data_util/StructElement.h"
 
 namespace llvm {
 
-class Variable {
-  StructElement* data;
-  StructElement* valid;
+using Variable = StructElement;
+
+class PairVariable {
+  Variable* data;
+  Variable* valid;
 
   bool useDcl;
 
 public:
-  Variable(StructElement* data_, StructElement* valid_, bool useDcl_)
+  PairVariable(Variable* data_, Variable* valid_, bool useDcl_)
       : data(data_), valid(valid_), useDcl(useDcl_) {
     assert(data && valid);
   }
@@ -21,9 +24,9 @@ public:
 
   auto* getValid() { return valid; }
 
-  auto* getPair(StructElement* se) {
-    assert(se == data || se == valid);
-    return (se == data) ? (valid) : data;
+  auto* getPair(Variable* var) {
+    assert(var == data || var == valid);
+    return (var == data) ? (valid) : data;
   }
 
   auto* getUsed(bool isData) {
@@ -47,11 +50,11 @@ public:
 
   void print(raw_ostream& O) const { O << getName(); }
 
-  bool operator<(const Variable& X) const {
+  bool operator<(const PairVariable& X) const {
     return data < X.data || valid < X.valid;
   }
 
-  bool operator==(const Variable& X) const {
+  bool operator==(const PairVariable& X) const {
     return data == X.data && valid == X.valid;
   }
 };

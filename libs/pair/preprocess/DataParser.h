@@ -19,8 +19,6 @@ class DataParser {
 
     auto [st, idx] = getFieldInfo(gepi);
 
-    errs() << idx << "\n";
-
     auto* se = units.dbgInfo.getStructElement(st, idx);
     if (!units.variables.isData(se))
       return;

@@ -15,6 +15,22 @@ auto getUncasted(Value* v) {
   }
 }
 
+GetElementPtrInst* getGEPI(Value* v) {
+  auto* inst = v;
+
+  while (true) {
+    if (auto* si = dyn_cast<StoreInst>(inst)) {
+      inst = si->getPointerOperand();
+    } else if (auto* ci = dyn_cast<CastInst>(inst)) {
+      inst = ci->getOperand(0);
+    } else if (auto* gepi = dyn_cast<GetElementPtrInst>(inst)) {
+      return gepi;
+    } else {
+      return nullptr;
+    }
+  }
+}
+
 IntrinsicInst* getII(Value* v) {
   auto* inst = v;
 
@@ -51,6 +67,21 @@ std::pair<StringRef, bool> isAnnotatedField(IntrinsicInst* ii,
     }
   }
   return {emptyStr, false};
+}
+
+auto getFieldInfo(GetElementPtrInst* gepi) {
+  Type* type = gepi->getSourceElementType();
+  assert(type->isStructTy());
+
+  StructType* structType = dyn_cast<StructType>(type);
+  assert(structType);
+
+  ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
+  assert(index);
+
+  int idx = (int)index->getValue().getZExtValue();
+
+  return std::pair(structType, idx);
 }
 
 auto getFieldInfo(IntrinsicInst* ii) {

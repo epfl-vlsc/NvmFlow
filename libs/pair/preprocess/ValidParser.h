@@ -39,7 +39,7 @@ class ValidParser {
       auto* data = units.dbgInfo.getStructElement(dataStrIdx);
 
       // insert to ds
-      units.variables.insertVariable(data, valid, useDcl);
+      units.variables.insertPair(data, valid, useDcl);
       units.variables.insertInstruction(instrType, i, valid);
     }
   }

@@ -2,7 +2,7 @@
 
 struct Dcl {
   int data;
-  sentinel(dcl-Dcl::data) int valid;
+  sentinel(Dcl::data) int valid;
 
   void nvm_fnc correct() {
     data = 1;

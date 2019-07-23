@@ -6,7 +6,7 @@
 
 namespace llvm {
 
-using LatVar = Variable*;
+using LatVar = const Variable*;
 using LatVal = Lattice;
 using AbstractState = std::map<LatVar, LatVal>;
 

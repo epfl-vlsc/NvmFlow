@@ -19,12 +19,12 @@ struct InstructionInfo {
                                           "vfence", "pfence", "ip"};
   InstructionType iType;
   Instruction* instruction;
-  StructElement* se;
+  Variable* variable;
 
   auto getName() const {
     auto name = std::string("info: ") + iStrs[(int)iType] + " ";
-    if (se) {
-      name += se->getName();
+    if (variable) {
+      name += variable->getName();
     }
     return name;
   }
@@ -33,7 +33,7 @@ struct InstructionInfo {
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
-  auto* getVariable() { return se; }
+  auto* getVariable() { return variable; }
 
   auto* getInstruction() { return instruction; }
 };
@@ -54,19 +54,14 @@ private:
   std::map<Instruction*, InstructionInfo> instrToInfo;
 
   // find variables related to field
-  std::map<StructElement*, LatticeVariables> seToVariables;
+  std::set<PairVariable> pairVariables;
+  std::map<Variable*, std::set<PairVariable*>> varToPairs;
 
   // used elements
-  std::set<StructElement*> dataSet;
-  std::set<StructElement*> validSet;
+  std::set<Variable*> dataSet;
+  std::set<Variable*> validSet;
 
 public:
-  ~FunctionVariables() {
-    for (auto* variable : variables) {
-      delete variable;
-    }
-  }
-
   void setFunction(Function* function_) {
     assert(function_);
     function = function_;
@@ -84,24 +79,19 @@ public:
     return false;
   }
 
-  auto* insertVariable(StructElement* data, StructElement* valid, bool useDcl) {
-    auto* variable = new Variable(data, valid, useDcl);
-    variables.insert(variable);
+  void insertPair(Variable* data, Variable* valid, bool useDcl) {
+    variables.insert(data);
+    variables.insert(valid);
+    
+    auto [pvIt, _] = pairVariables.emplace(data, valid, useDcl);
+    assert(pvIt != pairVariables.end());
+    auto* pairVariable = (PairVariable*)&(*pvIt);
 
-    seToVariables[data].insert(variable);
-    seToVariables[valid].insert(variable);
+    varToPairs[data].insert(pairVariable);
+    varToPairs[valid].insert(pairVariable);
 
     dataSet.insert(data);
     validSet.insert(valid);
-    return variable;
-  }
-
-  void insertAffectedField() {
-    // todo
-  }
-
-  void insertAffectedObj() {
-    // todo
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
@@ -118,15 +108,13 @@ public:
 
   auto& getVariables() { return variables; }
 
-  bool isData(StructElement* se) const{
-    return dataSet.count(se);
-  }
+  bool isData(StructElement* se) const { return dataSet.count(se); }
 
   void print(raw_ostream& O) const {
     O << "function: " << function->getName() << "\n";
 
     O << "variables: ";
-    for (auto* variable : variables) {
+    for (auto& variable : variables) {
       O << variable->getName() << ", ";
     }
     O << "\n";
@@ -180,8 +168,8 @@ public:
     return activeFunction->isIpInstruction(i);
   }
 
-  auto* insertVariable(StructElement* data, StructElement* valid, bool useDcl) {
-    return activeFunction->insertVariable(data, valid, useDcl);
+  void insertPair(StructElement* data, StructElement* valid, bool useDcl) {
+    activeFunction->insertPair(data, valid, useDcl);
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
@@ -189,9 +177,11 @@ public:
     activeFunction->insertInstruction(instrType, instr, se);
   }
 
-  bool isData(StructElement* se) const{
-    return activeFunction->isData(se);
+  auto* getInstructionInfo(Instruction* i) {
+    return activeFunction->getInstructionInfo(i);
   }
+
+  bool isData(StructElement* se) const { return activeFunction->isData(se); }
 };
 
 } // namespace llvm

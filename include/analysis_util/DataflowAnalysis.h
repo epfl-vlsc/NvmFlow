@@ -260,6 +260,7 @@ public:
       O << context.getName() << "\n";
       for (auto& [location, state] : functionResults) {
         printLocation(location, O);
+        O << "\n";
         for (auto& [latVar, latVal] : state) {
           O << " " << latVar->getName() << " " << latVal.getName() << ",";
         }
