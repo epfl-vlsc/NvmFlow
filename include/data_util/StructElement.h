@@ -3,7 +3,7 @@
 
 namespace llvm {
 
-class StructElement {
+class StructElementBase {
 public:
   static constexpr const int OBJ_ID = -1;
 
@@ -11,7 +11,7 @@ protected:
   StructType* st;
   int idx;
 
-  StructElement(StructType* st_, int idx_) : st(st_), idx(idx_) {
+  StructElementBase(StructType* st_, int idx_) : st(st_), idx(idx_) {
     assert(st && idx >= OBJ_ID);
   }
 
@@ -22,22 +22,20 @@ public:
 
   bool isField() const { return idx != OBJ_ID; }
 
-  virtual std::string getName() const {
-    return st->getName().str() + "::" + std::to_string(idx);
-  }
+  virtual std::string getName() const = 0;
 
-  virtual void print(raw_ostream& O) const { O << getName(); }
+  virtual void print(raw_ostream& O) const = 0;
 
-  bool operator<(const StructElement& X) const {
+  bool operator<(const StructElementBase& X) const {
     return st < X.st || idx < X.idx;
   }
 
-  bool operator==(const StructElement& X) const {
+  bool operator==(const StructElementBase& X) const {
     return st == X.st && idx == X.idx;
   }
 };
 
-class FullStructElement : public StructElement {
+class StructElement : public StructElementBase {
   Type* fieldType;
 
   StringRef realName;
@@ -45,9 +43,13 @@ class FullStructElement : public StructElement {
   unsigned lineNo;
 
 public:
-  FullStructElement(StructType* st_, int idx_, Type* fieldType_)
-      : StructElement(st_, idx_), fieldType(fieldType_) {
+  StructElement(StructType* st_, int idx_, Type* fieldType_)
+      : StructElementBase(st_, idx_), fieldType(fieldType_) {
     assert(fieldType_);
+  }
+
+  StructElement(StructType* st_, int idx_) : StructElementBase(st_, idx_) {
+    // used for temporary objects to search list
   }
 
   void addDbgInfo(StringRef realName_, StringRef fileName_, unsigned lineNo_) {
@@ -70,7 +72,7 @@ public:
     return st->getName().str() + "::" + realName.str();
   }
 
-  void print(raw_ostream& O) const { O << getName(); }
+  void print(raw_ostream& O) const override { O << getName(); }
 
   static std::string getAbsoluteName(StructType* st_, int idx_) {
     auto fullClsName = st_->getName().str();

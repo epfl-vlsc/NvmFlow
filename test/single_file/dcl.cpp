@@ -1,14 +1,16 @@
 #include "annot.h"
 
 struct Dcl {
-  sentinel(dcl-Dcl::valid) int data;
-  int valid;
+  int data;
+  sentinel(dcl-Dcl::data) int valid;
 
-  void correct() {
+  void nvm_fnc correct() {
     data = 1;
     clflushopt(&data);
     pfence();
     valid = 1;
+    clflushopt(&valid);
+    pfence();
   }
 
   void correctCircular() {

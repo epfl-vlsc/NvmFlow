@@ -17,20 +17,14 @@ public:
   Analyzer(Module& M_) : M(M_), units(M_) {
     parse();
 
-    // dataflow();
+    dataflow();
   }
 
   void dataflow() {
-    /*
     StateMachine stateMachine(M, units);
-
-    // auto f = M.getFunction("_ZN3Log8correct2Ev");
-    // stateMachine.analyze(f);
-
     for (auto* function : stateMachine.getAnalyzedFunctions()) {
       stateMachine.analyze(function);
     }
-     */
   }
 
   void parse() {

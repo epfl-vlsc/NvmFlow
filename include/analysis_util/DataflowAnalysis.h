@@ -155,7 +155,7 @@ template <typename StateMachine> class DataflowAnalysis {
   bool analyzeStmt(Instruction* i, AbstractState& state, Function* caller,
                    const Context& context) {
 
-    if (stateMachine.isIpaInstruction(i)) {
+    if (stateMachine.isIpInstruction(i)) {
       auto* ci = dyn_cast<CallInst>(i);
       return analyzeCall(ci, state, caller, context);
     } else {

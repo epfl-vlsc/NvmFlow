@@ -7,19 +7,45 @@
 
 namespace llvm {
 
-using IdxStrToElement = std::map<std::string, FullStructElement*>;
+// used for a temporary variable's type
+using IdxStrToElement = std::map<std::string, StructElement*>;
+
+struct DbgInstr {
+  static auto getSourceLocation(Instruction* instruction,
+                                bool fullPath = false) {
+    auto& debugInfo = instruction->getDebugLoc();
+    std::string name;
+    assert(instruction);
+
+    name.reserve(100);
+    if (fullPath)
+      name += debugInfo->getDirectory().str() + "/";
+
+    name += debugInfo->getFilename().str() + ":";
+
+    int line = debugInfo->getLine();
+    name += std::to_string(line);
+
+    if (fullPath) {
+      int column = debugInfo->getColumn();
+      name += ":" + std::to_string(column);
+    }
+
+    return name;
+  }
+};
 
 class DbgInfo {
   DebugInfoFinder finder;
 
-  //mangled to real name
+  // mangled to real name
   std::map<StringRef, StringRef> functionNames;
 
-  //each field or cls, use addr of these
-  std::set<FullStructElement> elements;
+  // each field or cls, use addr of these
+  std::set<StructElement> elements;
 
-  //auxilliary helpers
-  std::map<std::string, FullStructElement*> fieldToElement;
+  // auxilliary helpers
+  std::map<std::string, StructElement*> fieldToElement;
 
   void initFunctionNames() {
     for (auto* f : finder.subprograms()) {
@@ -66,13 +92,13 @@ class DbgInfo {
     }
 
     // find element to add info
-    auto strIdx = FullStructElement::getAbsoluteName(typeName, idx);
+    auto strIdx = StructElement::getAbsoluteName(typeName, idx);
     assert(idxStrMap.count(strIdx));
     auto* element = idxStrMap[strIdx];
     element->addDbgInfo(realName, fileName, lineNo);
 
-    //helper
-    auto fieldStrIdx = FullStructElement::getAbsoluteName(typeName, realName);
+    // helper
+    auto fieldStrIdx = StructElement::getAbsoluteName(typeName, realName);
     assert(!fieldToElement.count(fieldStrIdx));
     fieldToElement[fieldStrIdx] = element;
   }
@@ -95,12 +121,13 @@ class DbgInfo {
     }
   }
 
-  void addElement(IdxStrToElement& idxStrMap, StructType* st, int idx, Type* ft) {
+  void addElement(IdxStrToElement& idxStrMap, StructType* st, int idx,
+                  Type* ft) {
     auto [ePtr, added] = elements.emplace(st, idx, ft);
     if (!added || ePtr == elements.end())
       report_fatal_error("element not added");
-    auto* element = (FullStructElement*)&(*ePtr);
-    auto strIdx = FullStructElement::getAbsoluteName(st, idx);
+    auto* element = (StructElement*)&(*ePtr);
+    auto strIdx = StructElement::getAbsoluteName(st, idx);
     idxStrMap[strIdx] = element;
   }
 
@@ -121,9 +148,7 @@ class DbgInfo {
   Module& M;
 
 public:
-  DbgInfo(Module& M_) : M(M_) {}
-
-  void initDbgInfo() {
+  DbgInfo(Module& M_) : M(M_) {
     finder.processModule(M);
     initFunctionNames();
 
@@ -136,14 +161,22 @@ public:
     assert(functionNames.count(mangledName));
     return functionNames[mangledName];
   }
-  /*
-    auto getVariableName(std::string& variableInfo) {
-      assert(variableNames.count(variableInfo));
-      return variableNames[variableInfo];
-    }
-   */
+
   bool functionExists(StringRef mangledName) const {
     return functionNames.count(mangledName) > 0;
+  }
+
+  auto* getStructElement(std::string& name) {
+    assert(fieldToElement.count(name));
+    return fieldToElement[name];
+  }
+
+  auto* getStructElement(StructType* st, int idx) {
+    StructElement tempSe{st, idx};
+    assert(elements.count(tempSe));
+    auto eIt = elements.find(tempSe);
+    auto* se = (StructElement*)&(*eIt);
+    return se;
   }
 
   void print(raw_ostream& O) const {

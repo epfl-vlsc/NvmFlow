@@ -27,7 +27,7 @@ struct Units {
   void printVariables(raw_ostream& O) const { variables.print(O); }
 
   bool isIpInstruction(Instruction* i) const {
-    variables.isIpInstruction(i);
+    return variables.isIpInstruction(i);
   }
 };
 

@@ -33,22 +33,24 @@ IntrinsicInst* getII(Value* v) {
   }
 }
 
-bool isAnnotatedField(IntrinsicInst* ii, const char* annotation) {
+std::pair<StringRef, bool> isAnnotatedField(IntrinsicInst* ii,
+                                            const char* annotation) {
   static const unsigned llvm_ptr_annotation = 186;
+  static const StringRef emptyStr = StringRef("");
 
   if (ii->getIntrinsicID() == llvm_ptr_annotation) {
     if (ConstantExpr* gepi = dyn_cast<ConstantExpr>(ii->getArgOperand(1))) {
       GlobalVariable* AnnotationGL =
           dyn_cast<GlobalVariable>(gepi->getOperand(0));
-      StringRef annotation =
+      StringRef fieldAnnotation =
           dyn_cast<ConstantDataArray>(AnnotationGL->getInitializer())
               ->getAsCString();
-      if (annotation.compare(annotation) == 0) {
-        return true;
+      if (fieldAnnotation.startswith(annotation)) {
+        return {fieldAnnotation, true};
       }
     }
   }
-  return false;
+  return {emptyStr, false};
 }
 
 auto getFieldInfo(IntrinsicInst* ii) {

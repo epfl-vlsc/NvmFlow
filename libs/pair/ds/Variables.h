@@ -19,14 +19,12 @@ struct InstructionInfo {
                                           "vfence", "pfence", "ip"};
   InstructionType iType;
   Instruction* instruction;
-  Variable* variable;
-  bool isData;
+  StructElement* se;
 
   auto getName() const {
     auto name = std::string("info: ") + iStrs[(int)iType] + " ";
-    if (variable) {
-      auto* usedVar = variable->getUsed(isData);
-      name += usedVar->getName() + " " + variable->getName();
+    if (se) {
+      name += se->getName();
     }
     return name;
   }
@@ -35,18 +33,17 @@ struct InstructionInfo {
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
-  auto* getVariable() { return variable; }
+  auto* getVariable() { return se; }
 
   auto* getInstruction() { return instruction; }
-
-  bool isDataVar() const { return isData; }
 };
 
 class FunctionVariables {
-  using Item = FullStructElement;
+public:
   using LatticeVariables = std::set<Variable*>;
   using InstrType = InstructionInfo::InstructionType;
 
+private:
   // active function
   Function* function;
 
@@ -56,8 +53,23 @@ class FunctionVariables {
   // used for instruction processing
   std::map<Instruction*, InstructionInfo> instrToInfo;
 
+  // find variables related to field
+  std::map<StructElement*, LatticeVariables> seToVariables;
+
+  // used elements
+  std::set<StructElement*> seSet;
+
 public:
-  void setFunction(Function* function_) { function = function_; }
+  ~FunctionVariables() {
+    for (auto* variable : variables) {
+      delete variable;
+    }
+  }
+
+  void setFunction(Function* function_) {
+    assert(function_);
+    function = function_;
+  }
 
   bool isUsedInstruction(Instruction* instr) const {
     return instrToInfo.count(instr) > 0;
@@ -71,9 +83,12 @@ public:
     return false;
   }
 
-  auto* insertVariable(Item* data, Item* valid, bool useDcl) {
+  auto* insertVariable(StructElement* data, StructElement* valid, bool useDcl) {
     auto* variable = new Variable(data, valid, useDcl);
     variables.insert(variable);
+
+    seToVariables[data].insert(variable);
+    seToVariables[valid].insert(variable);
     return variable;
   }
 
@@ -86,11 +101,10 @@ public:
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
-                         Variable* variable) {
-    if (variable) {
-      variables.insert(variable);
-    }
-    instrToInfo[instr] = {instrType, instr, variable};
+                         StructElement* se) {
+    instrToInfo[instr] = {instrType, instr, se};
+
+    seSet.insert(se);
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -113,32 +127,22 @@ public:
 
     O << "inst to vars:\n";
     for (auto& [i, ii] : instrToInfo) {
-      O << "\t" << ii.getName() << "\n";
+      O << "\t" << DbgInstr::getSourceLocation(i) << " " << ii.getName()
+        << "\n";
     }
-    /*
-        O << "affected fields:\n";
-        for (auto& [st, variables] : affectedFields) {
-          O << st->getName() << ": ";
-          for (auto variable : variables) {
-            O << variable->getName() << ",";
-          }
-          O << "\n";
-        }
 
-        O << "affected objs:\n";
-        for (auto& [variable, structs] : affectedObjs) {
-          O << variable->getName() << ": ";
-          for (auto st : structs) {
-            O << st->getName() << ",";
-          }
-          O << "\n";
-        }
-      }
-      */
+    /*
+    O << "variables: ";
+    for (auto* se : seSet) {
+      O << se->getName() << ", ";
+    }
+    O << "\n";
+     */
   }
 };
 
 class Variables {
+  using InstrType = typename FunctionVariables::InstrType;
   std::map<Function*, FunctionVariables> funcVars;
   FunctionVariables* activeFunction;
 
@@ -156,14 +160,23 @@ public:
   }
 
   void setFunction(Function* function) {
-    assert(activeFunction);
+    assert(function);
     activeFunction = &funcVars[function];
     activeFunction->setFunction(function);
   }
 
   bool isIpInstruction(Instruction* i) const {
     assert(activeFunction);
-    activeFunction->isIpInstruction(i);
+    return activeFunction->isIpInstruction(i);
+  }
+
+  auto* insertVariable(StructElement* data, StructElement* valid, bool useDcl) {
+    return activeFunction->insertVariable(data, valid, useDcl);
+  }
+
+  void insertInstruction(InstrType instrType, Instruction* instr,
+                         StructElement* se) {
+    activeFunction->insertInstruction(instrType, instr, se);
   }
 };
 

@@ -4,14 +4,13 @@
 namespace llvm {
 
 class Variable {
-  using Item = FullStructElement;
-  Item* data;
-  Item* valid;
+  StructElement* data;
+  StructElement* valid;
 
   bool useDcl;
 
 public:
-  Variable(Item* data_, Item* valid_, bool useDcl_)
+  Variable(StructElement* data_, StructElement* valid_, bool useDcl_)
       : data(data_), valid(valid_), useDcl(useDcl_) {
     assert(data && valid);
   }
@@ -22,9 +21,9 @@ public:
 
   auto* getValid() { return valid; }
 
-  auto* getPair(Item* sv) {
-    assert(sv == data || sv == valid);
-    return (sv == data) ? (valid) : data;
+  auto* getPair(StructElement* se) {
+    assert(se == data || se == valid);
+    return (se == data) ? (valid) : data;
   }
 
   auto* getUsed(bool isData) {
