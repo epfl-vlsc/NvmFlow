@@ -80,27 +80,23 @@ public:
 
   static Lattice getInit() { return Lattice(); }
 
-  static Lattice getWrite() {
-    Lattice lattice;
+  static Lattice getWrite(Lattice lattice) {
     lattice.dclValue.dcl = DclValue::Write;
     lattice.sclValue.scl = SclValue::Write;
     return lattice;
   }
 
-  static Lattice getFlush() {
-    Lattice lattice;
+  static Lattice getFlush(Lattice lattice) {
     lattice.dclValue.dcl = DclValue::Flush;
     return lattice;
   }
 
-  static Lattice getPfence() {
-    Lattice lattice;
+  static Lattice getPfence(Lattice lattice) {
     lattice.dclValue.dcl = DclValue::Fence;
     return lattice;
   }
 
-  static Lattice getVfence() {
-    Lattice lattice;
+  static Lattice getVfence(Lattice lattice) {
     lattice.sclValue.scl = SclValue::Fence;
     return lattice;
   }

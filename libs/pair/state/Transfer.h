@@ -14,12 +14,12 @@ class Transfer {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isWriteScl()) {
-        state[var] = LatVal::getVfence();
+        val = LatVal::getVfence(val);
         stateChanged = true;
       }
 
       if(val.isFlushDcl()){
-        state[var] = LatVal::getPfence();
+        val = LatVal::getPfence(val);
         stateChanged = true;
       }
     }
@@ -31,7 +31,7 @@ class Transfer {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isWriteScl()) {
-        state[var] = LatVal::getVfence();
+        val = LatVal::getVfence(val);
         stateChanged = true;
       }
     }
@@ -43,7 +43,9 @@ class Transfer {
     auto* var = ii->getVariable();
     assert(var);
 
-    state[var] = LatVal::getPfence();
+    auto& val = state[var];
+
+    val = LatVal::getPfence(val);
 
     return true;
   }
@@ -52,7 +54,9 @@ class Transfer {
     auto* var = ii->getVariable();
     assert(var);
 
-    state[var] = LatVal::getFlush();
+    auto& val = state[var];
+    
+    val = LatVal::getFlush(val);
 
     return true;
   }
@@ -61,8 +65,10 @@ class Transfer {
     auto* var = ii->getVariable();
     assert(var);
 
+    auto& val = state[var];
+    
     breporter.checkNotCommittedBug(ii, state);
-    state[var] = LatVal::getWrite();
+    val = LatVal::getWrite(val);
 
     return true;
   }
