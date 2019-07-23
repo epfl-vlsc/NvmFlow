@@ -57,7 +57,8 @@ private:
   std::map<StructElement*, LatticeVariables> seToVariables;
 
   // used elements
-  std::set<StructElement*> seSet;
+  std::set<StructElement*> dataSet;
+  std::set<StructElement*> validSet;
 
 public:
   ~FunctionVariables() {
@@ -89,6 +90,9 @@ public:
 
     seToVariables[data].insert(variable);
     seToVariables[valid].insert(variable);
+
+    dataSet.insert(data);
+    validSet.insert(valid);
     return variable;
   }
 
@@ -103,8 +107,6 @@ public:
   void insertInstruction(InstrType instrType, Instruction* instr,
                          StructElement* se) {
     instrToInfo[instr] = {instrType, instr, se};
-
-    seSet.insert(se);
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -115,6 +117,10 @@ public:
   }
 
   auto& getVariables() { return variables; }
+
+  bool isData(StructElement* se) const{
+    return dataSet.count(se);
+  }
 
   void print(raw_ostream& O) const {
     O << "function: " << function->getName() << "\n";
@@ -131,13 +137,17 @@ public:
         << "\n";
     }
 
-    /*
-    O << "variables: ";
-    for (auto* se : seSet) {
+    O << "data: ";
+    for (auto* se : dataSet) {
       O << se->getName() << ", ";
     }
     O << "\n";
-     */
+
+    O << "valid: ";
+    for (auto* se : validSet) {
+      O << se->getName() << ", ";
+    }
+    O << "\n";
   }
 };
 
@@ -177,6 +187,10 @@ public:
   void insertInstruction(InstrType instrType, Instruction* instr,
                          StructElement* se) {
     activeFunction->insertInstruction(instrType, instr, se);
+  }
+
+  bool isData(StructElement* se) const{
+    return activeFunction->isData(se);
   }
 };
 

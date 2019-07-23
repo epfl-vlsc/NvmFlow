@@ -2,6 +2,7 @@
 #include "Common.h"
 
 #include "ValidParser.h"
+#include "DataParser.h"
 
 namespace llvm {
 
@@ -11,7 +12,7 @@ public:
   VariableParser(Module& M, Units& units) {
     // ordering matters!
     ValidParser vParser(M, units);
-    //DataParser dParser(M, units);
+    DataParser dParser(M, units);
   }
 };
 

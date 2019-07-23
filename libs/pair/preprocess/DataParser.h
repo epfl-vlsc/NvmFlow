@@ -6,42 +6,27 @@
 
 namespace llvm {
 
-class ValidParser {
-  static constexpr const char* FIELD_ANNOT = "pair";
-  static constexpr const char* SCL_ANNOT = "scl";
-  static constexpr const char* SEP = "-";
-
+class DataParser {
   Module& M;
   Units& units;
 
-  std::pair<std::string, bool> parseAnnotation(StringRef annotation) {
-    bool useDcl = annotation.contains(SCL_ANNOT) ? false : true;
-    auto [_, name] = annotation.rsplit(SEP);
-    return {name.str(), useDcl};
-  }
-
   void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
-    auto* ii = getII(i);
-    if (!ii) {
+    static const int InvalidIdx = 0;
+    auto* gepi = getGEPI(i);
+    if (!gepi) {
       return;
     }
 
-    if (auto [annotation, hasAnnot] = isAnnotatedField(ii, FIELD_ANNOT);
-        hasAnnot) {
-      // find valid
-      auto [st, idx] = getFieldInfo(ii);
-      assert(st);
+    auto [st, idx] = getFieldInfo(gepi);
 
-      auto* valid = units.dbgInfo.getStructElement(st, idx);
+    errs() << idx << "\n";
 
-      // find data
-      auto [dataStrIdx, useDcl] = parseAnnotation(annotation);
-      auto* data = units.dbgInfo.getStructElement(dataStrIdx);
+    auto* se = units.dbgInfo.getStructElement(st, idx);
+    if (!units.variables.isData(se))
+      return;
 
-      // insert to ds
-      units.variables.insertVariable(data, valid, useDcl);
-      units.variables.insertInstruction(instrType, i, valid);
-    }
+    // insert to ds
+    units.variables.insertInstruction(instrType, i, se);
   }
 
   void insertWrite(StoreInst* si) { insertII(si, InstructionInfo::WriteInstr); }
@@ -59,18 +44,10 @@ class ValidParser {
     if (!callee || callee->isIntrinsic() ||
         units.functions.isSkippedFunction(callee)) {
       return;
-    } else if (units.functions.isPfenceFunction(callee)) {
-      units.variables.insertInstruction(InstructionInfo::PfenceInstr, ci,
-                                        nullptr);
-    } else if (units.functions.isVfenceFunction(callee)) {
-      units.variables.insertInstruction(InstructionInfo::VfenceInstr, ci,
-                                        nullptr);
     } else if (units.functions.isFlushFunction(callee)) {
       insertFlush(ci, InstructionInfo::FlushInstr);
     } else if (units.functions.isFlushFenceFunction(callee)) {
       insertFlush(ci, InstructionInfo::FlushFenceInstr);
-    } else {
-      units.variables.insertInstruction(InstructionInfo::IpInstr, ci, nullptr);
     }
   }
 
@@ -100,13 +77,13 @@ class ValidParser {
   }
 
 public:
-  ValidParser(Module& M_, Units& units_) : M(M_), units(units_) {
+  DataParser(Module& M_, Units& units_) : M(M_), units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
       std::set<Function*> visited;
       insertFields(function, visited);
     }
   }
-};
+}; // namespace llvm
 
 } // namespace llvm
