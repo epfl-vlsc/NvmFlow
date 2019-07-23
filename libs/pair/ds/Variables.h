@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
-
 #include "Variable.h"
+#include "data_util/DbgInfo.h"
 
 namespace llvm {
 
@@ -12,11 +12,11 @@ struct InstructionInfo {
     FlushFenceInstr,
     VfenceInstr,
     PfenceInstr,
-    CallInstr
+    IpInstr
   };
 
   static constexpr const char* iStrs[] = {"write",  "flush",  "flushfence",
-                                          "vfence", "pfence", "call"};
+                                          "vfence", "pfence", "ip"};
   InstructionType iType;
   Instruction* instruction;
   Variable* variable;
@@ -31,7 +31,7 @@ struct InstructionInfo {
     return name;
   }
 
-  bool isCallInstr() const { return iType == CallInstr; }
+  bool isIpInstr() const { return iType == IpInstr; }
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
@@ -43,59 +43,37 @@ struct InstructionInfo {
 };
 
 class FunctionVariables {
-  using AllSingles = std::set<SingleVariable>;
-  using AllVariables = std::set<Variable>;
-  using Variables = std::set<Variable*>;
+  using Item = FullStructElement;
+  using LatticeVariables = std::set<Variable*>;
   using InstrType = InstructionInfo::InstructionType;
 
   // active function
   Function* function;
 
-  // stores objects as well
-  AllSingles allSingles;
-  AllVariables allVariables;
-
   // used for lattice
-  Variables variables;
+  LatticeVariables variables;
 
   // used for instruction processing
-  using Structs = std::set<StructType*>;
   std::map<Instruction*, InstructionInfo> instrToInfo;
-  std::map<StructType*, Variables> affectedFields;
-  std::map<Variable*, Variables> affectedObjs;
-
-  auto* insertSingleVariable(StructType* st, int idx) {
-    auto [singlePtr, _] = allSingles.emplace(st, idx);
-    auto* single = (SingleVariable*)&(*singlePtr);
-    return single;
-  }
 
 public:
   void setFunction(Function* function_) { function = function_; }
-
-  auto& getAffectedFields(StructType* st) { return affectedFields[st]; }
-
-  auto& getAffectedObjs(Variable* st) { return affectedObjs[st]; }
 
   bool isUsedInstruction(Instruction* instr) const {
     return instrToInfo.count(instr) > 0;
   }
 
-  bool isCallInstruction(Instruction* instr) const {
+  bool isIpInstruction(Instruction* instr) const {
     if (instrToInfo.count(instr)) {
       auto& info = instrToInfo.at(instr);
-      return info.isCallInstr();
+      return info.isIpInstr();
     }
     return false;
   }
 
-  auto insertVariable(StructType* st1, int idx1, StructType* st2, int idx2,
-                      bool useDcl) {
-    auto* single1 = insertSingleVariable(st1, idx1);
-    auto* single2 = insertSingleVariable(st2, idx2);
-
-    auto [varPtr, _] = allVariables.emplace(single1, single2, useDcl);
-    auto* variable = (Variable*)&(*varPtr);
+  auto* insertVariable(Item* data, Item* valid, bool useDcl) {
+    auto* variable = new Variable(data, valid, useDcl);
+    variables.insert(variable);
     return variable;
   }
 
@@ -128,13 +106,8 @@ public:
     O << "function: " << function->getName() << "\n";
 
     O << "variables: ";
-    for (auto& var : allVariables) {
-      Variable* variable = (Variable*)&var;
-      bool isLatticeVariable = variables.count(variable);
-      if (isLatticeVariable) {
-        O << "lattice:";
-      }
-      O << var.getName() << ", ";
+    for (auto* variable : variables) {
+      O << variable->getName() << ", ";
     }
     O << "\n";
 
@@ -142,24 +115,55 @@ public:
     for (auto& [i, ii] : instrToInfo) {
       O << "\t" << ii.getName() << "\n";
     }
+    /*
+        O << "affected fields:\n";
+        for (auto& [st, variables] : affectedFields) {
+          O << st->getName() << ": ";
+          for (auto variable : variables) {
+            O << variable->getName() << ",";
+          }
+          O << "\n";
+        }
 
-    O << "affected fields:\n";
-    for (auto& [st, variables] : affectedFields) {
-      O << st->getName() << ": ";
-      for (auto variable : variables) {
-        O << variable->getName() << ",";
+        O << "affected objs:\n";
+        for (auto& [variable, structs] : affectedObjs) {
+          O << variable->getName() << ": ";
+          for (auto st : structs) {
+            O << st->getName() << ",";
+          }
+          O << "\n";
+        }
       }
-      O << "\n";
-    }
+      */
+  }
+};
 
-    O << "affected objs:\n";
-    for (auto& [variable, structs] : affectedObjs) {
-      O << variable->getName() << ": ";
-      for (auto st : structs) {
-        O << st->getName() << ",";
-      }
-      O << "\n";
-    }
+class Variables {
+  std::map<Function*, FunctionVariables> funcVars;
+  FunctionVariables* activeFunction;
+
+public:
+  Variables() : activeFunction(nullptr) {}
+
+  void print(raw_ostream& O) const {
+    assert(activeFunction);
+    activeFunction->print(O);
+  }
+
+  auto& getVariables() {
+    assert(activeFunction);
+    return activeFunction->getVariables();
+  }
+
+  void setFunction(Function* function) {
+    assert(activeFunction);
+    activeFunction = &funcVars[function];
+    activeFunction->setFunction(function);
+  }
+
+  bool isIpInstruction(Instruction* i) const {
+    assert(activeFunction);
+    activeFunction->isIpInstruction(i);
   }
 };
 

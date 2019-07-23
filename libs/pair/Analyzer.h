@@ -34,7 +34,6 @@ public:
   }
 
   void parse() {
-    units.initDbgInfo();
 #ifdef DBGMODE
     units.printDbgInfo(errs());
 #endif
