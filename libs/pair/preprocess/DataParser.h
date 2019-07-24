@@ -12,18 +12,34 @@ class DataParser {
   void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
     // static const int InvalidIdx = 0;
     auto* gepi = getGEPI(i);
-    if (!gepi) {
-      return;
+
+    if (gepi) {
+      // field
+      auto [st, idx] = getFieldInfo(gepi);
+
+      auto* data = units.dbgInfo.getStructElement(st, idx);
+      // sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
+      if (!units.variables.isData(data))
+        return;
+
+      // insert to ds
+      units.variables.insertInstruction(instrType, i, data);
+    } else if (InstructionInfo::isFlushBasedInstr(instrType)) {
+      // obj
+      auto* uncastedArg0 = getUncasted(i);
+      auto* argType = uncastedArg0->getType();
+      // must be ptr
+      assert(argType->isPointerTy());
+      auto* objType = argType->getPointerElementType();
+      if (auto* st = dyn_cast<StructType>(objType)) {
+        auto* obj = units.dbgInfo.getStructElement(st);
+        assert(obj);
+        if (!units.variables.isUsedObj(obj))
+          return;
+
+        units.variables.insertInstruction(instrType, i, obj);
+      }
     }
-
-    auto [st, idx] = getFieldInfo(gepi);
-
-    auto* se = units.dbgInfo.getStructElement(st, idx);
-    if (!units.variables.isData(se))
-      return;
-
-    // insert to ds
-    units.variables.insertInstruction(instrType, i, se);
   }
 
   void insertWrite(StoreInst* si) { insertII(si, InstructionInfo::WriteInstr); }

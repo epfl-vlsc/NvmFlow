@@ -36,11 +36,15 @@ struct InstructionInfo {
   auto* getVariable() { return variable; }
 
   auto* getInstruction() { return instruction; }
+
+  static bool isFlushBasedInstr(InstructionType instrType) {
+    return instrType == FlushInstr || FlushInstr == FlushFenceInstr;
+  }
 };
 
 class FunctionVariables {
 public:
-  using LatticeVariables = std::set<Variable*>;
+  using Vars = std::set<Variable*>;
   using InstrType = InstructionInfo::InstructionType;
 
 private:
@@ -48,7 +52,7 @@ private:
   Function* function;
 
   // used for lattice
-  LatticeVariables variables;
+  Vars variables;
 
   // used for instruction processing
   std::map<Instruction*, InstructionInfo> instrToInfo;
@@ -60,6 +64,9 @@ private:
   // used elements
   std::set<Variable*> dataSet;
   std::set<Variable*> validSet;
+
+  // for conveniently propagating changes
+  std::map<Variable*, Vars> objToFields;
 
 public:
   void setFunction(Function* function_) {
@@ -79,7 +86,7 @@ public:
     return false;
   }
 
-  void insertPair(Variable* data, Variable* valid, bool useDcl) {
+  void insertPair(Variable* data, Variable* valid, Variable* obj, bool useDcl) {
     variables.insert(data);
     variables.insert(valid);
 
@@ -92,6 +99,9 @@ public:
 
     dataSet.insert(data);
     validSet.insert(valid);
+
+    objToFields[obj].insert(data);
+    objToFields[obj].insert(valid);
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
@@ -113,7 +123,14 @@ public:
     return varToPairs[var];
   }
 
-  bool isData(StructElement* se) const { return dataSet.count(se); }
+  bool isData(Variable* var) const { return dataSet.count(var); }
+
+  bool isUsedObj(Variable* var) const { return objToFields.count(var); }
+
+  auto& getObjFields(Variable* var) {
+    assert(objToFields.count(var));
+    return objToFields[var];
+  }
 
   void print(raw_ostream& O) const {
     O << "function: " << function->getName() << "\n";
@@ -139,6 +156,16 @@ public:
     O << "valid: ";
     for (auto* se : validSet) {
       O << se->getName() << ", ";
+    }
+    O << "\n";
+
+    O << "objects: ";
+    for (auto& [obj, fields] : objToFields) {
+      O << obj->getName() << "-->";
+      for (auto* field : fields) {
+        O << field->getName() << ", ";
+      }
+      O << " | ";
     }
     O << "\n";
   }
@@ -178,15 +205,15 @@ public:
     return activeFunction->isIpInstruction(i);
   }
 
-  void insertPair(StructElement* data, StructElement* valid, bool useDcl) {
+  void insertPair(Variable* data, Variable* valid, Variable* obj, bool useDcl) {
     assert(activeFunction);
-    activeFunction->insertPair(data, valid, useDcl);
+    activeFunction->insertPair(data, valid, obj, useDcl);
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
-                         StructElement* se) {
+                         Variable* var) {
     assert(activeFunction);
-    activeFunction->insertInstruction(instrType, instr, se);
+    activeFunction->insertInstruction(instrType, instr, var);
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -194,7 +221,13 @@ public:
     return activeFunction->getInstructionInfo(i);
   }
 
-  bool isData(StructElement* se) const { return activeFunction->isData(se); }
+  bool isData(Variable* var) const { return activeFunction->isData(var); }
+
+  bool isUsedObj(Variable* var) const { return activeFunction->isUsedObj(var); }
+
+  auto& getObjFields(Variable* var) {
+    return activeFunction->getObjFields(var);
+  }
 };
 
 } // namespace llvm

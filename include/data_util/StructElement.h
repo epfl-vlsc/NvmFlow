@@ -70,6 +70,12 @@ public:
     return name;
   }
 
+  auto getObj() const {
+    StructElement objSe = *this;
+    objSe.idx = OBJ_ID;
+    return objSe;
+  }
+
   void printFull(raw_ostream& O) const { O << getFullName(); }
 
   std::string getName() const override {

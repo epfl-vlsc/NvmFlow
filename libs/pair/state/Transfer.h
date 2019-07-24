@@ -18,7 +18,7 @@ class Transfer {
         stateChanged = true;
       }
 
-      if(val.isFlushDcl()){
+      if (val.isFlushDcl()) {
         val = LatVal::getPfence(val);
         stateChanged = true;
       }
@@ -39,26 +39,34 @@ class Transfer {
     return stateChanged;
   }
 
-  bool handleFlushFence(InstructionInfo* ii, AbstractState& state) {
-    auto* var = ii->getVariable();
-    assert(var);
-
+  bool doFlush(Variable* var, AbstractState& state, bool useFence) {
     auto& val = state[var];
-
-    val = LatVal::getPfence(val);
-
-    return true;
+    if (useFence) {
+      val = LatVal::getPfence(val);
+      val = LatVal::getVfence(val);
+      return true;
+    } else {
+      val = LatVal::getFlush(val);
+      return true;
+    }
   }
 
-  bool handleFlush(InstructionInfo* ii, AbstractState& state) {
+  bool handleFlush(InstructionInfo* ii, AbstractState& state, bool useFence) {
     auto* var = ii->getVariable();
     assert(var);
 
-    auto& val = state[var];
-    
-    val = LatVal::getFlush(val);
+    bool stateChanged = false;
+    if (var->isField()) {
+      // field flush
+      doFlush(var, state, useFence);
+    } else {
+      // obj flush
+      for (auto* field : units.variables.getObjFields(var)) {
+        doFlush(field, state, useFence);
+      }
+    }
 
-    return true;
+    return stateChanged;
   }
 
   bool handleWrite(InstructionInfo* ii, AbstractState& state) {
@@ -66,7 +74,7 @@ class Transfer {
     assert(var);
 
     auto& val = state[var];
-    
+
     breporter.checkNotCommittedBug(ii, state);
     val = LatVal::getWrite(val);
 
@@ -103,9 +111,9 @@ public:
     case InstructionInfo::WriteInstr:
       return handleWrite(ii, state);
     case InstructionInfo::FlushInstr:
-      return handleFlush(ii, state);
+      return handleFlush(ii, state, false);
     case InstructionInfo::FlushFenceInstr:
-      return handleFlushFence(ii, state);
+      return handleFlush(ii, state, true);
     case InstructionInfo::VfenceInstr:
       return handleVfence(ii, state);
     case InstructionInfo::PfenceInstr:

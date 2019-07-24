@@ -100,7 +100,7 @@ public:
         continue;
 
       auto& pairVal = state[pairVar];
-      if (pairVal.isWriteDcl() || pairVal.isWriteScl()) {
+      if (pairVal.isWriteDcl() || pairVal.isWriteScl() || pairVal.isFlushDcl()) {
         buggedVars->insert(var);
         buggedVars->insert(pairVar);
 

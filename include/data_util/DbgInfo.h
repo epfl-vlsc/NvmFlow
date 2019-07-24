@@ -105,7 +105,7 @@ class DbgInfo {
 
   void initFields(const DICompositeType* ST, IdxStrToElement& idxStrMap) {
     // add st
-    int idx = -1;
+    int idx = StructElement::OBJ_ID;
     StringRef typeName = ST->getName();
     addElementDbgInfo(idxStrMap, ST, idx, typeName);
 
@@ -134,7 +134,7 @@ class DbgInfo {
   void initTypes(IdxStrToElement& idxStrMap) {
     for (auto* st : M.getIdentifiedStructTypes()) {
       // add st
-      int idx = -1;
+      int idx = StructElement::OBJ_ID;
       addElement(idxStrMap, st, idx, st);
 
       // add fields
@@ -167,16 +167,33 @@ public:
   }
 
   auto* getStructElement(std::string& name) {
-    assert(fieldToElement.count(name));
+    assert(fieldToElement.count(name) && "wrong annotation");
     return fieldToElement[name];
   }
 
-  auto* getStructElement(StructType* st, int idx) {
-    StructElement tempSe{st, idx};
+  auto* getStructElement(StructElement& tempSe) {
     assert(elements.count(tempSe));
     auto eIt = elements.find(tempSe);
     auto* se = (StructElement*)&(*eIt);
     return se;
+  }
+
+  auto* getStructElement(StructType* st, int idx) {
+    StructElement tempSe{st, idx};
+    return getStructElement(tempSe);
+  }
+
+  auto* getStructElement(StructType* st) {
+    StructElement tempSe{st, StructElement::OBJ_ID};
+    return getStructElement(tempSe);
+  }
+
+  auto* getStructObj(StructElement* se) {
+    auto tempObjSe = se->getObj();
+    assert(elements.count(tempObjSe));
+    auto eIt = elements.find(tempObjSe);
+    auto* objSe = (StructElement*)&(*eIt);
+    return objSe;
   }
 
   void print(raw_ostream& O) const {

@@ -19,6 +19,29 @@ class ValidParser {
     return {name.str(), useDcl};
   }
 
+  std::pair<Variable*, bool> getData(StringRef annotation, StructType* st) {
+    auto [dataStrIdx, useDcl] = parseAnnotation(annotation);
+    Variable* data = nullptr;
+    if (dataStrIdx.empty()) {
+      // whole object
+      data = units.dbgInfo.getStructElement(st);
+    } else {
+      // field
+      data = units.dbgInfo.getStructElement(dataStrIdx);
+    }
+
+    assert(data);
+    return {data, useDcl};
+  }
+
+  auto* getValid(IntrinsicInst* ii) {
+    auto [st, idx] = getFieldInfo(ii);
+    assert(st);
+    return units.dbgInfo.getStructElement(st, idx);
+  }
+
+  auto* getObj(Variable* valid) { return units.dbgInfo.getStructObj(valid); }
+
   void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
     auto* ii = getII(i);
     if (!ii) {
@@ -28,17 +51,15 @@ class ValidParser {
     if (auto [annotation, hasAnnot] = isAnnotatedField(ii, FIELD_ANNOT);
         hasAnnot) {
       // find valid
-      auto [st, idx] = getFieldInfo(ii);
-      assert(st);
-
-      auto* valid = units.dbgInfo.getStructElement(st, idx);
+      auto* valid = getValid(ii);
 
       // find data
-      auto [dataStrIdx, useDcl] = parseAnnotation(annotation);
-      auto* data = units.dbgInfo.getStructElement(dataStrIdx);
+      auto [data, useDcl] = getData(annotation, valid->getStType());
+
+      auto* obj = getObj(valid);
 
       // insert to ds
-      units.variables.insertPair(data, valid, useDcl);
+      units.variables.insertPair(data, valid, obj, useDcl);
       units.variables.insertInstruction(instrType, i, valid);
     }
   }
