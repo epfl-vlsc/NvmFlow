@@ -53,9 +53,7 @@ struct Dcl {
     valid = 1;
   }
 
-  void nvm_fnc correctWriteData(){
-    data = 1;
-  }
+  void nvm_fnc correctWriteData() { data = 1; }
 
   void nvm_fnc wrongIpa(bool useNvm) {
     correctWriteData();
@@ -73,3 +71,12 @@ struct Dcl {
     valid = 1;
   }
 };
+
+void nvm_fnc recursion(Dcl* dcl) {
+  if (dcl->data == 1) {
+    dcl->valid = 1;
+  } else {
+    dcl->data--;
+    recursion(dcl);
+  }
+}
