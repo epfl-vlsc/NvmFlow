@@ -33,6 +33,18 @@ struct DbgInstr {
 
     return name;
   }
+
+  static void printLocation(Value* v, raw_ostream& O) {
+    if (auto* i = dyn_cast<Instruction>(v)) {
+      O << getSourceLocation(i) << " " << *i;
+    } else if (auto* bb = dyn_cast<BasicBlock>(v)) {
+      O << "  bb:" << bb;
+    } else if (auto* f = dyn_cast<Function>(v)) {
+      O << "  function:" << f->getName();
+    } else if (v == nullptr) {
+      O << "  0x:";
+    }
+  }
 };
 
 class DbgInfo {
@@ -210,30 +222,19 @@ public:
     O << "Debug Info\n";
     O << "function names: ";
     for (auto& [mangledName, realName] : functionNames) {
-      O << mangledName << "-" << realName << ",";
+      O << "|" << mangledName << "=" << realName << "|,";
     }
     O << "\n";
 
-    O << "elements: ";
-    for (auto& e : elements) {
-      O << e.getName() << ",";
-    }
-    O << "\n";
-
-    O << "field to element: ";
-    for (auto& [f, e] : fieldToElement) {
-      O << f << ",";
-    }
-    O << "\n";
-
-    O << "st to fields: ";
+    O << "type to fields: ";
     for (auto& [st, fields] : fieldMap) {
-      O << st->getName() << "->";
+      O << "|" << st->getName() << "-->";
       for (auto& field : fields) {
         O << field->getName() << ",";
       }
-      O << "\n";
+      O << "|,";
     }
+    O << "\n\n";
   }
 };
 

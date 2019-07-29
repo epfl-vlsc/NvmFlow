@@ -1,4 +1,5 @@
 #pragma once
+#include "../data_util/DbgInfo.h"
 #include "Common.h"
 #include "DfUtil.h"
 
@@ -259,7 +260,7 @@ public:
     for (auto& [context, functionResults] : allResults) {
       O << context.getName() << "\n";
       for (auto& [location, state] : functionResults) {
-        printLocation(location, O);
+        DbgInstr::printLocation(location, O);
         O << "\n";
         for (auto& [latVar, latVal] : state) {
           O << " " << latVar->getName() << " " << latVal.getName() << ",";
