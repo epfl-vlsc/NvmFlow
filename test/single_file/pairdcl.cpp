@@ -28,6 +28,21 @@ struct Dcl {
     valid = 1;
   }
 
+  void nvm_fnc doubleFlush() {
+    data = 1;
+    clflush(&data);
+    valid = 1;
+    clflush(&data);
+  }
+
+  void nvm_fnc doubleLoopFlush() {
+    while (valid == 1){
+      data = 1;
+      clflush(&data);
+    }
+    clflush(&data);  
+  }
+
   void nvm_fnc writeUncommittedData() {
     data = 1;
     clflushopt(&data);
@@ -53,9 +68,9 @@ struct Dcl {
     valid = 1;
   }
 
-  void nvm_fnc correctWriteData() { data = 1; }
+  void correctWriteData() { data = 1; }
 
-  void nvm_fnc wrongIpa(bool useNvm) {
+  void nvm_fnc wrongIp(bool useNvm) {
     correctWriteData();
     if (useNvm) {
       clflush(&data);
