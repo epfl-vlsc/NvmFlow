@@ -7,13 +7,25 @@ namespace llvm {
 
 class BugReporter {
   struct BugData {
+    enum BugType { NotCommittedBug, DoubleFlushBug };
+    BugType bugType;
     Instruction* bugInstr;
     Variable* bugVar;
+    Instruction* prevInstr;
     Variable* pairVar;
 
-    static BugData getNotCommitted(Instruction* bugInstr_, Variable* bugVar_,
-                                   Variable* pairVar_) {
-      return {bugInstr_, bugVar_, pairVar_};
+    static BugData getNotCommitted(InstructionInfo* ii) {
+      auto* var = ii->getVariable();
+      auto* instr = ii->getInstruction();
+      assert(var && instr);
+      return {NotCommittedBug, instr, var, nullptr, nullptr};
+    }
+
+    static BugData getDoubleFlush(InstructionInfo* ii) {
+      auto* var = ii->getVariable();
+      auto* instr = ii->getInstruction();
+      assert(var && instr);
+      return {DoubleFlushBug, instr, var, nullptr, nullptr};
     }
 
     auto getName() const {
@@ -87,10 +99,8 @@ public:
     O << "---------------------------------\n";
   }
 
-  void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
-    auto* var = ii->getVariable();
-    auto* instr = ii->getInstruction();
-    assert(var && instr);
+  void addCheckNotCommittedBug(Variable* var, InstructionInfo* ii,
+                               AbstractState& state) {
     if (buggedVars->count(var))
       return;
 
@@ -100,12 +110,44 @@ public:
         continue;
 
       auto& pairVal = state[pairVar];
-      if (pairVal.isWriteDcl() || pairVal.isWriteScl() || pairVal.isFlushDcl()) {
+      if (pairVal.isWriteDcl() || pairVal.isWriteScl() ||
+          pairVal.isFlushDcl()) {
         buggedVars->insert(var);
         buggedVars->insert(pairVar);
 
-        auto bugData = BugData::getNotCommitted(instr, var, pairVar);
+        auto bugData = BugData::getNotCommitted(ii);
         bugDataList->push_back(bugData);
+      }
+    }
+  }
+
+  void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
+    auto* var = ii->getVariable();
+    assert(var);
+  }
+
+  void addDoubleFlushBug(Variable* var, InstructionInfo* ii,
+                         AbstractState& state) {
+    if (buggedVars->count(var))
+      return;
+
+    auto& val = state[var];
+
+    if (val.isFenceDcl() || val.isFlushDcl()) {
+      auto bugData = BugData::getDoubleFlush(ii);
+      bugDataList->push_back(bugData);
+    }
+  }
+
+  void checkDoubleFlushBug(InstructionInfo* ii, AbstractState& state) {
+    auto* var = ii->getVariable();
+    assert(var);
+
+    addDoubleFlushBug(var, ii, state);
+
+    if (var->isObj()) {
+      for (auto* field : units.variables.getFlushFields(var)) {
+        addDoubleFlushBug(field, ii, state);
       }
     }
   }

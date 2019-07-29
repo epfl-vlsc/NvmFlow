@@ -65,8 +65,8 @@ private:
   std::set<Variable*> dataSet;
   std::set<Variable*> validSet;
 
-  // for conveniently propagating changes
-  std::map<Variable*, Vars> objToFields;
+  std::map<Variable*, Vars> writeObjMap;
+  std::map<Variable*, Vars> flushFieldMap;
 
 public:
   void setFunction(Function* function_) {
@@ -86,7 +86,7 @@ public:
     return false;
   }
 
-  void insertPair(Variable* data, Variable* valid, Variable* obj, bool useDcl) {
+  void insertPair(Variable* data, Variable* valid, bool useDcl) {
     variables.insert(data);
     variables.insert(valid);
 
@@ -99,9 +99,32 @@ public:
 
     dataSet.insert(data);
     validSet.insert(valid);
+  }
 
-    objToFields[obj].insert(data);
-    objToFields[obj].insert(valid);
+  void insertObj(Variable* obj) {
+    variables.insert(obj);
+
+    dataSet.insert(obj);
+  }
+
+  auto& getDataSet() { return dataSet; }
+
+  auto& getValidSet() { return validSet; }
+
+  void insertWriteObj(Variable* field, Variable* obj) {
+    assert(field);
+    auto& writeObjs = writeObjMap[field];
+
+    if (obj)
+      writeObjs.insert(obj);
+  }
+
+  void insertFlushField(Variable* obj, Variable* field) {
+    assert(obj);
+    auto& flushFields = flushFieldMap[obj];
+
+    if (obj)
+      flushFields.insert(field);
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
@@ -123,13 +146,20 @@ public:
     return varToPairs[var];
   }
 
-  bool isData(Variable* var) const { return dataSet.count(var); }
+  bool inDataSet(Variable* var) const { return dataSet.count(var); }
 
-  bool isUsedObj(Variable* var) const { return objToFields.count(var); }
+  bool inValidSet(Variable* var) const { return dataSet.count(var); }
 
-  auto& getObjFields(Variable* var) {
-    assert(objToFields.count(var));
-    return objToFields[var];
+  bool inVars(Variable* var) const { return variables.count(var); }
+
+  auto& getWriteObjs(Variable* field) {
+    assert(writeObjMap.count(field));
+    return writeObjMap[field];
+  }
+
+  auto& getFlushFields(Variable* obj) {
+    assert(flushFieldMap.count(obj));
+    return flushFieldMap[obj];
   }
 
   void print(raw_ostream& O) const {
@@ -159,15 +189,23 @@ public:
     }
     O << "\n";
 
-    O << "objects: ";
-    for (auto& [obj, fields] : objToFields) {
-      O << obj->getName() << "-->";
+    O << "flush fields:\n";
+    for (auto& [obj, fields] : flushFieldMap) {
+      O << obj->getName() << ":";
       for (auto* field : fields) {
         O << field->getName() << ", ";
       }
-      O << " | ";
+      O << "\n";
     }
-    O << "\n";
+
+    O << "write objs:\n";
+    for (auto& [field, objs] : writeObjMap) {
+      O << field->getName() << ":";
+      for (auto* obj : objs) {
+        O << obj->getName() << ", ";
+      }
+      O << "\n";
+    }
   }
 };
 
@@ -205,9 +243,14 @@ public:
     return activeFunction->isIpInstruction(i);
   }
 
-  void insertPair(Variable* data, Variable* valid, Variable* obj, bool useDcl) {
+  bool isUsedInstruction(Instruction* i) const {
     assert(activeFunction);
-    activeFunction->insertPair(data, valid, obj, useDcl);
+    return activeFunction->isUsedInstruction(i);
+  }
+
+  void insertPair(Variable* data, Variable* valid, bool useDcl) {
+    assert(activeFunction);
+    activeFunction->insertPair(data, valid, useDcl);
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
@@ -216,17 +259,44 @@ public:
     activeFunction->insertInstruction(instrType, instr, var);
   }
 
+  void insertWriteObj(Variable* field, Variable* obj) {
+    assert(activeFunction);
+    activeFunction->insertWriteObj(field, obj);
+  }
+
+  void insertFlushField(Variable* obj, Variable* field) {
+    assert(activeFunction);
+    activeFunction->insertFlushField(obj, field);
+  }
+
   auto* getInstructionInfo(Instruction* i) {
     assert(activeFunction);
     return activeFunction->getInstructionInfo(i);
   }
 
-  bool isData(Variable* var) const { return activeFunction->isData(var); }
+  void insertObj(Variable* obj) {
+    assert(activeFunction);
+    return activeFunction->insertObj(obj);
+  }
 
-  bool isUsedObj(Variable* var) const { return activeFunction->isUsedObj(var); }
+  bool inDataSet(Variable* var) const { return activeFunction->inDataSet(var); }
 
-  auto& getObjFields(Variable* var) {
-    return activeFunction->getObjFields(var);
+  bool inValidSet(Variable* var) const {
+    return activeFunction->inValidSet(var);
+  }
+
+  bool inVars(Variable* var) const { return activeFunction->inVars(var); }
+
+  auto& getDataSet() { return activeFunction->getDataSet(); }
+
+  auto& getValidSet() { return activeFunction->getValidSet(); }
+
+  auto& getWriteObjs(Variable* var) {
+    return activeFunction->getWriteObjs(var);
+  }
+
+  auto& getFlushFields(Variable* var) {
+    return activeFunction->getFlushFields(var);
   }
 };
 

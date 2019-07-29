@@ -9,21 +9,22 @@ namespace llvm {
 class DataParser {
   Units& units;
 
-  void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
-    // static const int InvalidIdx = 0;
-    auto* gepi = getGEPI(i);
-
-    if (gepi) {
-      // field
+  auto* getDataVar(Instruction* i, InstructionInfo::InstructionType instrType) {
+    if (auto* gepi = getGEPI(i)) {
+      // field - data field is always unannotated
       auto [st, idx] = getFieldInfo(gepi);
 
+      // try field
       auto* data = units.dbgInfo.getStructElement(st, idx);
-      // sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
-      if (!units.variables.isData(data))
-        return;
+      if (units.variables.inDataSet(data)) {
+        return data;
+      }
 
-      // insert to ds
-      units.variables.insertInstruction(instrType, i, data);
+      // try obj
+      auto* obj = units.dbgInfo.getStructObj(data);
+      if (units.variables.inVars(obj)) {
+        return obj;
+      }
     } else if (InstructionInfo::isFlushBasedInstr(instrType)) {
       // obj
       auto* uncastedArg0 = getUncasted(i);
@@ -34,12 +35,23 @@ class DataParser {
       if (auto* st = dyn_cast<StructType>(objType)) {
         auto* obj = units.dbgInfo.getStructElement(st);
         assert(obj);
-        if (!units.variables.isUsedObj(obj))
-          return;
-
-        units.variables.insertInstruction(instrType, i, obj);
+        if (units.variables.inVars(obj)) {
+          return obj;
+        }
       }
     }
+
+    return (Variable*)nullptr;
+  }
+
+  void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
+    auto* data = getDataVar(i, instrType);
+
+    if (!data)
+      return;
+
+    // insert to ds
+    units.variables.insertInstruction(instrType, i, data);
   }
 
   void insertWrite(StoreInst* si) { insertII(si, InstructionInfo::WriteInstr); }
@@ -81,10 +93,14 @@ class DataParser {
 
       if (auto* ci = dyn_cast<CallInst>(i)) {
         auto* callee = ci->getCalledFunction();
-        if (!callee->isDeclaration() && !visited.count(callee) &&
-            !units.functions.isSkippedFunction(callee)) {
+
+        bool analyzeInstruction = !callee->isDeclaration() &&
+                                  !visited.count(callee) &&
+                                  !units.functions.isSkippedFunction(callee) &&
+                                  !units.variables.isUsedInstruction(i);
+
+        if (analyzeInstruction)
           insertFields(callee, visited);
-        }
       }
     }
   }
@@ -97,6 +113,6 @@ public:
       insertFields(function, visited);
     }
   }
-}; // namespace llvm
+};
 
 } // namespace llvm

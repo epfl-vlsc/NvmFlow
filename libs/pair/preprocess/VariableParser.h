@@ -3,6 +3,7 @@
 
 #include "ValidParser.h"
 #include "DataParser.h"
+#include "VarFinalizerParser.h"
 
 namespace llvm {
 
@@ -13,6 +14,7 @@ public:
     // ordering matters!
     ValidParser vParser(units);
     DataParser dParser(units);
+    VarFinalizerParser vfParser(units);
   }
 };
 

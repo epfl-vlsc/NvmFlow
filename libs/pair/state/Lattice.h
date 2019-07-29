@@ -96,34 +96,32 @@ public:
     return lattice;
   }
 
+  static Lattice getPVfence(Lattice lattice) {
+    lattice.dclValue.dcl = DclValue::Fence;
+    lattice.sclValue.scl = SclValue::Fence;
+    return lattice;
+  }
+
   static Lattice getVfence(Lattice lattice) {
     lattice.sclValue.scl = SclValue::Fence;
     return lattice;
   }
 
-  bool isWriteDcl() const {
-    return dclValue.dcl == DclValue::Write;
+  bool isWriteDcl() const { return dclValue.dcl == DclValue::Write; }
+
+  bool isWriteDScl() const {
+    return dclValue.dcl == DclValue::Write && sclValue.scl == SclValue::Write;
   }
 
-  bool isFlushDcl() const {
-    return dclValue.dcl == DclValue::Flush;
-  }
+  bool isFlushDcl() const { return dclValue.dcl == DclValue::Flush; }
 
-  bool isFenceDcl() const {
-    return dclValue.dcl == DclValue::Fence;
-  }
+  bool isFenceDcl() const { return dclValue.dcl == DclValue::Fence; }
 
-  bool isWriteScl() const {
-    return sclValue.scl == SclValue::Write;
-  }
+  bool isWriteScl() const { return sclValue.scl == SclValue::Write; }
 
-  bool isFenceScl() const {
-    return sclValue.scl == SclValue::Fence;
-  }
+  bool isFenceScl() const { return sclValue.scl == SclValue::Fence; }
 
-  auto getName() const {
-    return dclValue.getName() + " " + sclValue.getName();
-  }
+  auto getName() const { return dclValue.getName() + " " + sclValue.getName(); }
 
   void print(raw_ostream& O) const {
     dclValue.print(O);

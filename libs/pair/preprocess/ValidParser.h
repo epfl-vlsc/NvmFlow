@@ -56,11 +56,16 @@ class ValidParser {
       // find data
       auto [data, useDcl] = getData(annotation, valid->getStType());
 
-      auto* obj = getObj(valid);
-
       // insert to ds
-      units.variables.insertPair(data, valid, obj, useDcl);
+      units.variables.insertPair(data, valid, useDcl);
       units.variables.insertInstruction(instrType, i, valid);
+
+      // insert obj
+      auto* objv = getObj(valid);
+      auto* objd = getObj(data);
+      units.variables.insertObj(objv);
+      if (objv != objd)
+        units.variables.insertObj(objd);
     }
   }
 

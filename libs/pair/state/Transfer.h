@@ -10,7 +10,7 @@
 namespace llvm {
 
 class Transfer {
-  bool handlePfence(InstructionInfo* ii, AbstractState& state) {
+  bool handlePfence(AbstractState& state) {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isWriteScl()) {
@@ -27,7 +27,7 @@ class Transfer {
     return stateChanged;
   }
 
-  bool handleVfence(InstructionInfo* ii, AbstractState& state) {
+  bool handleVfence(AbstractState& state) {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isWriteScl()) {
@@ -39,46 +39,75 @@ class Transfer {
     return stateChanged;
   }
 
-  bool doFlush(Variable* var, AbstractState& state, bool useFence) {
+  bool doFlushFence(Variable* var, AbstractState& state) {
     auto& val = state[var];
-    if (useFence) {
-      val = LatVal::getPfence(val);
-      val = LatVal::getVfence(val);
+
+    if (val.isWriteDcl()) {
+      val = LatVal::getPVfence(val);
       return true;
-    } else {
+    }
+
+    return false;
+  }
+
+  bool doNormalFlush(Variable* var, AbstractState& state) {
+    auto& val = state[var];
+
+    if (val.isWriteDcl()) {
       val = LatVal::getFlush(val);
       return true;
     }
+
+    return false;
+  }
+
+  bool doFlush(Variable* var, AbstractState& state, bool useFence) {
+    if (!useFence)
+      return doNormalFlush(var, state);
+    else
+      return doFlushFence(var, state);
   }
 
   bool handleFlush(InstructionInfo* ii, AbstractState& state, bool useFence) {
+    breporter.checkDoubleFlushBug(ii, state);
+
     auto* var = ii->getVariable();
     assert(var);
 
-    bool stateChanged = false;
-    if (var->isField()) {
-      // field flush
-      doFlush(var, state, useFence);
-    } else {
-      // obj flush
-      for (auto* field : units.variables.getObjFields(var)) {
-        doFlush(field, state, useFence);
+    bool stateChanged = doFlush(var, state, useFence);
+    if (var->isObj()) {
+      for (auto* field : units.variables.getFlushFields(var)) {
+        stateChanged |= doFlush(field, state, useFence);
       }
     }
 
     return stateChanged;
   }
 
+  bool doWrite(Variable* var, AbstractState& state) {
+    auto& val = state[var];
+
+    if (val.isWriteDScl())
+      return false;
+
+    val = LatVal::getWrite(val);
+    return true;
+  }
+
   bool handleWrite(InstructionInfo* ii, AbstractState& state) {
+    breporter.checkNotCommittedBug(ii, state);
+
     auto* var = ii->getVariable();
     assert(var);
 
-    auto& val = state[var];
+    bool stateChanged = doWrite(var, state);
+    if (var->isField()) {
+      for (auto* obj : units.variables.getWriteObjs(var)) {
+        stateChanged |= doWrite(obj, state);
+      }
+    }
 
-    breporter.checkNotCommittedBug(ii, state);
-    val = LatVal::getWrite(val);
-
-    return true;
+    return stateChanged;
   }
 
   Units& units;
@@ -115,15 +144,14 @@ public:
     case InstructionInfo::FlushFenceInstr:
       return handleFlush(ii, state, true);
     case InstructionInfo::VfenceInstr:
-      return handleVfence(ii, state);
+      return handleVfence(state);
     case InstructionInfo::PfenceInstr:
-      return handlePfence(ii, state);
+      return handlePfence(state);
     default:
       report_fatal_error("not correct instruction");
       return false;
     }
   }
-
-}; // namespace llvm
+};
 
 } // namespace llvm
