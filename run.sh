@@ -50,6 +50,12 @@ create_ir(){
 	cd ${BASE_DIR}
 }
 
+create_ll(){
+	cd ${SINGLE_FILE_REPO}
+	make ll -j$(nproc)
+	cd ${BASE_DIR}
+}
+
 clean_ir(){
 	cd ${SINGLE_FILE_REPO}
 	make clean
@@ -74,9 +80,11 @@ elif [ "$MODE" == "build" ] ;then
   run_fullbuild
 elif [ "$MODE" == "ir" ] ;then
 	create_ir
+elif [ "$MODE" == "ll" ] ;then
+	create_ll
 elif [ "$MODE" == "rem_ir" ] ;then
 	clean_ir
 else
-	echo "pair/log/pptr, build, ir"
+	echo "pair/log/pptr, make, build, ir, rem_ir"
 fi
 #commands----------------------------------------------------
