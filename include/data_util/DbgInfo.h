@@ -47,6 +47,8 @@ class DbgInfo {
   // auxilliary helpers
   std::map<std::string, StructElement*> fieldToElement;
 
+  std::map<StructElement*, std::set<StructElement*>> fieldMap;
+
   void initFunctionNames() {
     for (auto* f : finder.subprograms()) {
       auto realName = f->getName();
@@ -121,26 +123,29 @@ class DbgInfo {
     }
   }
 
-  void addElement(IdxStrToElement& idxStrMap, StructType* st, int idx,
-                  Type* ft) {
+  auto* addElement(IdxStrToElement& idxStrMap, StructType* st, int idx,
+                   Type* ft) {
     auto [ePtr, added] = elements.emplace(st, idx, ft);
     if (!added || ePtr == elements.end())
       report_fatal_error("element not added");
     auto* element = (StructElement*)&(*ePtr);
     auto strIdx = StructElement::getAbsoluteName(st, idx);
     idxStrMap[strIdx] = element;
+    return element;
   }
 
   void initTypes(IdxStrToElement& idxStrMap) {
     for (auto* st : M.getIdentifiedStructTypes()) {
       // add st
       int idx = StructElement::OBJ_ID;
-      addElement(idxStrMap, st, idx, st);
+      auto* obj = addElement(idxStrMap, st, idx, st);
+      fieldMap[obj];
 
       // add fields
       for (auto* ft : st->elements()) {
         ++idx;
-        addElement(idxStrMap, st, idx, ft);
+        auto* field = addElement(idxStrMap, st, idx, ft);
+        fieldMap[obj].insert(field);
       }
     }
   }
@@ -196,6 +201,11 @@ public:
     return objSe;
   }
 
+  auto& getFieldMap(StructElement* se) {
+    assert(fieldMap.count(se));
+    return fieldMap[se];
+  }
+
   void print(raw_ostream& O) const {
     O << "Debug Info\n";
     O << "function names: ";
@@ -215,6 +225,15 @@ public:
       O << f << ",";
     }
     O << "\n";
+
+    O << "st to fields: ";
+    for (auto& [st, fields] : fieldMap) {
+      O << st->getName() << "->";
+      for (auto& field : fields) {
+        O << field->getName() << ",";
+      }
+      O << "\n";
+    }
   }
 };
 
