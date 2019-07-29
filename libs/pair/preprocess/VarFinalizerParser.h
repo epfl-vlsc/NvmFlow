@@ -22,19 +22,20 @@ class VarFinalizerParser {
   }
 
   void fillWriteObjData() {
-    for (auto* var : units.variables.getDataSet()) {
-      if (!var->isField())
+    for (auto* field : units.variables.getDataSet()) {
+      if (!field->isField())
         continue;
 
-      auto* obj = units.dbgInfo.getStructObj(var);
-      units.variables.insertWriteObj(var, obj);
+      auto* obj = units.dbgInfo.getStructObj(field);
+      assert(obj);
+      units.variables.insertWriteObj(field, obj);
     }
   }
 
   void fillWriteObjValid() {
-    for (auto* var : units.variables.getValidSet()) {
-      assert(var->isField());
-      units.variables.insertWriteObj(var, nullptr);
+    for (auto* field : units.variables.getValidSet()) {
+      assert(field->isField());
+      units.variables.insertWriteObj(field, nullptr);
     }
   }
 
@@ -47,7 +48,12 @@ class VarFinalizerParser {
   Units& units;
 
 public:
-  VarFinalizerParser(Units& units_) : units(units_) { fillObjFieldInfo(); }
+  VarFinalizerParser(Units& units_) : units(units_) {
+    for (auto* function : units.functions.getAnalyzedFunctions()) {
+      units.setActiveFunction(function);
+      fillObjFieldInfo();
+    }
+  }
 };
 
 } // namespace llvm

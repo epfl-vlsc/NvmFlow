@@ -61,13 +61,14 @@ public:
   }
 
   void print(raw_ostream& O) const {
-    O << "functions\n";
+    O << "Functions Info\n";
     analyzedFunctions.print(O);
     skippedFunctions.print(O);
     pfenceFunctions.print(O);
     vfenceFunctions.print(O);
     flushFunctions.print(O);
     flushFenceFunctions.print(O);
+    O << "\n";
   }
 };
 

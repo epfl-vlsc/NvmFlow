@@ -11,6 +11,8 @@ class ValidParser {
   static constexpr const char* SCL_ANNOT = "scl";
   static constexpr const char* SEP = "-";
 
+  using InstructionType = typename InstructionInfo::InstructionType;
+
   Units& units;
 
   std::pair<std::string, bool> parseAnnotation(StringRef annotation) {
@@ -42,14 +44,15 @@ class ValidParser {
 
   auto* getObj(Variable* valid) { return units.dbgInfo.getStructObj(valid); }
 
-  void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
+  auto* insertVar(Instruction* i) {
     auto* ii = getII(i);
     if (!ii) {
-      return;
+      return (Variable*)nullptr;
     }
 
     if (auto [annotation, hasAnnot] = isAnnotatedField(ii, FIELD_ANNOT);
         hasAnnot) {
+
       // find valid
       auto* valid = getValid(ii);
 
@@ -58,7 +61,6 @@ class ValidParser {
 
       // insert to ds
       units.variables.insertPair(data, valid, useDcl);
-      units.variables.insertInstruction(instrType, i, valid);
 
       // insert obj
       auto* objv = getObj(valid);
@@ -66,15 +68,31 @@ class ValidParser {
       units.variables.insertObj(objv);
       if (objv != objd)
         units.variables.insertObj(objd);
+
+      return valid;
     }
+
+    return (Variable*)nullptr;
   }
 
-  void insertWrite(StoreInst* si) { insertII(si, InstructionInfo::WriteInstr); }
+  void insertInstructionIfValid(InstructionType instrType, Instruction* i,
+                                Variable* valid) {
+    if (valid)
+      units.variables.insertInstruction(instrType, i, valid);
+  }
 
-  void insertFlush(CallInst* ci, InstructionInfo::InstructionType instrType) {
+  void insertRead(LoadInst* li) { insertVar(li); }
+
+  void insertWrite(StoreInst* si) {
+    auto* valid = insertVar(si);
+    insertInstructionIfValid(InstructionInfo::WriteInstr, si, valid);
+  }
+
+  void insertFlush(InstructionInfo::InstructionType instrType, CallInst* ci) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      insertII(arg0Instr, instrType);
+      auto* valid = insertVar(arg0Instr);
+      insertInstructionIfValid(instrType, ci, valid);
     }
   }
 
@@ -91,9 +109,9 @@ class ValidParser {
       units.variables.insertInstruction(InstructionInfo::VfenceInstr, ci,
                                         nullptr);
     } else if (units.functions.isFlushFunction(callee)) {
-      insertFlush(ci, InstructionInfo::FlushInstr);
+      insertFlush(InstructionInfo::FlushInstr, ci);
     } else if (units.functions.isFlushFenceFunction(callee)) {
-      insertFlush(ci, InstructionInfo::FlushFenceInstr);
+      insertFlush(InstructionInfo::FlushFenceInstr, ci);
     } else {
       units.variables.insertInstruction(InstructionInfo::IpInstr, ci, nullptr);
     }
@@ -102,6 +120,8 @@ class ValidParser {
   void insertI(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
       insertWrite(si);
+    } else if (auto* li = dyn_cast<LoadInst>(i)) {
+      insertRead(li);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       insertCall(ci);
     }

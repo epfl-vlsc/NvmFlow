@@ -13,9 +13,13 @@ using IdxStrToElement = std::map<std::string, StructElement*>;
 struct DbgInstr {
   static auto getSourceLocation(Instruction* instruction,
                                 bool fullPath = false) {
-    auto& debugInfo = instruction->getDebugLoc();
-    std::string name;
     assert(instruction);
+    auto& debugInfo = instruction->getDebugLoc();
+    auto* dbgLoc = debugInfo.get();
+
+    std::string name;
+    if (!dbgLoc)
+      return name;
 
     name.reserve(100);
     if (fullPath)

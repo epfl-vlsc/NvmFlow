@@ -10,29 +10,37 @@
 namespace llvm {
 
 class Transfer {
-  bool handlePfence(AbstractState& state) {
+  void trackVar(Variable* var, InstructionInfo* ii) {
+    breporter.updateLastLocation(var, ii);
+  }
+
+  bool handlePfence(InstructionInfo* ii, AbstractState& state) {
     bool stateChanged = false;
+
     for (auto& [var, val] : state) {
       if (val.isWriteScl()) {
         val = LatVal::getVfence(val);
         stateChanged = true;
+        trackVar(var, ii);
       }
 
       if (val.isFlushDcl()) {
         val = LatVal::getPfence(val);
         stateChanged = true;
+        trackVar(var, ii);
       }
     }
 
     return stateChanged;
   }
 
-  bool handleVfence(AbstractState& state) {
+  bool handleVfence(InstructionInfo* ii, AbstractState& state) {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isWriteScl()) {
         val = LatVal::getVfence(val);
         stateChanged = true;
+        trackVar(var, ii);
       }
     }
 
@@ -75,9 +83,16 @@ class Transfer {
     assert(var);
 
     bool stateChanged = doFlush(var, state, useFence);
+    if (stateChanged)
+      trackVar(var, ii);
+
     if (var->isObj()) {
       for (auto* field : units.variables.getFlushFields(var)) {
-        stateChanged |= doFlush(field, state, useFence);
+        bool fieldStateChanged = doFlush(field, state, useFence);
+        if (fieldStateChanged)
+          trackVar(field, ii);
+
+        stateChanged |= fieldStateChanged;
       }
     }
 
@@ -101,9 +116,16 @@ class Transfer {
     assert(var);
 
     bool stateChanged = doWrite(var, state);
+    if (stateChanged)
+      trackVar(var, ii);
+
     if (var->isField()) {
       for (auto* obj : units.variables.getWriteObjs(var)) {
-        stateChanged |= doWrite(obj, state);
+        bool objStateChanged = doWrite(obj, state);
+        if (objStateChanged)
+          trackVar(obj, ii);
+
+        stateChanged |= objStateChanged;
       }
     }
 
@@ -127,13 +149,12 @@ public:
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
-
     auto* ii = units.variables.getInstructionInfo(i);
     if (!ii)
       return false;
 
 #ifdef DBGMODE
-    errs() << "Analyze " << *i << "\n";
+    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
 #endif
 
     switch (ii->iType) {
@@ -144,9 +165,9 @@ public:
     case InstructionInfo::FlushFenceInstr:
       return handleFlush(ii, state, true);
     case InstructionInfo::VfenceInstr:
-      return handleVfence(state);
+      return handleVfence(ii, state);
     case InstructionInfo::PfenceInstr:
-      return handlePfence(state);
+      return handlePfence(ii, state);
     default:
       report_fatal_error("not correct instruction");
       return false;

@@ -37,6 +37,8 @@ IntrinsicInst* getII(Value* v) {
   while (true) {
     if (auto* si = dyn_cast<StoreInst>(inst)) {
       inst = si->getPointerOperand();
+    } else if (auto* li = dyn_cast<LoadInst>(inst)) {
+      inst = li->getPointerOperand();
     } else if (auto* ci = dyn_cast<CastInst>(inst)) {
       inst = ci->getOperand(0);
     } else if (auto* gepi = dyn_cast<GetElementPtrInst>(inst)) {

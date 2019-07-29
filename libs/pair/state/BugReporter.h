@@ -9,34 +9,51 @@ class BugReporter {
   struct BugData {
     enum BugType { NotCommittedBug, DoubleFlushBug };
     BugType bugType;
-    Instruction* bugInstr;
-    Variable* bugVar;
+    Variable* var;
+    Instruction* instr;
     Instruction* prevInstr;
-    Variable* pairVar;
+    Variable* prevVar;
 
-    static BugData getNotCommitted(InstructionInfo* ii) {
-      auto* var = ii->getVariable();
-      auto* instr = ii->getInstruction();
-      assert(var && instr);
-      return {NotCommittedBug, instr, var, nullptr, nullptr};
+    static BugData getNotCommitted(Variable* var_, Instruction* instr_,
+                                   Variable* prevVar_) {
+      assert(prevVar_);
+      return {NotCommittedBug, var_, instr_, nullptr, prevVar_};
     }
 
-    static BugData getDoubleFlush(InstructionInfo* ii) {
-      auto* var = ii->getVariable();
-      auto* instr = ii->getInstruction();
-      assert(var && instr);
-      return {DoubleFlushBug, instr, var, nullptr, nullptr};
+    static BugData getDoubleFlush(Variable* var_, Instruction* instr_,
+                                  Instruction* prevInstr_) {
+      assert(prevInstr_);
+      return {DoubleFlushBug, var_, instr_, prevInstr_, nullptr};
     }
 
-    auto getName() const {
+    auto notCommittedBugStr() const {
       std::string name;
       name.reserve(200);
 
-      name += "Commit " + pairVar->getName() + " for " + bugVar->getName();
-      name += " at " + DbgInstr::getSourceLocation(bugInstr);
+      name += "Commit " + prevVar->getName() + " for " + var->getName();
+      name += " at " + DbgInstr::getSourceLocation(instr);
       name += "\n";
 
       return name;
+    }
+
+    auto doubleFlushBugStr() const {
+      std::string name;
+      name.reserve(200);
+
+      name += "Double flush " + var->getName();
+      name += " at " + DbgInstr::getSourceLocation(instr) + "\n";
+      name += " prev at " + DbgInstr::getSourceLocation(prevInstr);
+      name += "\n";
+
+      return name;
+    }
+
+    auto getName() const {
+      if (bugType == NotCommittedBug)
+        return notCommittedBugStr();
+      else
+        return doubleFlushBugStr();
     }
   };
 
@@ -44,11 +61,9 @@ class BugReporter {
     if (bugDataList) {
       delete bugDataList;
     }
-    /*
     if (lastLocationMap) {
       delete lastLocationMap;
     }
-    */
     if (buggedVars) {
       delete buggedVars;
     }
@@ -56,26 +71,26 @@ class BugReporter {
 
   void allocStructures() {
     bugDataList = new BugDataList();
-    // lastLocationMap = new LastLocationMap();
+    lastLocationMap = new LastLocationMap();
     buggedVars = new BuggedVars();
   }
 
   using BugDataList = std::vector<BugData>;
-  // using LastLocationMap = std::map<Variable*, Instruction*>;
+  using LastLocationMap = std::map<Variable*, Instruction*>;
   using BuggedVars = std::set<Variable*>;
 
   // data structures
   Units& units;
   Function* currentFunction;
   BugDataList* bugDataList;
-  // LastLocationMap* lastLocationMap;
+  LastLocationMap* lastLocationMap;
   BuggedVars* buggedVars;
 
 public:
   BugReporter(Units& units_) : units(units_) {
     currentFunction = nullptr;
     bugDataList = nullptr;
-    // lastLocationMap = nullptr;
+    lastLocationMap = nullptr;
     buggedVars = nullptr;
   }
 
@@ -86,11 +101,18 @@ public:
     deleteStructures();
     allocStructures();
   }
-  /*
-    void updateLastLocation(Instruction* i, Variable* var) {
-      (*lastLocationMap)[var] = i;
-    }
-   */
+
+  void updateLastLocation(Variable* var, InstructionInfo* ii) {
+    auto* instr = ii->getInstruction();
+    assert(instr);
+    (*lastLocationMap)[var] = instr;
+  }
+
+  auto* getLastLocation(Variable* var) {
+    assert(lastLocationMap->count(var));
+    return (*lastLocationMap)[var];
+  }
+
   void print(raw_ostream& O) const {
     O << currentFunction->getName() << " bugs\n";
     for (auto& bugData : *bugDataList) {
@@ -106,16 +128,21 @@ public:
 
     for (auto* pair : units.variables.getPairs(var)) {
       auto* pairVar = pair->getPair(var);
+
       if (buggedVars->count(pairVar))
         continue;
 
       auto& pairVal = state[pairVar];
-      if (pairVal.isWriteDcl() || pairVal.isWriteScl() ||
-          pairVal.isFlushDcl()) {
+      bool badPairValStates = (pair->isDcl())
+                                  ? pairVal.isWriteDcl() || pairVal.isFlushDcl()
+                                  : pairVal.isWriteScl();
+
+      if (badPairValStates) {
         buggedVars->insert(var);
         buggedVars->insert(pairVar);
 
-        auto bugData = BugData::getNotCommitted(ii);
+        auto* instr = ii->getInstruction();
+        auto bugData = BugData::getNotCommitted(var, instr, pairVar);
         bugDataList->push_back(bugData);
       }
     }
@@ -124,6 +151,14 @@ public:
   void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
+
+    addCheckNotCommittedBug(var, ii, state);
+
+    if (var->isObj()) {
+      for (auto* obj : units.variables.getWriteObjs(var)) {
+        addCheckNotCommittedBug(obj, ii, state);
+      }
+    }
   }
 
   void addDoubleFlushBug(Variable* var, InstructionInfo* ii,
@@ -134,7 +169,9 @@ public:
     auto& val = state[var];
 
     if (val.isFenceDcl() || val.isFlushDcl()) {
-      auto bugData = BugData::getDoubleFlush(ii);
+      auto* instr = ii->getInstruction();
+      auto* prevInstr = getLastLocation(var);
+      auto bugData = BugData::getDoubleFlush(var, instr, prevInstr);
       bugDataList->push_back(bugData);
     }
   }
