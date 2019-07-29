@@ -13,6 +13,7 @@
 #include "llvm/Analysis/AliasSetTracker.h"
 
 #include "analysis_util/MemoryUtil.h"
+#include "llvm/Demangle/Demangle.h"
 
 #include <cassert>
 #include <set>
@@ -131,17 +132,12 @@ void ExpPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
 
 bool ExpPass::runOnModule(Module& M) {
   auto f = M.getFunction("_ZN3Log10correctObjEv");
-  using FunctionContext = std::pair<Function*, Context>;
-  using ContextWorklist = Worklist<FunctionContext>;
-  ContextWorklist contextWork;
-  contextWork.insert({f, Context()});
-  auto [f2, c] = contextWork.pop_val();
-  errs() << "f:" << f2 << c.getName() << "\n";
-  errs() << "f:" << f << "\n";
-  Context context;
-
-  std::map<FunctionContext, int> lol;
-
+  char buf[100];
+  size_t n;
+  int s;
+  itaniumDemangle(f->getName().str().c_str(), buf, &n, &s);
+  errs() << buf << " " << n << " " << s << "\n";
+  
   return false;
 }
 
