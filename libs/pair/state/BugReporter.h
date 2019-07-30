@@ -121,10 +121,10 @@ public:
     O << "---------------------------------\n";
   }
 
-  void addCheckNotCommittedBug(Variable* var, InstructionInfo* ii,
+  bool addCheckNotCommittedBug(Variable* var, InstructionInfo* ii,
                                AbstractState& state) {
     if (buggedVars->count(var))
-      return;
+      return false;
 
     for (auto* pair : units.variables.getPairs(var)) {
       auto* pairVar = pair->getPair(var);
@@ -144,27 +144,36 @@ public:
         auto* instr = ii->getInstruction();
         auto bugData = BugData::getNotCommitted(var, instr, pairVar);
         bugDataList->push_back(bugData);
+        return true;
       }
     }
+
+    return false;
   }
 
   void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
-    addCheckNotCommittedBug(var, ii, state);
+    bool bugFound = addCheckNotCommittedBug(var, ii, state);
+    if (bugFound) {
+      return;
+    }
 
     if (var->isObj()) {
       for (auto* obj : units.variables.getWriteObjs(var)) {
-        addCheckNotCommittedBug(obj, ii, state);
+        bugFound = addCheckNotCommittedBug(obj, ii, state);
+        if (bugFound) {
+          return;
+        }
       }
     }
   }
 
-  void addDoubleFlushBug(Variable* var, InstructionInfo* ii,
+  bool addDoubleFlushBug(Variable* var, InstructionInfo* ii,
                          AbstractState& state) {
     if (buggedVars->count(var))
-      return;
+      return false;
 
     auto& val = state[var];
 
@@ -173,18 +182,27 @@ public:
       auto* prevInstr = getLastLocation(var);
       auto bugData = BugData::getDoubleFlush(var, instr, prevInstr);
       bugDataList->push_back(bugData);
+      return true;
     }
+
+    return false;
   }
 
   void checkDoubleFlushBug(InstructionInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
-    addDoubleFlushBug(var, ii, state);
+    bool bugFound = addDoubleFlushBug(var, ii, state);
+    if (bugFound) {
+      return;
+    }
 
     if (var->isObj()) {
       for (auto* field : units.variables.getFlushFields(var)) {
-        addDoubleFlushBug(field, ii, state);
+        bugFound = addDoubleFlushBug(field, ii, state);
+        if (bugFound) {
+          return;
+        }
       }
     }
   }

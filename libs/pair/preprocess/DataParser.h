@@ -44,7 +44,7 @@ class DataParser {
     return (Variable*)nullptr;
   }
 
-  void insertII(Instruction* i, InstructionInfo::InstructionType instrType) {
+  void insertVar(Instruction* i, InstructionInfo::InstructionType instrType) {
     auto* data = getDataVar(i, instrType);
 
     if (!data)
@@ -54,12 +54,12 @@ class DataParser {
     units.variables.insertInstruction(instrType, i, data);
   }
 
-  void insertWrite(StoreInst* si) { insertII(si, InstructionInfo::WriteInstr); }
+  void insertWrite(StoreInst* si) { insertVar(si, InstructionInfo::WriteInstr); }
 
   void insertFlush(CallInst* ci, InstructionInfo::InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      insertII(arg0Instr, instrType);
+      insertVar(arg0Instr, instrType);
     }
   }
 
@@ -89,17 +89,16 @@ class DataParser {
 
     for (auto& I : instructions(*function)) {
       auto* i = &I;
-      insertI(i);
+
+      if (!units.variables.isUsedInstruction(i))
+        insertI(i);
 
       if (auto* ci = dyn_cast<CallInst>(i)) {
         auto* callee = ci->getCalledFunction();
 
-        bool analyzeInstruction = !callee->isDeclaration() &&
-                                  !visited.count(callee) &&
-                                  !units.functions.isSkippedFunction(callee) &&
-                                  !units.variables.isUsedInstruction(i);
-
-        if (analyzeInstruction)
+        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
+                    !units.functions.skipFunction(callee);
+        if (doIp)
           insertFields(callee, visited);
       }
     }

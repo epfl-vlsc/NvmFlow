@@ -136,8 +136,9 @@ class ValidParser {
 
       if (auto* ci = dyn_cast<CallInst>(i)) {
         auto* callee = ci->getCalledFunction();
-        if (!callee->isDeclaration() && !visited.count(callee) &&
-            !units.functions.isSkippedFunction(callee)) {
+        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
+                    !units.functions.skipFunction(callee);
+        if (doIp) {
           insertFields(callee, visited);
         }
       }
