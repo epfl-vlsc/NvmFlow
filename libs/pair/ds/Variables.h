@@ -148,7 +148,7 @@ public:
 
   bool inDataSet(Variable* var) const { return dataSet.count(var); }
 
-  bool inValidSet(Variable* var) const { return dataSet.count(var); }
+  bool inValidSet(Variable* var) const { return validSet.count(var); }
 
   bool inVars(Variable* var) const { return variables.count(var); }
 
@@ -171,7 +171,7 @@ public:
     }
     O << "\n";
 
-    O << "inst to vars:\n";
+    O << "inst to vars:---\n";
     for (auto& [i, ii] : instrToInfo) {
       O << "\t" << DbgInstr::getSourceLocation(i) << " " << ii.getName()
         << "\n";
@@ -189,18 +189,18 @@ public:
     }
     O << "\n";
 
-    O << "flush fields:\n";
+    O << "flush fields---\n";
     for (auto& [obj, fields] : flushFieldMap) {
-      O << obj->getName() << ":";
+      O << obj->getName() << " <-> ";
       for (auto* field : fields) {
         O << field->getName() << ", ";
       }
       O << "\n";
     }
 
-    O << "write objs:\n";
+    O << "write objs---\n";
     for (auto& [field, objs] : writeObjMap) {
-      O << field->getName() << ":";
+      O << field->getName() << " <-> ";
       for (auto* obj : objs) {
         O << obj->getName() << ", ";
       }
