@@ -5,7 +5,7 @@
 #include "data_util/DbgInfo.h"
 #include "ds/Units.h"
 #include "preprocess/Parser.h"
-#include "state/StateMachine.h"
+//#include "state/StateMachine.h"
 
 namespace llvm {
 
@@ -17,25 +17,26 @@ public:
   Analyzer(Module& M_) : M(M_), units(M_) {
     parse();
 
-#ifdef DBGMODE
-    units.print(llvm::errs());
-#endif
-
-    dataflow();
+    //dataflow();
   }
-
+/*
   void dataflow() {
     StateMachine stateMachine(M, units);
-
-    // auto f = M.getFunction("_ZN3Log8correct2Ev");
-    // stateMachine.analyze(f);
-
     for (auto* function : stateMachine.getAnalyzedFunctions()) {
       stateMachine.analyze(function);
     }
   }
+ */
+  void parse() {
+#ifdef DBGMODE
+    units.printDbgInfo(errs());
+#endif
 
-  void parse() { Parser parser(M, units); }
+    Parser parser(M, units);
+#ifdef DBGMODE
+    units.printFunctions(errs());
+#endif
+  }
 
   void report() {}
 };

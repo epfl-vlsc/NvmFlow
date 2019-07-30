@@ -70,7 +70,7 @@ public:
   }
 
   void print(raw_ostream& O) const {
-    O << "functions\n"; 
+    O << "Functions Info\n";
     analyzedFunctions.print(O);
     skippedFunctions.print(O);
     loggingFunctions.print(O);
@@ -78,6 +78,7 @@ public:
       txbeginFunctions.print(O);
       txendFunctions.print(O);
     }
+    O << "\n";
   }
 };
 
