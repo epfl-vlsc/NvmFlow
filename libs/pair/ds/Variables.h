@@ -142,7 +142,7 @@ public:
   auto& getVariables() { return variables; }
 
   auto& getPairs(Variable* var) {
-    assert(varToPairs.count(var));
+    assertInDs(varToPairs, var);
     return varToPairs[var];
   }
 
@@ -153,12 +153,12 @@ public:
   bool inVars(Variable* var) const { return variables.count(var); }
 
   auto& getWriteObjs(Variable* field) {
-    assert(writeObjMap.count(field));
+    assertInDs(writeObjMap, field);
     return writeObjMap[field];
   }
 
   auto& getFlushFields(Variable* obj) {
-    assert(flushFieldMap.count(obj));
+    assertInDs(flushFieldMap, obj);
     return flushFieldMap[obj];
   }
 

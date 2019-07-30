@@ -109,7 +109,7 @@ public:
   }
 
   auto* getLastLocation(Variable* var) {
-    assert(lastLocationMap->count(var));
+    assertInDs(lastLocationMap, var);
     return (*lastLocationMap)[var];
   }
 
@@ -160,7 +160,7 @@ public:
       return;
     }
 
-    if (var->isObj()) {
+    if (var->isField()) {
       for (auto* obj : units.variables.getWriteObjs(var)) {
         bugFound = addCheckNotCommittedBug(obj, ii, state);
         if (bugFound) {

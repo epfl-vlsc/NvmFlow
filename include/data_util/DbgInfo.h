@@ -193,7 +193,7 @@ public:
   }
 
   auto* getStructElement(StructElement& tempSe) {
-    assert(elements.count(tempSe));
+    assertInDs(elements, tempSe);
     auto eIt = elements.find(tempSe);
     auto* se = (StructElement*)&(*eIt);
     return se;
@@ -211,14 +211,14 @@ public:
 
   auto* getStructObj(StructElement* se) {
     auto tempObjSe = se->getObj();
-    assert(elements.count(tempObjSe));
+    assertInDs(elements, tempObjSe);
     auto eIt = elements.find(tempObjSe);
     auto* objSe = (StructElement*)&(*eIt);
     return objSe;
   }
 
   auto& getFieldMap(StructElement* se) {
-    assert(fieldMap.count(se));
+    assertInDs(fieldMap, se);
     return fieldMap[se];
   }
 
