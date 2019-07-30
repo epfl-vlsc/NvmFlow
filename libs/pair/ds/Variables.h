@@ -38,7 +38,7 @@ struct InstructionInfo {
   auto* getInstruction() { return instruction; }
 
   static bool isFlushBasedInstr(InstructionType instrType) {
-    return instrType == FlushInstr || FlushInstr == FlushFenceInstr;
+    return instrType == FlushInstr || instrType == FlushFenceInstr;
   }
 };
 
