@@ -23,7 +23,7 @@ class VarFinalizerParser {
 
   void fillWriteObjData() {
     for (auto* field : units.variables.getDataSet()) {
-      if (!field->isField())
+      if (!field->isField() || units.variables.inValidSet(field))
         continue;
 
       auto* obj = units.dbgInfo.getStructObj(field);

@@ -104,6 +104,8 @@ public:
   void insertObj(Variable* obj) {
     variables.insert(obj);
 
+    varToPairs[obj];
+
     dataSet.insert(obj);
   }
 
@@ -168,6 +170,12 @@ public:
     O << "variables: ";
     for (auto& variable : variables) {
       O << variable->getName() << ", ";
+    }
+    O << "\n";
+
+    O << "pair variables: ";
+    for (auto& pair : pairVariables) {
+      O << pair.getName() << ", ";
     }
     O << "\n";
 
