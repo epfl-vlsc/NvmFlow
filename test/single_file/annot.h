@@ -9,7 +9,7 @@
   __attribute((annotate("pair-" MACRO_TOSTRING(CHECKER))))
 
 // pointer checker
-#define p_ptr __attribute((annotate("FlushedPtr")))
+#define dur_field __attribute((annotate("DurableField")))
 
 #define skip_fnc __attribute((annotate("SkipCode")))
 #define nvm_fnc __attribute((annotate("NvmCode")))
