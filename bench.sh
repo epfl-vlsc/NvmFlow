@@ -8,7 +8,7 @@ TEST_NAME=$2 #under single file
 BASE_DIR=$(dirname $(realpath "$0"))
 BUILD_DIR="${BASE_DIR}/dfbuild"
 TEST_DIR="${BASE_DIR}/test"
-SINGLE_FILE_REPO=${TEST_DIR}/single_file
+SINGLE_FILE_REPO=${TEST_DIR}/bench_file
 
 LLVM_BASE_DIR=~/llvm_compiler8
 COMPILER_DIR=${LLVM_BASE_DIR}/bin
@@ -44,24 +44,6 @@ run_fullbuild(){
     run_make
 }
 
-create_ir(){
-	cd ${SINGLE_FILE_REPO}
-	make all -j$(nproc)
-	cd ${BASE_DIR}
-}
-
-create_ll(){
-	cd ${SINGLE_FILE_REPO}
-	make ll -j$(nproc)
-	cd ${BASE_DIR}
-}
-
-clean_ir(){
-	cd ${SINGLE_FILE_REPO}
-	make clean
-	cd ${BASE_DIR}
-}
-
 #--debug-pass=Structure
 run_tool(){
 		opt -analyze \
@@ -71,20 +53,13 @@ ${SINGLE_FILE_REPO}/${TEST_NAME}.bc
 
 #commands----------------------------------------------------
 if [ "$MODE" == "pair" ] || [ "$MODE" == "dur" ] || [ "$MODE" == "log" ] || [ "$MODE" == "exp" ];then
-	create_ir
 	run_make
 	run_tool
 elif [ "$MODE" == "make" ] ;then
 	run_make
 elif [ "$MODE" == "build" ] ;then
   run_fullbuild
-elif [ "$MODE" == "ir" ] ;then
-	create_ir
-elif [ "$MODE" == "ll" ] ;then
-	create_ll
-elif [ "$MODE" == "rem_ir" ] ;then
-	clean_ir
 else
-	echo "pair, log, dur, make, build, ir, rem_ir"
+	echo "pair, log, dur, make, build"
 fi
 #commands----------------------------------------------------

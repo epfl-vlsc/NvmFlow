@@ -92,6 +92,15 @@ void aliasanalysis() {
     */
 }
 
+void demangle(Module& M) {
+  auto f = M.getFunction("_ZN3Log10correctObjEv");
+  char buf[100];
+  size_t n;
+  int s;
+  itaniumDemangle(f->getName().str().c_str(), buf, &n, &s);
+  errs() << buf << " " << n << " " << s << "\n";
+}
+
 void types() {
   /*for (Instruction& I : instructions(*f)) {
       if (auto* ci = dyn_cast<CallInst>(&I)) {
@@ -131,22 +140,32 @@ void trav2() {
 void ExpPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
 
 bool ExpPass::runOnModule(Module& M) {
-  auto f = M.getFunction("_ZN3Log10correctObjEv");
-  char buf[100];
-  size_t n;
-  int s;
-  itaniumDemangle(f->getName().str().c_str(), buf, &n, &s);
-  errs() << buf << " " << n << " " << s << "\n";
-  
+  auto f = M.getFunction("_Z2m3P1AS0_");
+  auto f2 = M.getFunction("_Z2m1P1A");
+
+  AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+  auto& anders = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+  AAR.addAAResult(anders);
+  AliasSetTracker ast(AAR);
+  for (auto& BB : *f) {
+    ast.add(BB);
+  }
+  for (auto& BB : *f2) {
+    ast.add(BB);
+  }
+
+  ast.print(errs());
+
   return false;
 }
 
 void ExpPass::getAnalysisUsage(AnalysisUsage& AU) const {
   AU.addRequired<TargetLibraryInfoWrapperPass>();
-  // AU.addRequired<CFLSteensAAWrapperPass>();
   AU.addRequired<CFLAndersAAWrapperPass>();
+
+  // AU.addRequired<CFLSteensAAWrapperPass>();
   // AU.addRequired<AAResultsWrapperPass>();
-  AU.addRequired<MemorySSAWrapperPass>();
+  // AU.addRequired<MemorySSAWrapperPass>();
 
   AU.setPreservesAll();
 }
