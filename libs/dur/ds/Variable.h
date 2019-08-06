@@ -1,10 +1,9 @@
 #pragma once
 #include "Common.h"
-#include "data_util/StructElement.h"
+#include "data_util/VarElement.h"
 
 namespace llvm {
 
-using Variable = StructElement;
-
+using Variable = VarElement;
 
 } // namespace llvm

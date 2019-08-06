@@ -4,13 +4,12 @@
 #include "data_util/DbgInfo.h"
 
 namespace llvm {
-/*
+
 struct InstructionInfo {
   enum InstructionType {
     WriteInstr,
     FlushInstr,
     FlushFenceInstr,
-    VfenceInstr,
     PfenceInstr,
     IpInstr
   };
@@ -20,6 +19,7 @@ struct InstructionInfo {
   InstructionType iType;
   Instruction* instruction;
   Variable* variable;
+  Variable* loadedVariable;
 
   auto getName() const {
     auto name = std::string("info: ") + iStrs[(int)iType] + " ";
@@ -35,7 +35,15 @@ struct InstructionInfo {
 
   auto* getVariable() { return variable; }
 
-  auto* getInstruction() { return instruction; }
+  auto* getLoadedVariable() {
+    assert(loadedVariable);
+    return loadedVariable;
+  }
+
+  auto* getInstruction() {
+    assert(instruction);
+    return instruction;
+  }
 
   static bool isFlushBasedInstr(InstructionType instrType) {
     return instrType == FlushInstr || instrType == FlushFenceInstr;
@@ -48,27 +56,30 @@ public:
   using InstrType = InstructionInfo::InstructionType;
 
 private:
+  // store location of variables
+  std::set<Variable> allVariables;
+
+  // alias info
+  AliasSetTracker* ast;
+
   // active function
   Function* function;
 
   // used for lattice
   Vars variables;
+  Vars annots;
 
   // used for instruction processing
   std::map<Instruction*, InstructionInfo> instrToInfo;
 
-  // find variables related to field
-  std::set<PairVariable> pairVariables;
-  std::map<Variable*, std::set<PairVariable*>> varToPairs;
-
-  // used elements
-  std::set<Variable*> dataSet;
-  std::set<Variable*> validSet;
-
-  std::map<Variable*, Vars> writeObjMap;
-  std::map<Variable*, Vars> flushFieldMap;
-
 public:
+  ~FunctionVariables() {
+    assert(ast);
+    delete ast;
+  }
+
+  void setAliasSetTracker(AliasSetTracker* ast_) { ast = ast_; }
+
   void setFunction(Function* function_) {
     assert(function_);
     function = function_;
@@ -78,6 +89,8 @@ public:
     return instrToInfo.count(instr) > 0;
   }
 
+  void insertVariable() {}
+
   bool isIpInstruction(Instruction* instr) const {
     if (instrToInfo.count(instr)) {
       auto& info = instrToInfo.at(instr);
@@ -86,52 +99,9 @@ public:
     return false;
   }
 
-  void insertPair(Variable* data, Variable* valid, bool useDcl) {
-    variables.insert(data);
-    variables.insert(valid);
-
-    auto [pvIt, _] = pairVariables.emplace(data, valid, useDcl);
-    assert(pvIt != pairVariables.end());
-    auto* pairVariable = (PairVariable*)&(*pvIt);
-
-    varToPairs[data].insert(pairVariable);
-    varToPairs[valid].insert(pairVariable);
-
-    dataSet.insert(data);
-    validSet.insert(valid);
-  }
-
-  void insertObj(Variable* obj) {
-    variables.insert(obj);
-
-    varToPairs[obj];
-
-    dataSet.insert(obj);
-  }
-
-  auto& getDataSet() { return dataSet; }
-
-  auto& getValidSet() { return validSet; }
-
-  void insertWriteObj(Variable* field, Variable* obj) {
-    assert(field);
-    auto& writeObjs = writeObjMap[field];
-
-    if (obj)
-      writeObjs.insert(obj);
-  }
-
-  void insertFlushField(Variable* obj, Variable* field) {
-    assert(obj);
-    auto& flushFields = flushFieldMap[obj];
-
-    if (obj)
-      flushFields.insert(field);
-  }
-
-  void insertInstruction(InstrType instrType, Instruction* instr,
-                         StructElement* se) {
-    instrToInfo[instr] = {instrType, instr, se};
+  void insertInstruction(InstrType instrType, Instruction* instr, Variable* var,
+                         Variable* loadedVar) {
+    instrToInfo[instr] = {instrType, instr, var, loadedVar};
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -143,26 +113,11 @@ public:
 
   auto& getVariables() { return variables; }
 
-  auto& getPairs(Variable* var) {
-    assertInDs(varToPairs, var);
-    return varToPairs[var];
-  }
-
-  bool inDataSet(Variable* var) const { return dataSet.count(var); }
-
-  bool inValidSet(Variable* var) const { return validSet.count(var); }
+  auto* getAliasSetTracker() { return ast; }
 
   bool inVars(Variable* var) const { return variables.count(var); }
 
-  auto& getWriteObjs(Variable* field) {
-    assertInDs(writeObjMap, field);
-    return writeObjMap[field];
-  }
-
-  auto& getFlushFields(Variable* obj) {
-    assertInDs(flushFieldMap, obj);
-    return flushFieldMap[obj];
-  }
+  bool inAnnots(Variable* var) const { return annots.count(var); }
 
   void print(raw_ostream& O) const {
     O << "function: " << function->getName() << "\n";
@@ -173,46 +128,10 @@ public:
     }
     O << "\n";
 
-    O << "pair variables: ";
-    for (auto& pair : pairVariables) {
-      O << pair.getName() << ", ";
-    }
-    O << "\n";
-
     O << "inst to vars:---\n";
     for (auto& [i, ii] : instrToInfo) {
       O << "\t" << DbgInstr::getSourceLocation(i) << " " << ii.getName()
         << "\n";
-    }
-
-    O << "data: ";
-    for (auto* se : dataSet) {
-      O << se->getName() << ", ";
-    }
-    O << "\n";
-
-    O << "valid: ";
-    for (auto* se : validSet) {
-      O << se->getName() << ", ";
-    }
-    O << "\n";
-
-    O << "flush fields---\n";
-    for (auto& [obj, fields] : flushFieldMap) {
-      O << obj->getName() << " <-> ";
-      for (auto* field : fields) {
-        O << field->getName() << ", ";
-      }
-      O << "\n";
-    }
-
-    O << "write objs---\n";
-    for (auto& [field, objs] : writeObjMap) {
-      O << field->getName() << " <-> ";
-      for (auto* obj : objs) {
-        O << obj->getName() << ", ";
-      }
-      O << "\n";
     }
   }
 };
@@ -235,15 +154,15 @@ public:
     return activeFunction->getVariables();
   }
 
-  auto& getPairs(Variable* var) {
-    assert(activeFunction);
-    return activeFunction->getPairs(var);
-  }
-
   void setFunction(Function* function) {
     assert(function);
     activeFunction = &funcVars[function];
     activeFunction->setFunction(function);
+  }
+
+  void setAliasSetTracker(AliasSetTracker* ast) {
+    assert(activeFunction);
+    return activeFunction->setAliasSetTracker(ast);
   }
 
   bool isIpInstruction(Instruction* i) const {
@@ -256,25 +175,10 @@ public:
     return activeFunction->isUsedInstruction(i);
   }
 
-  void insertPair(Variable* data, Variable* valid, bool useDcl) {
+  void insertInstruction(InstrType instrType, Instruction* instr, Variable* var,
+                         Variable* loadedVar) {
     assert(activeFunction);
-    activeFunction->insertPair(data, valid, useDcl);
-  }
-
-  void insertInstruction(InstrType instrType, Instruction* instr,
-                         Variable* var) {
-    assert(activeFunction);
-    activeFunction->insertInstruction(instrType, instr, var);
-  }
-
-  void insertWriteObj(Variable* field, Variable* obj) {
-    assert(activeFunction);
-    activeFunction->insertWriteObj(field, obj);
-  }
-
-  void insertFlushField(Variable* obj, Variable* field) {
-    assert(activeFunction);
-    activeFunction->insertFlushField(obj, field);
+    activeFunction->insertInstruction(instrType, instr, var, loadedVar);
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -282,30 +186,14 @@ public:
     return activeFunction->getInstructionInfo(i);
   }
 
-  void insertObj(Variable* obj) {
+  auto* getAliasSetTracker() {
     assert(activeFunction);
-    return activeFunction->insertObj(obj);
-  }
-
-  bool inDataSet(Variable* var) const { return activeFunction->inDataSet(var); }
-
-  bool inValidSet(Variable* var) const {
-    return activeFunction->inValidSet(var);
+    return activeFunction->getAliasSetTracker();
   }
 
   bool inVars(Variable* var) const { return activeFunction->inVars(var); }
 
-  auto& getDataSet() { return activeFunction->getDataSet(); }
-
-  auto& getValidSet() { return activeFunction->getValidSet(); }
-
-  auto& getWriteObjs(Variable* var) {
-    return activeFunction->getWriteObjs(var);
-  }
-
-  auto& getFlushFields(Variable* var) {
-    return activeFunction->getFlushFields(var);
-  }
+  bool inAnnots(Variable* var) const { return activeFunction->inAnnots(var); }
 };
- */
+
 } // namespace llvm
