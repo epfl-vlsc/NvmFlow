@@ -22,8 +22,8 @@
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DebugLoc.h>
 
-#include "llvm/Analysis/MemoryLocation.h"
-#include "llvm/Analysis/MemorySSA.h"
+#include "llvm/Analysis/AliasSetTracker.h"
+#include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 
 #include <array>
 #include <cassert>

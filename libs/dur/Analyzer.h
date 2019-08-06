@@ -1,0 +1,45 @@
+#pragma once
+
+#include "Common.h"
+
+#include "data_util/DbgInfo.h"
+#include "ds/Units.h"
+#include "preprocess/Parser.h"
+//#include "state/StateMachine.h"
+
+namespace llvm {
+
+class Analyzer {
+  Module& M;
+  AAResults& AAR;
+  Units units;
+
+public:
+  Analyzer(Module& M_, AAResults& AAR_) : M(M_), AAR(AAR_), units(M_) {
+    parse();
+
+    // dataflow();
+  }
+  /*
+    void dataflow() {
+      StateMachine stateMachine(M, units);
+      for (auto* function : stateMachine.getAnalyzedFunctions()) {
+        stateMachine.analyze(function);
+      }
+    }
+  */
+  void parse() {
+#ifdef DBGMODE
+    units.printDbgInfo(errs());
+#endif
+
+    Parser parser(M, units);
+#ifdef DBGMODE
+    units.printFunctions(errs());
+#endif
+  }
+
+  void report() {}
+};
+
+} // namespace llvm
