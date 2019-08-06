@@ -44,6 +44,18 @@ run_fullbuild(){
     run_make
 }
 
+create_ll(){
+	cd ${SINGLE_FILE_REPO}
+	make ll -j$(nproc)
+	cd ${BASE_DIR}
+}
+
+clean_ir(){
+	cd ${SINGLE_FILE_REPO}
+	make clean
+	cd ${BASE_DIR}
+}
+
 #--debug-pass=Structure
 run_tool(){
 		opt -analyze \
@@ -59,7 +71,11 @@ elif [ "$MODE" == "make" ] ;then
 	run_make
 elif [ "$MODE" == "build" ] ;then
   run_fullbuild
+elif [ "$MODE" == "ir" ] ;then
+	create_ll
+elif [ "$MODE" == "rem_ir" ] ;then
+	clean_ir
 else
-	echo "pair, log, dur, make, build"
+	echo "pair, log, dur, make, build, ir, rem_ir"
 fi
 #commands----------------------------------------------------
