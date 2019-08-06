@@ -130,8 +130,8 @@ public:
   }
 
   void insertInstruction(InstrType instrType, Instruction* instr,
-                         StructElement* se) {
-    instrToInfo[instr] = {instrType, instr, se};
+                         Variable* var) {
+    instrToInfo[instr] = {instrType, instr, var};
   }
 
   auto* getInstructionInfo(Instruction* i) {
