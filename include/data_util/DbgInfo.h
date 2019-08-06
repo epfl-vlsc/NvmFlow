@@ -65,6 +65,9 @@ class DbgInfo {
 
   std::map<StructElement*, std::set<StructElement*>> fieldMap;
 
+  // load/store/call(new) to var name
+  std::map<Instruction*, DILocalVariable*> varNameMap;
+
   void initFunctionNames() {
     for (auto* f : finder.subprograms()) {
       auto realName = f->getName();
@@ -85,7 +88,7 @@ class DbgInfo {
     }
   }
 
-  void initVariableNames(IdxStrToElement& idxStrMap) {
+  void initFieldNames(IdxStrToElement& idxStrMap) {
     for (const DIType* T : finder.types()) {
       if (auto* ST = dyn_cast<DICompositeType>(T)) {
         StringRef typeName = ST->getName();
@@ -166,16 +169,46 @@ class DbgInfo {
     }
   }
 
+  template <typename Functions> void initVariableNames(Functions& functions) {
+    for (auto* f : functions) {
+      for (Instruction& I : instructions(*f)) {
+        if (auto* ddi = dyn_cast<DbgDeclareInst>(&I)) {
+          // check if var name exists
+          if (!ddi->getAddress() || !ddi->getVariable()) {
+            continue;
+          }
+
+          // ensure it store/load
+          auto* i = ddi->getNextNonDebugInstruction();
+          assert(isa<StoreInst>(i) || isa<LoadInst>(i) || isa<CallInst>(i));
+
+          auto* varName = ddi->getVariable();
+          assert(varName);
+
+          varNameMap[i] = varName;
+        }
+      }
+    }
+  }
+
   Module& M;
 
 public:
   DbgInfo(Module& M_) : M(M_) {
+    // must do initVariableNames outside the constructor for efficiency
+
+    // function names
     finder.processModule(M);
     initFunctionNames();
 
+    // field and type names
     IdxStrToElement idxStrMap;
     initTypes(idxStrMap);
-    initVariableNames(idxStrMap);
+    initFieldNames(idxStrMap);
+  }
+
+  template <typename Functions> void finalizeInit(Functions& functions) {
+    initVariableNames(functions);
   }
 
   StringRef getFunctionName(StringRef mangledName) {
@@ -237,6 +270,13 @@ public:
         O << field->getName() << ",";
       }
       O << "|,";
+    }
+    O << "\n";
+
+    O << "local var names: ";
+    for (auto& [i, var] : varNameMap) {
+      O << "|" << DbgInstr::getSourceLocation(i) << "=" << var->getName()
+        << "|,";
     }
     O << "\n\n";
   }
