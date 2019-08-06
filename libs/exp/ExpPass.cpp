@@ -137,24 +137,67 @@ void trav2() {
   } */
 }
 
+void trav3() {
+  /*
+  auto f = M.getFunction("_Z2m3P1AS0_");
+    auto f2 = M.getFunction("_Z2m1P1A");
+
+    AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+    auto& anders = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+    AAR.addAAResult(anders);
+    AliasSetTracker ast(AAR);
+    for (auto& BB : *f) {
+      ast.add(BB);
+    }
+    for (auto& BB : *f2) {
+      ast.add(BB);
+    }
+
+    ast.print(errs());
+  */
+}
+
 void ExpPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
 
 bool ExpPass::runOnModule(Module& M) {
-  auto f = M.getFunction("_Z2m3P1AS0_");
-  auto f2 = M.getFunction("_Z2m1P1A");
+  AllocaInst* alloca = nullptr;
+  auto* f = M.getFunction("_ZN3Dur12correctMultiEPiS0_");
+  for (Instruction& I : instructions(*f)) {
+    if (auto* ddi = dyn_cast<DbgDeclareInst>(&I)) {
+      auto* op = ddi->getNextNonDebugInstruction();
+      auto* addr = ddi->getAddress();
+      auto* type = addr->getType();
+
+      alloca = dyn_cast<AllocaInst>(addr);
+      if (type->isPointerTy()) {
+        errs() << "ptr\n";
+      }
+      auto* var = ddi->getVariable();
+      errs() << *op << " " << var->getName() << "\n";
+      errs() << *ddi << "\n";
+    }
+  }
 
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
   auto& anders = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(anders);
   AliasSetTracker ast(AAR);
-  for (auto& BB : *f) {
-    ast.add(BB);
-  }
-  for (auto& BB : *f2) {
-    ast.add(BB);
-  }
 
+  for (Instruction& I : instructions(*f)) {
+    ast.add(&I);
+  }
   ast.print(errs());
+
+  errs() << "\n";
+  errs() << *alloca << "\n";
+  for (Instruction& I : instructions(*f)) {
+    
+    if (auto* si = dyn_cast<StoreInst>(&I)) {
+      auto memLoc = MemoryLocation::get(si);
+      auto& aliasSet = ast.getAliasSetFor(memLoc);
+      errs() << &aliasSet << "\n";
+    }
+  }
 
   return false;
 }
