@@ -25,6 +25,27 @@ public:
 
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
 
+  void getUnitFunctions(Function* f, std::set<Function*>& visited) {
+    visited.insert(f);
+
+    for (auto& I : instructions(*f)) {
+      if (auto* ci = dyn_cast<CallInst>(&I)) {
+        auto* callee = ci->getCalledFunction();
+        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
+                    !skipFunction(callee);
+        if (doIp) {
+          getUnitFunctions(callee, visited);
+        }
+      }
+    }
+  }
+
+  auto getUnitFunctions(Function* f) {
+    std::set<Function*> visited;
+    getUnitFunctions(f, visited);
+    return visited;
+  }
+
   bool skipFunction(Function* f) const {
     return isPfenceFunction(f) || isVfenceFunction(f) || isFlushFunction(f) ||
            isFlushFenceFunction(f) || isSkippedFunction(f);

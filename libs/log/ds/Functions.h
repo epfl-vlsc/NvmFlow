@@ -22,10 +22,30 @@ private:
   bool useTx;
 
 public:
-  Functions()
-      : analyzedFunctions(LOG), skippedFunctions(SKIP), useTx(false) {}
+  Functions() : analyzedFunctions(LOG), skippedFunctions(SKIP), useTx(false) {}
 
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
+
+  void getUnitFunctions(Function* f, std::set<Function*>& visited) {
+    visited.insert(f);
+
+    for (auto& I : instructions(*f)) {
+      if (auto* ci = dyn_cast<CallInst>(&I)) {
+        auto* callee = ci->getCalledFunction();
+        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
+                    !skipFunction(callee);
+        if (doIp) {
+          getUnitFunctions(callee, visited);
+        }
+      }
+    }
+  }
+
+  auto getUnitFunctions(Function* f) {
+    std::set<Function*> visited;
+    getUnitFunctions(f, visited);
+    return visited;
+  }
 
   bool skipFunction(Function* f) const {
     return isLoggingFunction(f) || isTxbeginFunction(f) || isTxendFunction(f) ||
@@ -40,7 +60,9 @@ public:
     return skippedFunctions.count(f);
   }
 
-  bool isLoggingFunction(Function* f) const { return loggingFunctions.count(f); }
+  bool isLoggingFunction(Function* f) const {
+    return loggingFunctions.count(f);
+  }
 
   bool isTxbeginFunction(Function* f) const {
     return txbeginFunctions.count(f);
@@ -74,7 +96,7 @@ public:
     analyzedFunctions.print(O);
     skippedFunctions.print(O);
     loggingFunctions.print(O);
-    if(useTx){
+    if (useTx) {
       txbeginFunctions.print(O);
       txendFunctions.print(O);
     }
