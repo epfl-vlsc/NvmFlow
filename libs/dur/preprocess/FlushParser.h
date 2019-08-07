@@ -12,8 +12,25 @@ class FlushParser {
   void insertFlush(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      auto accessInfo = AccessType::getAccessInfo(arg0Instr);
-      errs() << accessInfo.getName() << "\n";
+      auto [type, idx, varInfo] = AccessType::getAccessInfo(arg0Instr);
+
+      auto* ast = units.variables.getAliasSetTracker();
+      auto* aliasSet = AccessType::getAliasSet(ast, arg0Instr);
+
+      if (!aliasSet) {
+        // annotated field, ignore
+        return;
+      }
+
+      // obj, field
+      // insert lattice variable
+      units.variables.insertVariable(aliasSet);
+
+      // insert variable
+      auto* se = units.dbgInfo.getStructElementFromType(type, idx);
+      auto* svar = units.variables.insertSingleVariable(type, se, false, aliasSet);
+
+      units.variables.insertInstruction(instrType, ci, svar, nullptr);
     }
   }
 
@@ -24,6 +41,9 @@ class FlushParser {
       insertFlush(ci, InstructionInfo::FlushInstr);
     } else if (units.functions.isFlushFenceFunction(callee)) {
       insertFlush(ci, InstructionInfo::FlushFenceInstr);
+    } else if (units.functions.isPfenceFunction(callee)) {
+      units.variables.insertInstruction(InstructionInfo::PfenceInstr, ci,
+                                        nullptr, nullptr);
     }
   }
 

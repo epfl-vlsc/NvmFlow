@@ -11,11 +11,10 @@ namespace llvm {
 
 class Analyzer {
   Module& M;
-  AAResults& AAR;
   Units units;
 
 public:
-  Analyzer(Module& M_, AAResults& AAR_) : M(M_), AAR(AAR_), units(M_) {
+  Analyzer(Module& M_, AAResults& AAR_) : M(M_), units(M_, AAR_) {
     parse();
 
     // dataflow();
@@ -29,12 +28,10 @@ public:
     }
   */
   void parse() {
+    Parser parser(M, units);
+
 #ifdef DBGMODE
     units.printDbgInfo(errs());
-#endif
-
-    Parser parser(M, units);
-#ifdef DBGMODE
     units.printFunctions(errs());
 #endif
   }

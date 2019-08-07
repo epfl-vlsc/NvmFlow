@@ -4,6 +4,8 @@
 
 namespace llvm {
 
-using Variable = VarElement;
+using Variable = AliasSet;
+
+using SingleVariable = VarElement;
 
 } // namespace llvm

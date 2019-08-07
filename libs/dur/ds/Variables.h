@@ -18,8 +18,8 @@ struct InstructionInfo {
                                           "vfence", "pfence", "ip"};
   InstructionType iType;
   Instruction* instruction;
-  Variable* variable;
-  Variable* loadedVariable;
+  SingleVariable* variable;
+  SingleVariable* loadedVariable;
 
   auto getName() const {
     auto name = std::string("info: ") + iStrs[(int)iType] + " ";
@@ -57,7 +57,9 @@ public:
 
 private:
   // store location of variables
-  std::set<Variable> allVariables;
+  std::set<SingleVariable> singleVariables;
+  std::set<SingleVariable*> annots;
+  std::map<Variable*, std::set<SingleVariable*>> tracked;
 
   // alias info
   AliasSetTracker* ast;
@@ -67,7 +69,6 @@ private:
 
   // used for lattice
   Vars variables;
-  Vars annots;
 
   // used for instruction processing
   std::map<Instruction*, InstructionInfo> instrToInfo;
@@ -89,7 +90,22 @@ public:
     return instrToInfo.count(instr) > 0;
   }
 
-  void insertVariable() {}
+  void insertVariable(Variable* var) { variables.insert(var); }
+
+  auto* insertSingleVariable(Type* objType, StructElement* se, bool isAnnotated,
+                             AliasSet* aliasSet) {
+    auto varInfo = SingleVariable::getVarInfo(se, isAnnotated);
+    auto [sit, _] = singleVariables.emplace(objType, se, varInfo, aliasSet);
+    auto* svar = (SingleVariable*)&(*sit);
+    if (isAnnotated) {
+      annots.insert(svar);
+    } else {
+      assert(aliasSet);
+      tracked[aliasSet].insert(svar);
+    }
+
+    return svar;
+  }
 
   bool isIpInstruction(Instruction* instr) const {
     if (instrToInfo.count(instr)) {
@@ -99,8 +115,8 @@ public:
     return false;
   }
 
-  void insertInstruction(InstrType instrType, Instruction* instr, Variable* var,
-                         Variable* loadedVar) {
+  void insertInstruction(InstrType instrType, Instruction* instr,
+                         SingleVariable* var, SingleVariable* loadedVar) {
     instrToInfo[instr] = {instrType, instr, var, loadedVar};
   }
 
@@ -117,14 +133,14 @@ public:
 
   bool inVars(Variable* var) const { return variables.count(var); }
 
-  bool inAnnots(Variable* var) const { return annots.count(var); }
+  bool inAnnots(SingleVariable* var) const { return annots.count(var); }
 
   void print(raw_ostream& O) const {
     O << "function: " << function->getName() << "\n";
 
-    O << "variables: ";
+    O << "variables:";
     for (auto& variable : variables) {
-      O << variable->getName() << ", ";
+      variable->print(O);
     }
     O << "\n";
 
@@ -175,8 +191,20 @@ public:
     return activeFunction->isUsedInstruction(i);
   }
 
-  void insertInstruction(InstrType instrType, Instruction* instr, Variable* var,
-                         Variable* loadedVar) {
+  void insertVariable(Variable* var) {
+    assert(activeFunction);
+    return activeFunction->insertVariable(var);
+  }
+
+  auto* insertSingleVariable(Type* objType, StructElement* se, bool isAnnotated,
+                             AliasSet* aliasSet) {
+    assert(activeFunction);
+    return activeFunction->insertSingleVariable(objType, se, isAnnotated,
+                                                aliasSet);
+  }
+
+  void insertInstruction(InstrType instrType, Instruction* instr,
+                         SingleVariable* var, SingleVariable* loadedVar) {
     assert(activeFunction);
     activeFunction->insertInstruction(instrType, instr, var, loadedVar);
   }
@@ -193,7 +221,9 @@ public:
 
   bool inVars(Variable* var) const { return activeFunction->inVars(var); }
 
-  bool inAnnots(Variable* var) const { return activeFunction->inAnnots(var); }
+  bool inAnnots(SingleVariable* var) const {
+    return activeFunction->inAnnots(var);
+  }
 };
 
 } // namespace llvm
