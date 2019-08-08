@@ -6,33 +6,47 @@ namespace llvm {
 
 class VarElement {
 public:
-  enum VarType { Obj, Field, AnnotatedField, None };
-  static constexpr const char* VarTypeStr[] = {"Obj", "Field", "AnnotatedField",
+  enum VarInfo { Obj, Field, AnnotatedField, None };
+  static constexpr const char* VarInfoStr[] = {"Obj", "Field", "AnnotatedField",
                                                "None"};
 
 private:
   Type* objType;
   StructElement* se;
-  VarType varType;
+  VarInfo varInfo;
   AliasSet* aliasSet;
 
   std::set<VarElement*> writeSet;
   std::set<VarElement*> flushSet;
 
 public:
-  VarElement(Type* objType_, StructElement* se_, VarType varType_,
+  VarElement(Type* objType_, StructElement* se_, VarInfo varInfo_,
              AliasSet* aliasSet_)
-      : objType(objType_), se(se_), varType(varType_), aliasSet(aliasSet_) {}
+      : objType(objType_), se(se_), varInfo(varInfo_), aliasSet(aliasSet_) {}
 
   bool isFieldType() const {
-    return varType == Field || varType == AnnotatedField;
+    return varInfo == Field || varInfo == AnnotatedField;
   }
 
-  bool isObj() const { return varType == Obj; }
+  static auto getVarInfo(StructElement* se, bool isAnnotated) {
+    if (isAnnotated) {
+      return AnnotatedField;
+    } else if (!se || se->isObj()) {
+      return Obj;
+    } else if (se->isField()) {
+      return Field;
+    } else {
+      errs() << se->getName() << " " << (int)isAnnotated;
+      report_fatal_error("wrong se, annotated");
+      return None;
+    }
+  }
 
-  bool isField() const { return varType == Field; }
+  bool isObj() const { return varInfo == Obj; }
 
-  bool isAnnotatedField() const { return varType == AnnotatedField; }
+  bool isField() const { return varInfo == Field; }
+
+  bool isAnnotatedField() const { return varInfo == AnnotatedField; }
 
   auto getName() const {
     std::string name;
@@ -40,17 +54,17 @@ public:
     name += getTypeName(objType) + " ";
     if (se)
       name += se->getName() + " ";
-    name += VarTypeStr[(int)varType];
+    name += VarInfoStr[(int)varInfo];
     return name;
   }
 
   bool operator<(const VarElement& X) const {
-    return objType < X.objType || se < X.se || varType < X.varType ||
+    return objType < X.objType || se < X.se || varInfo < X.varInfo ||
            aliasSet < X.aliasSet;
   }
 
   bool operator==(const VarElement& X) const {
-    return objType == X.objType && se == X.se && varType == X.varType &&
+    return objType == X.objType && se == X.se && varInfo == X.varInfo &&
            aliasSet == X.aliasSet;
   }
 };

@@ -242,6 +242,14 @@ public:
     return getStructElement(tempSe);
   }
 
+  auto* getStructElementFromType(Type* type, int idx) {
+    if (auto* st = dyn_cast<StructType>(type)) {
+      StructElement tempSe{st, idx};
+      return getStructElement(tempSe);
+    }
+    return (StructElement*)nullptr;
+  }
+
   auto* getStructObj(StructElement* se) {
     auto tempObjSe = se->getObj();
     assertInDs(elements, tempObjSe);
