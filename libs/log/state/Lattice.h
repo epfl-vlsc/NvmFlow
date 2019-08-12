@@ -5,26 +5,26 @@ namespace llvm {
 
 struct TxValue {
   using TxState = int;
-  TxState tx;
+  TxState state;
 
-  TxValue(int tx_) : tx(tx_) {}
+  TxValue(int state_) : state(state_) {}
 
-  TxValue(const TxValue& X) : tx(X.tx) {}
+  TxValue(const TxValue& X) : state(X.state) {}
 
-  TxValue() : tx(0) {}
+  TxValue() : state(0) {}
 
-  bool operator<(const TxValue& X) const { return tx < X.tx; }
+  bool operator<(const TxValue& X) const { return state < X.state; }
 
-  bool operator==(const TxValue& X) const { return tx == X.tx; }
+  bool operator==(const TxValue& X) const { return state == X.state; }
 
   void meetValue(const TxValue& X) {
-    if (tx > X.tx) {
-      tx = X.tx;
+    if (state > X.state) {
+      state = X.state;
     }
   }
 
   auto getName() const {
-    auto name = std::string("tx:") + std::to_string(tx);
+    auto name = std::string("tx:") + std::to_string(state);
     return name;
   }
 
@@ -32,29 +32,29 @@ struct TxValue {
 };
 
 struct LogValue {
-  enum LogState { Unseen, Logged };
-  static const constexpr char* LogStr[] = {"Unseen", "Logged"};
+  enum LogState { Logged, Unseen };
+  static const constexpr char* LogStr[] = {"Logged", "Unseen"};
 
-  LogState log;
+  LogState state;
 
-  LogValue(LogState log_) : log(log_) {}
+  LogValue(LogState state_) : state(state_) {}
 
-  LogValue(const LogValue& X) : log(X.log) {}
+  LogValue(const LogValue& X) : state(X.state) {}
 
-  LogValue() : log(Unseen) {}
+  LogValue() : state(Unseen) {}
 
-  bool operator<(const LogValue& X) const { return log < X.log; }
+  bool operator<(const LogValue& X) const { return state < X.state; }
 
-  bool operator==(const LogValue& X) const { return log == X.log; }
+  bool operator==(const LogValue& X) const { return state == X.state; }
 
   void meetValue(const LogValue& X) {
-    if (log > X.log) {
-      log = X.log;
+    if (state > X.state) {
+      state = X.state;
     }
   }
 
   auto getName() const {
-    auto name = std::string("log:") + LogStr[(int)log];
+    auto name = std::string("log:") + LogStr[(int)state];
     return name;
   }
 
@@ -110,32 +110,32 @@ public:
 
   static Lattice getLogged() {
     Lattice lattice(LogType);
-    lattice.val.logValue.log = LogValue::Logged;
+    lattice.val.logValue.state = LogValue::Logged;
     return lattice;
   }
 
   static Lattice getBeginTx(const Lattice& X) {
     assert(X.type == TxType);
     Lattice lattice(X);
-    lattice.val.txValue.tx += 1;
+    lattice.val.txValue.state += 1;
     return lattice;
   }
 
   static Lattice getEndTx(const Lattice& X) {
     assert(X.type == TxType);
     Lattice lattice(X);
-    lattice.val.txValue.tx -= 1;
+    lattice.val.txValue.state -= 1;
     return lattice;
   }
 
   bool inTx() const {
     assert(type == TxType);
-    return val.txValue.tx > 0;
+    return val.txValue.state > 0;
   }
 
   bool isLogged() const {
     assert(type == LogType);
-    return val.logValue.log == LogValue::Logged;
+    return val.logValue.state == LogValue::Logged;
   }
 
   auto getName() const {

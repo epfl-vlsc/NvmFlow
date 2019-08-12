@@ -13,32 +13,34 @@
 namespace llvm {
 
 class StateMachine {
+public:
+  using AbstractState = AbstractState;
+
 private:
   Units& units;
   BugReporter breporter;
   Transfer transfer;
 
 public:
-  using AbstractState = AbstractState;
-
-  StateMachine(Module& M, Units& units_)
-      : units(units_), transfer(M, units_, breporter) {}
-
-  void setUnit(Function* function) {}
+  StateMachine(Module& M_, Units& units_)
+      : units(units_), breporter(units_), transfer(M_, units_, breporter) {}
 
   void analyze(Function* function) {
     units.setActiveFunction(function);
-    breporter.initUnit(function);
 
 #ifdef DBGMODE
-    units.printActiveFunction(errs());
+    errs() << "\n\n";
+    units.printVariables(errs());
 #endif
+
+    breporter.initUnit(function);
 
     DataflowAnalysis dataflow(function, *this);
 
 #ifdef DBGMODE
     dataflow.print(errs());
 #endif
+
     breporter.print(errs());
   }
 
@@ -50,8 +52,8 @@ public:
     return transfer.handleInstruction(i, state);
   }
 
-  bool isIpaInstruction(Instruction* i) const {
-    return units.activeFunction->isCallInstruction(i);
+  bool isIpInstruction(Instruction* i) const {
+    return units.isIpInstruction(i);
   }
 
   auto& getAnalyzedFunctions() { return units.getAnalyzedFunctions(); }

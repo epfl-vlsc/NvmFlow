@@ -26,9 +26,8 @@ public:
   void analyze(Function* function) {
     units.setActiveFunction(function);
 
-    errs() << "\n\n";
-
 #ifdef DBGMODE
+    errs() << "\n\n";
     units.printVariables(errs());
 #endif
 

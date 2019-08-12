@@ -11,27 +11,20 @@ class FieldParser {
 
   using InstructionType = typename InstructionInfo::InstructionType;
 
-  Units& units;
-
-  auto* getVar(IntrinsicInst* ii) {
-    auto [st, idx] = getFieldInfo(ii);
+  auto* getVar(Instruction* i) {
+    auto [st, idx] = getAnnotatedField(i);
     assert(st);
     return units.dbgInfo.getStructElement(st, idx);
   }
 
   auto* getObj(Variable* var) { return units.dbgInfo.getStructObj(var); }
 
-  auto* insertVar(Instruction* i) {
-    auto* ii = getII(i);
-    if (!ii) {
-      return (Variable*)nullptr;
-    }
-
-    if (auto [annotation, hasAnnot] = isAnnotatedField(ii, FIELD_ANNOT);
-        annotation.equals(FIELD_ANNOT) && hasAnnot) {
+  void insertVar(Instruction* i, InstructionType instrType) {
+    if (auto [hasAnnot, annotation] = getAnnotatedField(i, FIELD_ANNOT);
+        hasAnnot && annotation.equals(FIELD_ANNOT)) {
 
       // find var
-      auto* var = getVar(ii);
+      auto* var = getVar(i);
 
       // insert to ds
       units.variables.insertVariable(var);
@@ -40,30 +33,23 @@ class FieldParser {
       auto* obj = getObj(var);
       units.variables.insertObj(obj);
 
-      return var;
+      auto* diVar = getDILocalVariable(i);
+
+      if (InstructionInfo::isUsedInstr(instrType))
+        units.variables.insertInstruction(i, instrType, var, diVar);
     }
-
-    return (Variable*)nullptr;
   }
 
-  void insertInstructionIfVar(InstructionType instrType, Instruction* i,
-                                Variable* var) {
-    if (var)
-      units.variables.insertInstruction(instrType, i, var);
-  }
-
-  void insertRead(LoadInst* li) { insertVar(li); }
+  void insertRead(LoadInst* li) { insertVar(li, InstructionType::None); }
 
   void insertWrite(StoreInst* si) {
-    auto* var = insertVar(si);
-    insertInstructionIfVar(InstructionInfo::WriteInstr, si, var);
+    insertVar(si, InstructionType::WriteInstr);
   }
 
-  void insertLogging(InstructionInfo::InstructionType instrType, CallInst* ci) {
+  void insertLogging(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      auto* var = insertVar(arg0Instr);
-      insertInstructionIfVar(instrType, ci, var);
+      insertVar(arg0Instr, instrType);
     }
   }
 
@@ -74,15 +60,13 @@ class FieldParser {
         units.functions.isSkippedFunction(callee)) {
       return;
     } else if (units.functions.isTxbeginFunction(callee)) {
-      units.variables.insertInstruction(InstructionInfo::TxBegInstr, ci,
-                                        nullptr);
+      units.variables.insertInstruction(ci, InstructionInfo::TxBegInstr);
     } else if (units.functions.isTxendFunction(callee)) {
-      units.variables.insertInstruction(InstructionInfo::TxEndInstr, ci,
-                                        nullptr);
+      units.variables.insertInstruction(ci, InstructionInfo::TxEndInstr);
     } else if (units.functions.isLoggingFunction(callee)) {
-      insertLogging(InstructionInfo::LoggingInstr, ci);
+      insertLogging(ci, InstructionInfo::LoggingInstr);
     } else {
-      units.variables.insertInstruction(InstructionInfo::IpInstr, ci, nullptr);
+      units.variables.insertInstruction(ci, InstructionInfo::IpInstr);
     }
   }
 
@@ -96,30 +80,21 @@ class FieldParser {
     }
   }
 
-  void insertFields(Function* function, std::set<Function*>& visited) {
-    visited.insert(function);
-
-    for (auto& I : instructions(*function)) {
-      auto* i = &I;
-      insertI(i);
-
-      if (auto* ci = dyn_cast<CallInst>(i)) {
-        auto* callee = ci->getCalledFunction();
-        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
-                    !units.functions.skipFunction(callee);
-        if (doIp) {
-          insertFields(callee, visited);
-        }
+  void insertFields(Function* function) {
+    for (auto* f : units.functions.getUnitFunctions(function)) {
+      for (auto& I : instructions(*f)) {
+        insertI(&I);
       }
     }
   }
+
+  Units& units;
 
 public:
   FieldParser(Units& units_) : units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      std::set<Function*> visited;
-      insertFields(function, visited);
+      insertFields(function);
     }
   }
 };

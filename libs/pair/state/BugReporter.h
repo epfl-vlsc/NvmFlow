@@ -42,7 +42,7 @@ class BugReporter {
 
       name += "Double flush " + ii->getVariableName();
       name += " at " + ii->getInstructionName() + "\n";
-      name += "\tLogged before " + previi->getVariableName();
+      name += "\tFlushed before " + previi->getVariableName();
       name += " at " + previi->getInstructionName() + "\n";
 
       return name;
@@ -55,6 +55,10 @@ class BugReporter {
         return doubleFlushBugStr();
     }
   };
+
+  using BugDataList = std::vector<BugData>;
+  using LastLocationMap = std::map<Variable*, Instruction*>;
+  using BuggedVars = std::set<Variable*>;
 
   void deleteStructures() {
     if (bugDataList) {
@@ -73,10 +77,6 @@ class BugReporter {
     lastLocationMap = new LastLocationMap();
     buggedVars = new BuggedVars();
   }
-
-  using BugDataList = std::vector<BugData>;
-  using LastLocationMap = std::map<Variable*, Instruction*>;
-  using BuggedVars = std::set<Variable*>;
 
   // data structures
   Units& units;
@@ -140,7 +140,7 @@ public:
         buggedVars->insert(pairVar);
 
         auto* pairInst = getLastLocation(pairVar);
-        auto *previi = units.variables.getInstructionInfo(pairInst);
+        auto* previi = units.variables.getInstructionInfo(pairInst);
 
         auto bugData = BugData::getNotCommitted(ii, previi);
         bugDataList->push_back(bugData);
@@ -178,9 +178,10 @@ public:
     auto& val = state[var];
 
     if (val.isDclFlushFlush()) {
+      buggedVars->insert(var);
 
       auto* prevInstr = getLastLocation(var);
-      auto *previi = units.variables.getInstructionInfo(prevInstr);
+      auto* previi = units.variables.getInstructionInfo(prevInstr);
 
       auto bugData = BugData::getDoubleFlush(ii, previi);
       bugDataList->push_back(bugData);

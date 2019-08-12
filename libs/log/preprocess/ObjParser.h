@@ -7,17 +7,12 @@
 namespace llvm {
 
 class ObjParser {
-  Units& units;
+  using InstructionType = typename InstructionInfo::InstructionType;
 
-  auto* getDataVar(Instruction* i, InstructionInfo::InstructionType instrType) {
+  auto* getVar(Instruction* i, InstructionType instrType) {
     if (InstructionInfo::isLoggingBasedInstr(instrType)) {
       // obj
-      auto* uncastedArg0 = getUncasted(i);
-      auto* argType = uncastedArg0->getType();
-      // must be ptr
-      assert(argType->isPointerTy());
-      auto* objType = argType->getPointerElementType();
-      if (auto* st = dyn_cast<StructType>(objType)) {
+      if (auto* st = getObj(i)) {
         auto* obj = units.dbgInfo.getStructElement(st);
         assert(obj);
         if (units.variables.inVars(obj)) {
@@ -29,17 +24,14 @@ class ObjParser {
     return (Variable*)nullptr;
   }
 
-  void insertVar(Instruction* i, InstructionInfo::InstructionType instrType) {
-    auto* var = getDataVar(i, instrType);
-
-    if (!var)
-      return;
-
-    // insert to ds
-    units.variables.insertInstruction(instrType, i, var);
+  void insertVar(Instruction* i, InstructionType instrType) {
+    if (auto* var = getVar(i, instrType)) {
+      auto* diVar = getDILocalVariable(i);
+      units.variables.insertInstruction(i, instrType, var, diVar);
+    }
   }
 
-  void insertLogging(CallInst* ci, InstructionInfo::InstructionType instrType) {
+  void insertLogging(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
       insertVar(arg0Instr, instrType);
@@ -63,32 +55,23 @@ class ObjParser {
     }
   }
 
-  void insertFields(Function* function, std::set<Function*>& visited) {
-    visited.insert(function);
-
-    for (auto& I : instructions(*function)) {
-      auto* i = &I;
-
-      if (!units.variables.isUsedInstruction(i))
-        insertI(i);
-
-      if (auto* ci = dyn_cast<CallInst>(i)) {
-        auto* callee = ci->getCalledFunction();
-
-        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
-                    !units.functions.skipFunction(callee);
-        if (doIp)
-          insertFields(callee, visited);
+  void insertFields(Function* function) {
+    for (auto* f : units.functions.getUnitFunctions(function)) {
+      for (auto& I : instructions(*f)) {
+        auto* i = &I;
+        if (!units.variables.isUsedInstruction(i))
+          insertI(i);
       }
     }
   }
+
+  Units& units;
 
 public:
   ObjParser(Units& units_) : units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      std::set<Function*> visited;
-      insertFields(function, visited);
+      insertFields(function);
     }
   }
 };

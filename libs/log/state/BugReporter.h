@@ -7,59 +7,72 @@ namespace llvm {
 
 class BugReporter {
   struct BugData {
-    enum BugType { DoubleLog, OutsideTx, NotLogged };
-    Instruction* bugInstr;
-    Instruction* logInstr;
-    LatVar currentVar;
+    enum BugType { DoubleLogBug, NotCommittedBug, OutsideTxBug };
     BugType bugType;
+    InstructionInfo* ii;
+    InstructionInfo* previi;
 
-    static BugData getDoubleLogBug(Instruction* bugInstr_,
-                                   Instruction* logInstr_, LatVar currentVar_) {
-      return {bugInstr_, logInstr_, currentVar_, DoubleLog};
+    static BugData getDoubleLog(InstructionInfo* ii_,
+                                InstructionInfo* previi_) {
+      assert(ii_ && previi_);
+      return {DoubleLogBug, ii_, previi_};
     }
 
-    static BugData getOutsideTx(Instruction* bugInstr_, LatVar currentVar_) {
-      return {bugInstr_, nullptr, currentVar_, OutsideTx};
+    static BugData getNotCommitted(InstructionInfo* ii_) {
+      assert(ii_);
+      return {NotCommittedBug, ii_, nullptr};
     }
 
-    static BugData getNotLogged(Instruction* bugInstr_, LatVar currentVar_) {
-      return {bugInstr_, nullptr, currentVar_, NotLogged};
+    static BugData getOutsideTx(InstructionInfo* ii_) {
+      assert(ii_);
+      return {OutsideTxBug, ii_, nullptr};
     }
 
-    bool isDoubleLog() const { return bugType == DoubleLog; }
+    bool isDoubleLog() const { return bugType == DoubleLogBug; }
 
-    bool isOutsideTx() const { return bugType == OutsideTx; }
+    bool isNotCommitted() const { return bugType == NotCommittedBug; }
 
-    bool isNotLogged() const { return bugType == NotLogged; }
+    bool isOutsideTx() const { return bugType == OutsideTxBug; }
 
-    auto getMsg() const {
-      std::string msg;
-      msg.reserve(200);
+    auto doubleLogBugStr() const {
+      std::string name;
+      name.reserve(200);
 
-      switch (bugType) {
-      case DoubleLog:
-        msg += "Double log " + currentVar->getName();
-        break;
-      case OutsideTx:
-        msg += "Access to " + currentVar->getName() + " outside transaction";
-        break;
-      case NotLogged:
-        msg += currentVar->getName() += " is not logged";
-        break;
-      default: {
-        report_fatal_error("");
-        break;
-      }
-      }
+      name += "Double log " + ii->getVariableName();
+      name += " at " + ii->getInstructionName() + "\n";
+      name += "\tLogged before " + previi->getVariableName();
+      name += " at " + previi->getInstructionName() + "\n";
 
-      msg += " at " + getSourceLocation(bugInstr);
-      if (bugType == DoubleLog) {
-        msg += " at " + getSourceLocation(logInstr);
-      }
+      return name;
+    }
 
-      msg += "\n";
+    auto notCommittedBugStr() const {
+      std::string name;
+      name.reserve(200);
 
-      return msg;
+      name += "Commit " + ii->getVariableName();
+      name += " at " + ii->getInstructionName() + "\n";
+
+      return name;
+    }
+
+    auto outsideTxBugStr() const {
+      std::string name;
+      name.reserve(200);
+
+      name += "Access to " + ii->getVariableName();
+      name += " outside tx at " + ii->getInstructionName() + "\n";
+
+      return name;
+    }
+
+    auto getName() const {
+      if (bugType == DoubleLogBug)
+        return doubleLogBugStr();
+      else if (bugType == NotCommittedBug)
+        return notCommittedBugStr();
+      else
+        return outsideTxBugStr();
     }
   };
 
@@ -67,92 +80,149 @@ class BugReporter {
   using LastLocationMap = std::map<LatVar, Instruction*>;
   using BuggedVars = std::set<LatVar>;
 
-  // data structures
-  BugDataList* bugDataList;
-  LastLocationMap* lastLocationMap;
-  BuggedVars* buggedVars;
-  Function* currentFunction;
-
-public:
-  BugReporter() {
-    bugDataList = nullptr;
-    lastLocationMap = nullptr;
-    buggedVars = nullptr;
-    currentFunction = nullptr;
-  }
-
-  void initUnit(Function* function) {
-    currentFunction = function;
+  void deleteStructures() {
     if (bugDataList) {
       delete bugDataList;
     }
-    bugDataList = new BugDataList();
-
     if (lastLocationMap) {
       delete lastLocationMap;
     }
-    lastLocationMap = new LastLocationMap();
-
     if (buggedVars) {
       delete buggedVars;
     }
+  }
+
+  void allocStructures() {
+    bugDataList = new BugDataList();
+    lastLocationMap = new LastLocationMap();
     buggedVars = new BuggedVars();
   }
 
-  void updateLastLocation(Instruction* i, LatVar var) {
-    (*lastLocationMap)[var] = i;
+  // data structures
+  Units& units;
+  Function* currentFunction;
+  BugDataList* bugDataList;
+  LastLocationMap* lastLocationMap;
+  BuggedVars* buggedVars;
+
+public:
+  BugReporter(Units& units_) : units(units_) {
+    currentFunction = nullptr;
+    bugDataList = nullptr;
+    lastLocationMap = nullptr;
+    buggedVars = nullptr;
+  }
+
+  ~BugReporter() {}
+
+  void initUnit(Function* function) {
+    currentFunction = function;
+    deleteStructures();
+    allocStructures();
+  }
+
+  void updateLastLocation(Variable* var, InstructionInfo* ii) {
+    auto* instr = ii->getInstruction();
+    assert(instr);
+    (*lastLocationMap)[var] = instr;
+  }
+
+  auto* getLastLocation(Variable* var) {
+    assertInDs(lastLocationMap, var);
+    return (*lastLocationMap)[var];
   }
 
   void print(raw_ostream& O) const {
     O << currentFunction->getName() << " bugs\n";
     for (auto& bugData : *bugDataList) {
-      errs() << bugData.getMsg();
+      errs() << bugData.getName();
     }
     O << "---------------------------------\n";
   }
 
-  void checkOutsideTxBug(Instruction* bugInstr, LatVar currentVar, LatVar txVar,
-                         AbstractState& state) {
+  void addOutsideTxBug(Variable* txVar, InstructionInfo* ii,
+                       AbstractState& state) {
+    auto* var = ii->getVariable();
+    assert(var);
+
+    if (buggedVars->count(txVar) || buggedVars->count(var))
+      return;
+
     auto& lv = state[txVar];
 
     if (!lv.inTx()) {
-      buggedVars->insert(currentVar);
-      auto bugData = BugData::getOutsideTx(bugInstr, currentVar);
+      buggedVars->insert(var);
+
+      auto bugData = BugData::getOutsideTx(ii);
       bugDataList->push_back(bugData);
     }
   }
 
-  void checkDoubleLogBug(Instruction* bugInstr, LatVar currentVar, LatVar txVar,
+  bool addDoubleLogBug(Variable* var, InstructionInfo* ii,
+                       AbstractState& state) {
+    if (buggedVars->count(var))
+      return false;
+
+    auto& val = state[var];
+
+    if (val.isLogged()) {
+      buggedVars->insert(var);
+
+      auto* prevInstr = getLastLocation(var);
+      auto* previi = units.variables.getInstructionInfo(prevInstr);
+
+      auto bugData = BugData::getDoubleLog(ii, previi);
+      bugDataList->push_back(bugData);
+      return true;
+    }
+
+    return false;
+  }
+
+  void checkDoubleLogBug(Variable* txVar, InstructionInfo* ii,
                          AbstractState& state) {
-    if (buggedVars->count(currentVar)) {
+    addOutsideTxBug(txVar, ii, state);
+
+    auto* var = ii->getVariable();
+    assert(var);
+
+    bool bugFound = addDoubleLogBug(var, ii, state);
+    if (bugFound) {
       return;
     }
 
-    checkOutsideTxBug(bugInstr, currentVar, txVar, state);
+    if (var->isObj()) {
+      for (auto* field : units.variables.getFlushFields(var)) {
+        bugFound = addDoubleLogBug(field, ii, state);
+        if (bugFound) {
+          return;
+        }
+      }
+    }
+  }
 
-    auto& lv = state[currentVar];
-    if (lv.isLogged()) {
-      buggedVars->insert(currentVar);
-      Instruction* logInstr = (*lastLocationMap)[currentVar];
-      auto bugData = BugData::getDoubleLogBug(bugInstr, logInstr, currentVar);
+  void addNotCommittedBug(Variable* var, InstructionInfo* ii,
+                          AbstractState& state) {
+    if (buggedVars->count(var))
+      return;
+
+    auto& val = state[var];
+
+    if (!val.isLogged()) {
+      buggedVars->insert(var);
+      auto bugData = BugData::getNotCommitted(ii);
       bugDataList->push_back(bugData);
     }
   }
 
-  void checkNotLoggedBug(Instruction* bugInstr, LatVar currentVar, LatVar txVar,
-                         AbstractState& state) {
-    if (buggedVars->count(currentVar)) {
-      return;
-    }
+  void checkNotCommittedBug(Variable* txVar, InstructionInfo* ii,
+                            AbstractState& state) {
+    addOutsideTxBug(txVar, ii, state);
 
-    checkOutsideTxBug(bugInstr, currentVar, txVar, state);
+    auto* var = ii->getVariable();
+    assert(var);
 
-    auto& lv = state[currentVar];
-    if (!lv.isLogged()) {
-      buggedVars->insert(currentVar);
-      auto bugData = BugData::getNotLogged(bugInstr, currentVar);
-      bugDataList->push_back(bugData);
-    }
+    addNotCommittedBug(var, ii, state);
   }
 };
 

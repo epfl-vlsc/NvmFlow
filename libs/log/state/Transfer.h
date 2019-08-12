@@ -10,64 +10,71 @@
 namespace llvm {
 
 class Transfer {
-private:
-  bool handleLogging(InstructionInfo* ii, AbstractState& state) {
-    auto* variable = ii->getVariable();
-    auto* instruction = ii->getInstruction();
-    assert(variable);
+  void trackVar(Variable* var, InstructionInfo* ii) {
+    breporter.updateLastLocation(var, ii);
+  }
 
-    if (variable->isField()) {
-      breporter.checkDoubleLogBug(instruction, variable, txLatVar, state);
-      state[variable] = LatVal::getLogged();
-      breporter.updateLastLocation(instruction, variable);
+  bool doLog(Variable* var, AbstractState& state) {
+    auto& val = state[var];
+
+    if (!val.isLogged()) {
+      val = LatVal::getLogged();
       return true;
-    } else if (variable->isObj()) {
-      auto* st = variable->getStType();
-      bool stateChanged = false;
-      for (auto* affectedVar : units.activeFunction->getAffectedVariables(st)) {
-        breporter.checkDoubleLogBug(instruction, affectedVar, txLatVar, state);
-        state[affectedVar] = LatVal::getLogged();
-        breporter.updateLastLocation(instruction, affectedVar);
-        stateChanged = true;
-      }
-      return stateChanged;
     }
-
     return false;
   }
 
-  bool handleWrite(InstructionInfo* ii, AbstractState& state) {
-    auto* variable = ii->getVariable();
-    auto* instruction = ii->getInstruction();
-    assert(variable);
+  bool handleLog(InstructionInfo* ii, AbstractState& state) {
+    breporter.checkDoubleLogBug(txVar, ii, state);
 
-    breporter.checkNotLoggedBug(instruction, variable, txLatVar, state);
+    auto* var = ii->getVariable();
+    assert(var);
+
+    bool stateChanged = doLog(var, state);
+    if (stateChanged)
+      trackVar(var, ii);
+
+    if (var->isObj()) {
+      for (auto* field : units.variables.getFlushFields(var)) {
+        bool fieldStateChanged = doLog(field, state);
+        if (fieldStateChanged)
+          trackVar(field, ii);
+
+        stateChanged |= fieldStateChanged;
+      }
+    }
+
+    return stateChanged;
+  }
+
+  bool handleWrite(InstructionInfo* ii, AbstractState& state) {
+    breporter.checkNotCommittedBug(txVar, ii, state);
     return false;
   }
 
   bool handleTxBeg(InstructionInfo* ii, AbstractState& state) {
-    state[txLatVar] = LatVal::getBeginTx(state[txLatVar]);
+    state[txVar] = LatVal::getBeginTx(state[txVar]);
     return true;
   }
 
   bool handleTxEnd(InstructionInfo* ii, AbstractState& state) {
-    state[txLatVar] = LatVal::getEndTx(state[txLatVar]);
+    state[txVar] = LatVal::getEndTx(state[txVar]);
     return true;
   }
 
   Units& units;
   BugReporter& breporter;
-  Variable* txLatVar;
+  Variable* txVar;
 
 public:
   Transfer(Module& M_, Units& units_, BugReporter& breporter_)
       : units(units_), breporter(breporter_) {
     auto& llvmContext = M_.getContext();
     auto* st = StructType::create(llvmContext);
-    txLatVar = new Variable(st, 0);
+    txVar = new Variable(st, 0);
   }
 
-  ~Transfer() { delete txLatVar; }
+  ~Transfer() { delete txVar; }
 
   void initLatticeValues(AbstractState& state) {
     // for tracking variables
@@ -76,32 +83,42 @@ public:
     }
 
     // store transaction at nullptr
-    state[txLatVar] = LatVal::getInitTx();
+    state[txVar] = LatVal::getInitTx();
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
-    auto* ii = units.activeFunction->getInstructionInfo(i);
+    bool stateChanged = false;
+
+    auto* ii = units.variables.getInstructionInfo(i);
     if (!ii)
-      return false;
+      return stateChanged;
 
-#ifdef DBGMODE
-    errs() << "Analyze " << *i << "\n";
-#endif
-
-    switch (ii->iType) {
+    switch (ii->getInstrType()) {
     case InstructionInfo::LoggingInstr:
-      return handleLogging(ii, state);
+      stateChanged = handleLog(ii, state);
+      break;
     case InstructionInfo::WriteInstr:
-      return handleWrite(ii, state);
+      stateChanged = handleWrite(ii, state);
+      break;
     case InstructionInfo::TxBegInstr:
-      return handleTxBeg(ii, state);
+      stateChanged = handleTxBeg(ii, state);
+      break;
     case InstructionInfo::TxEndInstr:
-      return handleTxEnd(ii, state);
+      stateChanged = handleTxEnd(ii, state);
+      break;
     default:
       report_fatal_error("not correct instruction");
       return false;
     }
+
+#ifdef DBGMODE
+    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
+    if (stateChanged)
+      printState(state);
+#endif
+
+    return stateChanged;
   }
-};
+}; // namespace llvm
 
 } // namespace llvm
