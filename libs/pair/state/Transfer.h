@@ -56,9 +56,9 @@ class Transfer {
 
     if (val.isDclCommitWrite()) {
       if (useFence) {
-        val = LatVal::getCommitFlush(val);
-      } else {
         val = LatVal::getCommitFence(val);
+      } else {
+        val = LatVal::getCommitFlush(val);
       }
       stateChanged = true;
     }
@@ -139,30 +139,40 @@ public:
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
+    bool stateChanged = false;
+
     auto* ii = units.variables.getInstructionInfo(i);
     if (!ii)
-      return false;
-
-#ifdef DBGMODE
-    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
-    printState(state);
-#endif
+      return stateChanged;
 
     switch (ii->getInstrType()) {
     case InstructionInfo::WriteInstr:
-      return handleWrite(ii, state);
+      stateChanged = handleWrite(ii, state);
+      break;
     case InstructionInfo::FlushInstr:
-      return handleFlush(ii, state, false);
+      stateChanged = handleFlush(ii, state, false);
+      break;
     case InstructionInfo::FlushFenceInstr:
-      return handleFlush(ii, state, true);
+      stateChanged = handleFlush(ii, state, true);
+      break;
     case InstructionInfo::VfenceInstr:
-      return handleVfence(ii, state);
+      stateChanged = handleVfence(ii, state);
+      break;
     case InstructionInfo::PfenceInstr:
-      return handlePfence(ii, state);
+      stateChanged = handlePfence(ii, state);
+      break;
     default:
       report_fatal_error("not correct instruction");
       return false;
     }
+
+#ifdef DBGMODE
+    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
+    if (stateChanged)
+      printState(state);
+#endif
+
+    return stateChanged;
   }
 };
 
