@@ -82,6 +82,8 @@ public:
     return st->getName().str() + "::" + realName.str();
   }
 
+  auto getFieldName() const { return realName.str(); }
+
   void print(raw_ostream& O) const override { O << getName(); }
 
   static std::string getAbsoluteName(StructType* st_, int idx_) {

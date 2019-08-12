@@ -12,34 +12,93 @@ struct InstructionInfo {
     FlushFenceInstr,
     VfenceInstr,
     PfenceInstr,
-    IpInstr
+    IpInstr,
+    None
   };
 
-  static constexpr const char* iStrs[] = {"write",  "flush",  "flushfence",
-                                          "vfence", "pfence", "ip"};
-  InstructionType iType;
+  static constexpr const char* Strs[] = {
+      "write", "flush", "flushfence", "vfence", "pfence", "ip", "none"};
   Instruction* instruction;
+  InstructionType instrType;
   Variable* variable;
+  DILocalVariable* objName;
 
-  auto getName() const {
-    auto name = std::string("info: ") + iStrs[(int)iType] + " ";
-    if (variable) {
-      name += variable->getName();
+  InstructionInfo() : instrType(None) {}
+
+  InstructionInfo(Instruction* instruction_, InstructionType instrType_,
+                  Variable* variable_, DILocalVariable* objName_)
+      : instruction(instruction_), instrType(instrType_), variable(variable_),
+        objName(objName_) {
+    assert(instruction);
+    assert(instrType != None);
+  }
+
+  auto getObjName() const {
+    std::string name;
+    name.reserve(25);
+    if (objName) {
+      name += objName->getName();
+    } else {
+      name += "this";
     }
     return name;
   }
 
-  bool isIpInstr() const { return iType == IpInstr; }
+  auto getVariableName() const {
+    std::string name;
+    if (!variable)
+      return name;
+
+    name.reserve(100);
+    name += getObjName();
+    if (variable->isField()) {
+      name += "->" + variable->getFieldName();
+    }
+    return name;
+  }
+
+  auto getInstructionName() const {
+    assert(instruction);
+    return DbgInstr::getSourceLocation(instruction);
+  }
+
+  auto getName() const {
+    assert(instruction);
+    std::string name;
+    name.reserve(100);
+    name += getInstructionName() + " ";
+    name += std::string(Strs[(int)instrType]) + " ";
+    name += getVariableName();
+    return name;
+  }
+
+  auto getInstrType() const {
+    assert(instruction);
+    return instrType;
+  }
+
+  bool isIpInstr() const {
+    assert(instruction);
+    return instrType == IpInstr;
+  }
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
-  auto* getVariable() { return variable; }
+  auto* getVariable() {
+    assert(variable);
+    return variable;
+  }
 
-  auto* getInstruction() { return instruction; }
+  auto* getInstruction() {
+    assert(instruction);
+    return instruction;
+  }
 
   static bool isFlushBasedInstr(InstructionType instrType) {
     return instrType == FlushInstr || instrType == FlushFenceInstr;
   }
+
+  static bool isUsedInstr(InstructionType it) { return it != None; }
 };
 
 class FunctionVariables {
@@ -129,9 +188,9 @@ public:
       flushFields.insert(field);
   }
 
-  void insertInstruction(InstrType instrType, Instruction* instr,
-                         Variable* var) {
-    instrToInfo[instr] = {instrType, instr, var};
+  void insertInstruction(Instruction* instr, InstrType instrType, Variable* var,
+                         DILocalVariable* localVar) {
+    instrToInfo[instr] = {instr, instrType, var, localVar};
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -181,8 +240,7 @@ public:
 
     O << "inst to vars:---\n";
     for (auto& [i, ii] : instrToInfo) {
-      O << "\t" << DbgInstr::getSourceLocation(i) << " " << ii.getName()
-        << "\n";
+      O << "\t" << ii.getName() << "\n";
     }
 
     O << "data: ";
@@ -261,10 +319,15 @@ public:
     activeFunction->insertPair(data, valid, useDcl);
   }
 
-  void insertInstruction(InstrType instrType, Instruction* instr,
-                         Variable* var) {
+  void insertInstruction(Instruction* instr, InstrType instrType, Variable* var,
+                         DILocalVariable* diVar) {
     assert(activeFunction);
-    activeFunction->insertInstruction(instrType, instr, var);
+    activeFunction->insertInstruction(instr, instrType, var, diVar);
+  }
+
+  void insertInstruction(Instruction* instr, InstrType instrType) {
+    assert(activeFunction);
+    activeFunction->insertInstruction(instr, instrType, nullptr, nullptr);
   }
 
   void insertWriteObj(Variable* field, Variable* obj) {

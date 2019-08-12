@@ -21,13 +21,11 @@ class Transfer {
       if (val.isSclCommitWrite()) {
         val = LatVal::getVfence(val);
         stateChanged = true;
-        trackVar(var, ii);
       }
 
       if (val.isDclCommitFlush()) {
         val = LatVal::getPfence(val);
         stateChanged = true;
-        trackVar(var, ii);
       }
     }
 
@@ -40,7 +38,6 @@ class Transfer {
       if (val.isSclCommitWrite()) {
         val = LatVal::getVfence(val);
         stateChanged = true;
-        trackVar(var, ii);
       }
     }
 
@@ -155,7 +152,7 @@ public:
     errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
 #endif
 
-    switch (ii->iType) {
+    switch (ii->getInstrType()) {
     case InstructionInfo::WriteInstr:
       return handleWrite(ii, state);
     case InstructionInfo::FlushInstr:

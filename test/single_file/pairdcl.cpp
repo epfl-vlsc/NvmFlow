@@ -43,6 +43,13 @@ struct Dcl {
     clflush(&data);  
   }
 
+  void nvm_fnc correctDoubleLoopFlush() {
+    while (valid == 1){
+      data = 1;
+      clflush(&data);
+    }
+  }
+
   void nvm_fnc writeUncommittedData() {
     data = 1;
     clflushopt(&data);

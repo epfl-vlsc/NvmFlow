@@ -9,30 +9,29 @@ class BugReporter {
   struct BugData {
     enum BugType { NotCommittedBug, DoubleFlushBug };
     BugType bugType;
-    Variable* var;
-    Instruction* instr;
-    Instruction* prevInstr;
-    Variable* prevVar;
+    InstructionInfo* ii;
+    InstructionInfo* previi;
 
-    static BugData getNotCommitted(Variable* var_, Instruction* instr_,
-                                   Variable* prevVar_) {
-      assert(prevVar_);
-      return {NotCommittedBug, var_, instr_, nullptr, prevVar_};
+    static BugData getNotCommitted(InstructionInfo* ii_,
+                                   InstructionInfo* previi_) {
+      assert(ii_ && previi_);
+      return {NotCommittedBug, ii_, previi_};
     }
 
-    static BugData getDoubleFlush(Variable* var_, Instruction* instr_,
-                                  Instruction* prevInstr_) {
-      assert(prevInstr_);
-      return {DoubleFlushBug, var_, instr_, prevInstr_, nullptr};
+    static BugData getDoubleFlush(InstructionInfo* ii_,
+                                  InstructionInfo* previi_) {
+      assert(ii_ && previi_);
+      return {DoubleFlushBug, ii_, previi_};
     }
 
     auto notCommittedBugStr() const {
       std::string name;
       name.reserve(200);
 
-      name += "Commit " + prevVar->getName() + " for " + var->getName();
-      name += " at " + DbgInstr::getSourceLocation(instr);
-      name += "\n";
+      name += "For " + ii->getVariableName();
+      name += " at " + ii->getInstructionName() + "\n";
+      name += "\tCommit " + previi->getVariableName();
+      name += " at " + previi->getInstructionName() + "\n";
 
       return name;
     }
@@ -41,10 +40,10 @@ class BugReporter {
       std::string name;
       name.reserve(200);
 
-      name += "Double flush " + var->getName();
-      name += " at " + DbgInstr::getSourceLocation(instr) + "\n";
-      name += " prev at " + DbgInstr::getSourceLocation(prevInstr);
-      name += "\n";
+      name += "Double flush " + ii->getVariableName();
+      name += " at " + ii->getInstructionName() + "\n";
+      name += "\tLogged before " + previi->getVariableName();
+      name += " at " + previi->getInstructionName() + "\n";
 
       return name;
     }
@@ -136,13 +135,14 @@ public:
       bool badPairValStates = (pair->isDcl()) ? pairVal.isDclCommitWrite() ||
                                                     pairVal.isDclCommitFlush()
                                               : pairVal.isSclCommitWrite();
-
       if (badPairValStates) {
         buggedVars->insert(var);
         buggedVars->insert(pairVar);
 
-        auto* instr = ii->getInstruction();
-        auto bugData = BugData::getNotCommitted(var, instr, pairVar);
+        auto* pairInst = getLastLocation(pairVar);
+        auto *previi = units.variables.getInstructionInfo(pairInst);
+
+        auto bugData = BugData::getNotCommitted(ii, previi);
         bugDataList->push_back(bugData);
         return true;
       }
@@ -178,9 +178,11 @@ public:
     auto& val = state[var];
 
     if (val.isDclFlushFlush()) {
-      auto* instr = ii->getInstruction();
+
       auto* prevInstr = getLastLocation(var);
-      auto bugData = BugData::getDoubleFlush(var, instr, prevInstr);
+      auto *previi = units.variables.getInstructionInfo(prevInstr);
+
+      auto bugData = BugData::getDoubleFlush(ii, previi);
       bugDataList->push_back(bugData);
       return true;
     }

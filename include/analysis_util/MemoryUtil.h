@@ -3,7 +3,72 @@
 
 namespace llvm {
 
-auto getUncasted(Value* v) {
+AllocaInst* getAllocaInst(Value* v) {
+  auto* inst = v;
+
+  while (true) {
+    if (auto* si = dyn_cast<StoreInst>(inst)) {
+      inst = si->getPointerOperand();
+    } else if (auto* ci = dyn_cast<CastInst>(inst)) {
+      inst = ci->getOperand(0);
+    } else if (auto* gepi = dyn_cast<GetElementPtrInst>(inst)) {
+      inst = gepi->getPointerOperand();
+    } else if (auto* ii = dyn_cast<IntrinsicInst>(inst)) {
+      inst = ii->getArgOperand(0);
+    } else if (auto* li = dyn_cast<LoadInst>(inst)) {
+      inst = li->getPointerOperand();
+    } else if (auto* ai = dyn_cast<AllocaInst>(inst)) {
+      return ai;
+    } else {
+      return nullptr;
+    }
+  }
+}
+
+Function* getParentFunction(Value* v) {
+  if (auto* i = dyn_cast<Instruction>(v))
+    return i->getParent()->getParent();
+  else if (auto* a = dyn_cast<Argument>(v))
+    return a->getParent();
+
+  return nullptr;
+}
+
+DbgDeclareInst* findDbgDeclare(Value* v) {
+  // terrible implementation for finding dbg declare
+  v = v->stripPointerCasts();
+
+  if (!isa<Instruction>(v) && !isa<Argument>(v))
+    return nullptr;
+
+  Function* f = getParentFunction(v);
+  for (auto& I : instructions(*f)) {
+    if (auto* ddi = dyn_cast<DbgDeclareInst>(&I))
+      if (ddi->getAddress() == v)
+        return ddi;
+  }
+
+  return nullptr;
+}
+
+DILocalVariable* getDILocalVariable(Value* v) {
+  if (auto* ai = getAllocaInst(v)) {
+    if (auto* ddi = findDbgDeclare(ai)) {
+      // check if var name exists
+      if (!ddi->getAddress() || !ddi->getVariable()) {
+        return nullptr;
+      }
+
+      auto* var = ddi->getVariable();
+      assert(var);
+      return var;
+    }
+  }
+
+  return nullptr;
+}
+
+auto* getUncasted(Value* v) {
   auto* inst = v;
 
   while (true) {
@@ -51,10 +116,15 @@ IntrinsicInst* getII(Value* v) {
   }
 }
 
-std::pair<StringRef, bool> isAnnotatedField(IntrinsicInst* ii,
-                                            const char* annotation) {
-  static const unsigned llvm_ptr_annotation = 186;
+std::pair<bool, StringRef> getAnnotatedField(Instruction* i,
+                                             const char* annotation) {
   static const StringRef emptyStr = StringRef("");
+  static const unsigned llvm_ptr_annotation = 186;
+
+  auto* ii = getII(i);
+  if (!ii) {
+    return {false, emptyStr};
+  }
 
   if (ii->getIntrinsicID() == llvm_ptr_annotation) {
     if (ConstantExpr* gepi = dyn_cast<ConstantExpr>(ii->getArgOperand(1))) {
@@ -64,26 +134,11 @@ std::pair<StringRef, bool> isAnnotatedField(IntrinsicInst* ii,
           dyn_cast<ConstantDataArray>(AnnotationGL->getInitializer())
               ->getAsCString();
       if (fieldAnnotation.startswith(annotation)) {
-        return {fieldAnnotation, true};
+        return {true, fieldAnnotation};
       }
     }
   }
-  return {emptyStr, false};
-}
-
-auto getFieldInfo(GetElementPtrInst* gepi) {
-  Type* type = gepi->getSourceElementType();
-  assert(type->isStructTy());
-
-  StructType* structType = dyn_cast<StructType>(type);
-  assert(structType);
-
-  ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
-  assert(index);
-
-  int idx = (int)index->getValue().getZExtValue();
-
-  return std::pair(structType, idx);
+  return {false, emptyStr};
 }
 
 auto getFieldInfo(IntrinsicInst* ii) {
@@ -108,6 +163,88 @@ auto getFieldInfo(IntrinsicInst* ii) {
   int idx = (int)index->getValue().getZExtValue();
 
   return std::pair(structType, idx);
+}
+
+auto getFieldInfo(GetElementPtrInst* gepi) {
+  Type* type = gepi->getSourceElementType();
+  assert(type->isStructTy());
+
+  StructType* structType = dyn_cast<StructType>(type);
+  assert(structType);
+
+  ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
+  assert(index);
+
+  int idx = (int)index->getValue().getZExtValue();
+
+  return std::pair(structType, idx);
+}
+
+auto* getObj(Value* v) {
+  auto* uncastedArg0 = getUncasted(v);
+  auto* argType = uncastedArg0->getType();
+  // must be ptr
+  assert(argType->isPointerTy());
+  auto* objType = argType->getPointerElementType();
+
+  auto* st = dyn_cast<StructType>(objType);
+  return st;
+}
+
+auto getAnnotatedField(Instruction* i) {
+  // st == nullptr means invalid
+  auto* ii = getII(i);
+  StructType* st = nullptr;
+  int idx = -1;
+
+  if (!ii) {
+    return std::pair(st, idx);
+  }
+
+  Instruction* instr = dyn_cast<CastInst>(ii->getArgOperand(0));
+  if (instr == nullptr && isa<GetElementPtrInst>(ii->getArgOperand(0)))
+    instr = ii;
+  assert(instr);
+
+  auto* gepi = dyn_cast<GetElementPtrInst>(instr->getOperand(0));
+  assert(gepi);
+
+  Type* type = gepi->getSourceElementType();
+  assert(type->isStructTy());
+
+  st = dyn_cast<StructType>(type);
+  assert(st);
+
+  ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
+  assert(index);
+
+  idx = (int)index->getValue().getZExtValue();
+
+  return std::pair(st, idx);
+}
+
+auto getField(Instruction* i) {
+  // st == nullptr means invalid
+  auto* gepi = getGEPI(i);
+  StructType* st = nullptr;
+  int idx = -1;
+
+  if (!gepi) {
+    return std::pair(st, idx);
+  }
+
+  Type* type = gepi->getSourceElementType();
+  assert(type->isStructTy());
+
+  st = dyn_cast<StructType>(type);
+  assert(st);
+
+  ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
+  assert(index);
+
+  idx = (int)index->getValue().getZExtValue();
+
+  return std::pair(st, idx);
 }
 
 GetElementPtrInst* getFieldVar(Value* v) {
@@ -215,36 +352,36 @@ public:
     errs() << *val << "\n";
     return {nullptr, -1, None};
 
-/*
-    if (auto* annotField = getAnnotatedFieldVar(i)) {
-      auto [st, idx] = getFieldInfo(annotField);
-      return {st, idx, AnnotatedField};
-    } else if (auto* field = getFieldVar(i)) {
-      auto [st, idx] = getFieldInfo(field);
-      return {st, idx, Field};
-    } else {
-      // assume var
-      if (auto* si = dyn_cast<StoreInst>(i)) {
-        auto* opnd = si->getPointerOperand();
-        auto* uncastedVar = getUncasted(opnd);
-        auto* ptrType = uncastedVar->getType();
-        assert(ptrType->isPointerTy());
-        auto* storeType = ptrType->getPointerElementType();
-        if (storeType->isPointerTy()) {
-          auto* objType = storeType->getPointerElementType();
-          return {objType, -1, Obj};
+    /*
+        if (auto* annotField = getAnnotatedFieldVar(i)) {
+          auto [st, idx] = getFieldInfo(annotField);
+          return {st, idx, AnnotatedField};
+        } else if (auto* field = getFieldVar(i)) {
+          auto [st, idx] = getFieldInfo(field);
+          return {st, idx, Field};
         } else {
-          return {nullptr, -1, None};
+          // assume var
+          if (auto* si = dyn_cast<StoreInst>(i)) {
+            auto* opnd = si->getPointerOperand();
+            auto* uncastedVar = getUncasted(opnd);
+            auto* ptrType = uncastedVar->getType();
+            assert(ptrType->isPointerTy());
+            auto* storeType = ptrType->getPointerElementType();
+            if (storeType->isPointerTy()) {
+              auto* objType = storeType->getPointerElementType();
+              return {objType, -1, Obj};
+            } else {
+              return {nullptr, -1, None};
+            }
+          } else {
+            auto* uncastedVar = getUncasted(i);
+            auto* ptrType = uncastedVar->getType();
+            assert(ptrType->isPointerTy());
+            auto* objType = ptrType->getPointerElementType();
+            return {objType, -1, Obj};
+          }
         }
-      } else {
-        auto* uncastedVar = getUncasted(i);
-        auto* ptrType = uncastedVar->getType();
-        assert(ptrType->isPointerTy());
-        auto* objType = ptrType->getPointerElementType();
-        return {objType, -1, Obj};
-      }
-    }
- */
+     */
   }
 
   static auto* getAliasSet(AliasSetTracker* ast, Instruction* i) {

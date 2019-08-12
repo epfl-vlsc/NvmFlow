@@ -13,8 +13,6 @@ class ValidParser {
 
   using InstructionType = typename InstructionInfo::InstructionType;
 
-  Units& units;
-
   std::pair<std::string, bool> parseAnnotation(StringRef annotation) {
     bool useDcl = annotation.contains(SCL_ANNOT) ? false : true;
     auto [_, name] = annotation.rsplit(SEP);
@@ -36,25 +34,20 @@ class ValidParser {
     return {data, useDcl};
   }
 
-  auto* getValid(IntrinsicInst* ii) {
-    auto [st, idx] = getFieldInfo(ii);
+  auto* getValid(Instruction* i) {
+    auto [st, idx] = getAnnotatedField(i);
     assert(st);
     return units.dbgInfo.getStructElement(st, idx);
   }
 
   auto* getObj(Variable* valid) { return units.dbgInfo.getStructObj(valid); }
 
-  auto* insertVar(Instruction* i) {
-    auto* ii = getII(i);
-    if (!ii) {
-      return (Variable*)nullptr;
-    }
-
-    if (auto [annotation, hasAnnot] = isAnnotatedField(ii, FIELD_ANNOT);
+  void insertVar(Instruction* i, InstructionType instrType) {
+    if (auto [hasAnnot, annotation] = getAnnotatedField(i, FIELD_ANNOT);
         hasAnnot) {
 
       // find valid
-      auto* valid = getValid(ii);
+      auto* valid = getValid(i);
 
       // find data
       auto [data, useDcl] = getData(annotation, valid->getStType());
@@ -69,30 +62,23 @@ class ValidParser {
       if (objv != objd)
         units.variables.insertObj(objd);
 
-      return valid;
+      auto* diVar = getDILocalVariable(i);
+
+      if (InstructionInfo::isUsedInstr(instrType))
+        units.variables.insertInstruction(i, instrType, valid, diVar);
     }
-
-    return (Variable*)nullptr;
   }
 
-  void insertInstructionIfValid(InstructionType instrType, Instruction* i,
-                                Variable* valid) {
-    if (valid)
-      units.variables.insertInstruction(instrType, i, valid);
-  }
-
-  void insertRead(LoadInst* li) { insertVar(li); }
+  void insertRead(LoadInst* li) { insertVar(li, InstructionType::None); }
 
   void insertWrite(StoreInst* si) {
-    auto* valid = insertVar(si);
-    insertInstructionIfValid(InstructionInfo::WriteInstr, si, valid);
+    insertVar(si, InstructionType::WriteInstr);
   }
 
-  void insertFlush(InstructionInfo::InstructionType instrType, CallInst* ci) {
+  void insertFlush(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      auto* valid = insertVar(arg0Instr);
-      insertInstructionIfValid(instrType, ci, valid);
+      insertVar(arg0Instr, instrType);
     }
   }
 
@@ -103,17 +89,15 @@ class ValidParser {
         units.functions.isSkippedFunction(callee)) {
       return;
     } else if (units.functions.isPfenceFunction(callee)) {
-      units.variables.insertInstruction(InstructionInfo::PfenceInstr, ci,
-                                        nullptr);
+      units.variables.insertInstruction(ci, InstructionInfo::PfenceInstr);
     } else if (units.functions.isVfenceFunction(callee)) {
-      units.variables.insertInstruction(InstructionInfo::VfenceInstr, ci,
-                                        nullptr);
+      units.variables.insertInstruction(ci, InstructionInfo::VfenceInstr);
     } else if (units.functions.isFlushFunction(callee)) {
-      insertFlush(InstructionInfo::FlushInstr, ci);
+      insertFlush(ci, InstructionInfo::FlushInstr);
     } else if (units.functions.isFlushFenceFunction(callee)) {
-      insertFlush(InstructionInfo::FlushFenceInstr, ci);
+      insertFlush(ci, InstructionInfo::FlushFenceInstr);
     } else {
-      units.variables.insertInstruction(InstructionInfo::IpInstr, ci, nullptr);
+      units.variables.insertInstruction(ci, InstructionInfo::IpInstr);
     }
   }
 
@@ -127,30 +111,21 @@ class ValidParser {
     }
   }
 
-  void insertFields(Function* function, std::set<Function*>& visited) {
-    visited.insert(function);
-
-    for (auto& I : instructions(*function)) {
-      auto* i = &I;
-      insertI(i);
-
-      if (auto* ci = dyn_cast<CallInst>(i)) {
-        auto* callee = ci->getCalledFunction();
-        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
-                    !units.functions.skipFunction(callee);
-        if (doIp) {
-          insertFields(callee, visited);
-        }
+  void insertFields(Function* function) {
+    for (auto* f : units.functions.getUnitFunctions(function)) {
+      for (auto& I : instructions(*f)) {
+        insertI(&I);
       }
     }
   }
+
+  Units& units;
 
 public:
   ValidParser(Units& units_) : units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      std::set<Function*> visited;
-      insertFields(function, visited);
+      insertFields(function);
     }
   }
 };

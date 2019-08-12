@@ -1,8 +1,8 @@
 #pragma once
 #include "Common.h"
 
-#include "ValidParser.h"
 #include "DataParser.h"
+#include "ValidParser.h"
 #include "VarFinalizerParser.h"
 
 namespace llvm {

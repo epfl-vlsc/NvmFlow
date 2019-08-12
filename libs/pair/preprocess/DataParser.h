@@ -7,32 +7,27 @@
 namespace llvm {
 
 class DataParser {
-  Units& units;
+  using InstructionType = typename InstructionInfo::InstructionType;
 
-  auto* getDataVar(Instruction* i, InstructionInfo::InstructionType instrType) {
-    if (auto* gepi = getGEPI(i)) {
+  auto* getVar(Instruction* i, InstructionType instrType) {
+    if (auto [st, idx] = getField(i); st) {
       // field - data field is always unannotated
-      auto [st, idx] = getFieldInfo(gepi);
 
       // try field
       auto* data = units.dbgInfo.getStructElement(st, idx);
+
       if (units.variables.inDataSet(data)) {
         return data;
       }
 
-      // try obj
+      // try obj since field is not registered
       auto* obj = units.dbgInfo.getStructObj(data);
       if (units.variables.inVars(obj)) {
         return obj;
       }
     } else if (InstructionInfo::isFlushBasedInstr(instrType)) {
       // obj
-      auto* uncastedArg0 = getUncasted(i);
-      auto* argType = uncastedArg0->getType();
-      // must be ptr
-      assert(argType->isPointerTy());
-      auto* objType = argType->getPointerElementType();
-      if (auto* st = dyn_cast<StructType>(objType)) {
+      if (auto* st = getObj(i)) {
         auto* obj = units.dbgInfo.getStructElement(st);
         assert(obj);
         if (units.variables.inVars(obj)) {
@@ -44,17 +39,16 @@ class DataParser {
     return (Variable*)nullptr;
   }
 
-  void insertVar(Instruction* i, InstructionInfo::InstructionType instrType) {
-    auto* data = getDataVar(i, instrType);
-
-    if (!data)
-      return;
-
-    // insert to ds
-    units.variables.insertInstruction(instrType, i, data);
+  void insertVar(Instruction* i, InstructionType instrType) {
+    if (auto* var = getVar(i, instrType)) {
+      auto* diVar = getDILocalVariable(i);
+      units.variables.insertInstruction(i, instrType, var, diVar);
+    }
   }
 
-  void insertWrite(StoreInst* si) { insertVar(si, InstructionInfo::WriteInstr); }
+  void insertWrite(StoreInst* si) {
+    insertVar(si, InstructionInfo::WriteInstr);
+  }
 
   void insertFlush(CallInst* ci, InstructionInfo::InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
@@ -84,32 +78,23 @@ class DataParser {
     }
   }
 
-  void insertFields(Function* function, std::set<Function*>& visited) {
-    visited.insert(function);
-
-    for (auto& I : instructions(*function)) {
-      auto* i = &I;
-
-      if (!units.variables.isUsedInstruction(i))
-        insertI(i);
-
-      if (auto* ci = dyn_cast<CallInst>(i)) {
-        auto* callee = ci->getCalledFunction();
-
-        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
-                    !units.functions.skipFunction(callee);
-        if (doIp)
-          insertFields(callee, visited);
+  void insertFields(Function* function) {
+    for (auto* f : units.functions.getUnitFunctions(function)) {
+      for (auto& I : instructions(*f)) {
+        auto* i = &I;
+        if (!units.variables.isUsedInstruction(i))
+          insertI(i);
       }
     }
   }
+
+  Units& units;
 
 public:
   DataParser(Units& units_) : units(units_) {
     for (auto* function : units.functions.getAnalyzedFunctions()) {
       units.setActiveFunction(function);
-      std::set<Function*> visited;
-      insertFields(function, visited);
+      insertFields(function);
     }
   }
 };
