@@ -263,9 +263,8 @@ public:
         DbgInstr::printLocation(location, O);
         O << "\n";
         for (auto& [latVar, latVal] : state) {
-          O << " " << latVar->getName() << " " << latVal.getName() << ",";
+          O << "\t" << latVar->getName() << " " << latVal.getName() << "\n";
         }
-        O << "\n";
       }
     }
     O << "---------------------------------\n";

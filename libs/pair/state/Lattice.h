@@ -119,9 +119,19 @@ public:
     return lattice;
   }
 
-  static Lattice getFlush(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Flush;
+  static Lattice getDclFlushFlush(Lattice lattice) {
     lattice.dclFlush.state = DclFlush::Flush;
+    return lattice;
+  }
+
+  static Lattice getCommitFlush(Lattice lattice) {
+    lattice.dclCommit.state = DclCommit::Flush;
+    return lattice;
+  }
+
+  static Lattice getCommitFence(Lattice lattice) {
+    lattice.dclCommit.state = DclCommit::Fence;
+    lattice.sclCommit.state = SclCommit::Fence;
     return lattice;
   }
 
@@ -153,15 +163,17 @@ public:
            dclFlush.state == DclFlush::Flush;
   }
 
+  bool isDclFlushFlush() const {
+    return dclFlush.state == DclFlush::Flush;
+  }
+
   bool isWrite() const {
     return (dclCommit.state == DclCommit::Write &&
             dclFlush.state == DclFlush::Write) &&
            sclCommit.state == SclCommit::Write;
   }
 
-  bool isDclFlushFlush() const {
-    return dclFlush.state == DclFlush::Flush;
-  }
+  
 
   auto getName() const {
     return dclCommit.getName() + " " + dclFlush.getName() + " " +

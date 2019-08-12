@@ -3,6 +3,12 @@
 
 namespace llvm {
 
+template <typename State> void printState(State& state) {
+  for (auto& [latVar, latVal] : state) {
+    errs() << "\t" << latVar->getName() << " " << latVal.getName() << "\n";
+  }
+}
+
 template <typename Type> class Worklist {
   std::set<Type> worklist;
 

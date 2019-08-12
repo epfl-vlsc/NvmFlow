@@ -44,31 +44,26 @@ class Transfer {
     return stateChanged;
   }
 
-  bool doFlushFence(Variable* var, AbstractState& state) {
-    auto& val = state[var];
-
-    if (val.isDclFlush())
-      return false;
-
-    val = LatVal::getFlushFence(val);
-    return true;
-  }
-
-  bool doNormalFlush(Variable* var, AbstractState& state) {
-    auto& val = state[var];
-
-    if (val.isDclFlush())
-      return false;
-
-    val = LatVal::getFlush(val);
-    return true;
-  }
-
   bool doFlush(Variable* var, AbstractState& state, bool useFence) {
-    if (!useFence)
-      return doNormalFlush(var, state);
-    else
-      return doFlushFence(var, state);
+    bool stateChanged = false;
+
+    auto& val = state[var];
+
+    if (!val.isDclFlushFlush()) {
+      val = LatVal::getDclFlushFlush(val);
+      stateChanged = true;
+    }
+
+    if (val.isDclCommitWrite()) {
+      if (useFence) {
+        val = LatVal::getCommitFlush(val);
+      } else {
+        val = LatVal::getCommitFence(val);
+      }
+      stateChanged = true;
+    }
+
+    return stateChanged;
   }
 
   bool handleFlush(InstructionInfo* ii, AbstractState& state, bool useFence) {
@@ -150,6 +145,7 @@ public:
 
 #ifdef DBGMODE
     errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
+    printState(state);
 #endif
 
     switch (ii->getInstrType()) {
