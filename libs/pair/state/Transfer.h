@@ -18,13 +18,13 @@ class Transfer {
     bool stateChanged = false;
 
     for (auto& [var, val] : state) {
-      if (val.isWriteScl()) {
+      if (val.isSclCommitWrite()) {
         val = LatVal::getVfence(val);
         stateChanged = true;
         trackVar(var, ii);
       }
 
-      if (val.isFlushDcl()) {
+      if (val.isDclCommitFlush()) {
         val = LatVal::getPfence(val);
         stateChanged = true;
         trackVar(var, ii);
@@ -37,7 +37,7 @@ class Transfer {
   bool handleVfence(InstructionInfo* ii, AbstractState& state) {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
-      if (val.isWriteScl()) {
+      if (val.isSclCommitWrite()) {
         val = LatVal::getVfence(val);
         stateChanged = true;
         trackVar(var, ii);
@@ -50,23 +50,21 @@ class Transfer {
   bool doFlushFence(Variable* var, AbstractState& state) {
     auto& val = state[var];
 
-    if (val.isWriteDcl()) {
-      val = LatVal::getPVfence(val);
-      return true;
-    }
+    if (val.isDclFlush())
+      return false;
 
-    return false;
+    val = LatVal::getFlushFence(val);
+    return true;
   }
 
   bool doNormalFlush(Variable* var, AbstractState& state) {
     auto& val = state[var];
 
-    if (val.isWriteDcl()) {
-      val = LatVal::getFlush(val);
-      return true;
-    }
+    if (val.isDclFlush())
+      return false;
 
-    return false;
+    val = LatVal::getFlush(val);
+    return true;
   }
 
   bool doFlush(Variable* var, AbstractState& state, bool useFence) {
@@ -102,7 +100,7 @@ class Transfer {
   bool doWrite(Variable* var, AbstractState& state) {
     auto& val = state[var];
 
-    if (val.isWriteDScl())
+    if (val.isWrite())
       return false;
 
     val = LatVal::getWrite(val);

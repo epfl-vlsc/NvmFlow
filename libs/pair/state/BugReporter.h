@@ -133,9 +133,9 @@ public:
         continue;
 
       auto& pairVal = state[pairVar];
-      bool badPairValStates = (pair->isDcl())
-                                  ? pairVal.isWriteDcl() || pairVal.isFlushDcl()
-                                  : pairVal.isWriteScl();
+      bool badPairValStates = (pair->isDcl()) ? pairVal.isDclCommitWrite() ||
+                                                    pairVal.isDclCommitFlush()
+                                              : pairVal.isSclCommitWrite();
 
       if (badPairValStates) {
         buggedVars->insert(var);
@@ -177,7 +177,7 @@ public:
 
     auto& val = state[var];
 
-    if (val.isFenceDcl() || val.isFlushDcl()) {
+    if (val.isDclFlushFlush()) {
       auto* instr = ii->getInstruction();
       auto* prevInstr = getLastLocation(var);
       auto bugData = BugData::getDoubleFlush(var, instr, prevInstr);
