@@ -110,6 +110,7 @@ template <typename StateMachine> class DataflowAnalysis {
 
 #ifdef DBGMODE
     errs() << "Analyze call " << callee->getName() << "\n";
+    printState(state);
 #endif
 
     // prepare function contexts for caller and callee
@@ -188,7 +189,7 @@ template <typename StateMachine> class DataflowAnalysis {
     addBlocksToWorklist(function, blockWorklist);
 
     while (!blockWorklist.empty()) {
-      auto* block = blockWorklist.pop_val();
+      auto* block = blockWorklist.popVal();
 
       bool isEntryBlock = Forward::isEntryBlock(block);
       auto* blockEntryKey = Forward::getBlockEntryKey(block);
@@ -242,7 +243,7 @@ template <typename StateMachine> class DataflowAnalysis {
 
   void computeDataflow() {
     while (!contextWork.empty()) {
-      auto [function, context] = contextWork.pop_val();
+      auto [function, context] = contextWork.popVal();
       computeDataflow(function, context);
     }
   }

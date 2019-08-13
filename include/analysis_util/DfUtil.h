@@ -3,22 +3,22 @@
 
 namespace llvm {
 
-template <typename State> void printState(State& state) {
-  for (auto& [latVar, latVal] : state) {
-    errs() << "\t" << latVar->getName() << " " << latVal.getName() << "\n";
-  }
-}
-
 template <typename Type> class Worklist {
   std::set<Type> worklist;
+  std::list<Type> task;
 
 public:
-  void insert(Type e) { worklist.insert(e); }
+  void insert(Type e) {
+    if (!worklist.count(e)) {
+      worklist.insert(e);
+      task.push_back(e);
+    }
+  }
 
-  Type pop_val() {
-    auto it = worklist.begin();
-    Type e = *it;
-    worklist.erase(it);
+  Type popVal() {
+    auto& e = task.front();
+    task.pop_front();
+    worklist.erase(e);
     return e;
   }
 
