@@ -14,6 +14,8 @@ class VarFinalizerParser {
 
       assert(var->isObj());
       for (auto* field : units.dbgInfo.getFieldMap(var)) {
+        if (!units.variables.inVars(field))
+          continue;
         units.variables.insertFlushField(var, field);
       }
     }

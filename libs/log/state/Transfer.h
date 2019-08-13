@@ -70,7 +70,7 @@ public:
   Transfer(Module& M_, Units& units_, BugReporter& breporter_)
       : units(units_), breporter(breporter_) {
     auto& llvmContext = M_.getContext();
-    auto* st = StructType::create(llvmContext);
+    auto* st = StructType::create(llvmContext, "TxVal");
     txVar = new Variable(st, 0);
   }
 

@@ -163,17 +163,13 @@ public:
            dclFlush.state == DclFlush::Flush;
   }
 
-  bool isDclFlushFlush() const {
-    return dclFlush.state == DclFlush::Flush;
-  }
+  bool isDclFlushFlush() const { return dclFlush.state == DclFlush::Flush; }
 
   bool isWrite() const {
     return (dclCommit.state == DclCommit::Write &&
             dclFlush.state == DclFlush::Write) &&
            sclCommit.state == SclCommit::Write;
   }
-
-  
 
   auto getName() const {
     return dclCommit.getName() + " " + dclFlush.getName() + " " +

@@ -32,9 +32,10 @@ struct TxValue {
 };
 
 struct LogValue {
-  enum LogState { Logged, Unseen };
-  static const constexpr char* LogStr[] = {"Logged", "Unseen"};
+  enum LogState { Unseen, Logged };
+  static const constexpr char* Str[] = {"Unseen", "Logged"};
 
+  const char* str;
   LogState state;
 
   LogValue(LogState state_) : state(state_) {}
@@ -43,18 +44,28 @@ struct LogValue {
 
   LogValue() : state(Unseen) {}
 
+  LogValue(const char* str_) : str(str_), state(Unseen) {}
+
   bool operator<(const LogValue& X) const { return state < X.state; }
 
   bool operator==(const LogValue& X) const { return state == X.state; }
 
-  void meetValue(const LogValue& X) {
-    if (state > X.state) {
-      state = X.state;
+  void meetValue(const LogValue& X, bool normal = true) {
+    if (normal) {
+      if (state > X.state) {
+        state = X.state;
+      }
+    } else {
+      if (state < X.state) {
+        state = X.state;
+      }
     }
   }
 
   auto getName() const {
-    auto name = std::string("log:") + LogStr[(int)state];
+    std::string name(str);
+    name += ":";
+    name += Str[(int)state];
     return name;
   }
 
@@ -62,46 +73,34 @@ struct LogValue {
 };
 
 class Lattice {
-  enum LatticeType { LogType, TxType, None } type;
-  union LatticeValue {
-    LogValue logValue;
-    TxValue txValue;
+  enum LatticeType { LogType, TxType, None };
+  static const constexpr char* Str[] = {"LogType", "TxType", "None"};
 
-    LatticeValue(LatticeType latticeType) {
-      if (latticeType == LogType) {
-        new (&logValue) LogValue();
-      } else if (latticeType == TxType) {
-        new (&txValue) TxValue();
-      } else {
-        report_fatal_error("check lattice type");
-      }
-    }
-
-    LatticeValue() {}
-  } val;
+  LatticeType type;
+  LogValue logCommit;
+  LogValue logFlush;
+  TxValue txValue;
 
 public:
-  Lattice() : type(None) {}
+  Lattice() : type(None), logCommit("commit"), logFlush("flush") {}
 
   Lattice(const Lattice& X) { *this = X; }
 
-  Lattice(LatticeType latticeType) : type(latticeType), val(latticeType) {}
+  Lattice(LatticeType latticeType)
+      : type(latticeType), logCommit("commit"), logFlush("flush") {}
 
   Lattice meet(const Lattice& X) {
     assert(type == X.type);
-    Lattice lattice = *this;
-    switch (type) {
-    case LogType:
-      lattice.val.logValue.meetValue(X.val.logValue);
-      break;
-    case TxType:
-      lattice.val.txValue.meetValue(X.val.txValue);
-      break;
-    default:
+    if (type == LogType) {
+      logCommit.meetValue(X.logCommit);
+      logFlush.meetValue(X.logFlush, false);
+    } else if (type == TxType) {
+      txValue.meetValue(X.txValue);
+    } else {
       report_fatal_error("wrong lattice type");
     }
 
-    return lattice;
+    return *this;
   }
 
   static Lattice getInitLog() { return Lattice(LogType); }
@@ -110,39 +109,49 @@ public:
 
   static Lattice getLogged() {
     Lattice lattice(LogType);
-    lattice.val.logValue.state = LogValue::Logged;
+    lattice.logCommit.state = LogValue::Logged;
+    lattice.logFlush.state = LogValue::Logged;
     return lattice;
   }
 
-  static Lattice getBeginTx(const Lattice& X) {
-    assert(X.type == TxType);
-    Lattice lattice(X);
-    lattice.val.txValue.state += 1;
+  static Lattice getBeginTx(Lattice lattice) {
+    assert(lattice.type == TxType);
+    lattice.txValue.state += 1;
     return lattice;
   }
 
-  static Lattice getEndTx(const Lattice& X) {
-    assert(X.type == TxType);
-    Lattice lattice(X);
-    lattice.val.txValue.state -= 1;
+  static Lattice getEndTx(Lattice lattice) {
+    assert(lattice.type == TxType);
+    lattice.txValue.state -= 1;
     return lattice;
   }
 
   bool inTx() const {
     assert(type == TxType);
-    return val.txValue.state > 0;
+    return txValue.state > 0;
+  }
+
+  bool isLogCommitLogged() const {
+    assert(type == LogType);
+    return logCommit.state == LogValue::Logged;
+  }
+
+  bool isLogFlushLogged() const {
+    assert(type == LogType);
+    return logFlush.state == LogValue::Logged;
   }
 
   bool isLogged() const {
     assert(type == LogType);
-    return val.logValue.state == LogValue::Logged;
+    return logCommit.state == LogValue::Logged &&
+           logFlush.state == LogValue::Logged;
   }
 
   auto getName() const {
     if (type == LogType) {
-      return val.logValue.getName();
+      return logCommit.getName() + " " + logFlush.getName();
     } else if (type == TxType) {
-      return val.txValue.getName();
+      return txValue.getName();
     } else {
       report_fatal_error("check lattice type");
       return std::string("");
@@ -151,9 +160,11 @@ public:
 
   void print(raw_ostream& O) const {
     if (type == LogType) {
-      val.logValue.print(O);
+      logCommit.print(O);
+      O << " ";
+      logFlush.print(O);
     } else if (type == TxType) {
-      val.txValue.print(O);
+      txValue.print(O);
     } else {
       report_fatal_error("check lattice type");
     }
@@ -161,9 +172,9 @@ public:
 
   bool operator<(const Lattice& X) const {
     if (type == LogType) {
-      return val.logValue < X.val.logValue;
+      return logCommit < X.logCommit || logFlush < X.logFlush;
     } else if (type == TxType) {
-      return val.txValue < X.val.txValue;
+      return txValue < X.txValue;
     } else {
       report_fatal_error("check lattice type");
     }
@@ -171,9 +182,9 @@ public:
 
   bool operator==(const Lattice& X) const {
     if (type == LogType) {
-      return val.logValue == X.val.logValue;
+      return logCommit == X.logCommit && logFlush == X.logFlush;
     } else if (type == TxType) {
-      return val.txValue == X.val.txValue;
+      return txValue == X.txValue;
     } else {
       report_fatal_error("check lattice type");
     }

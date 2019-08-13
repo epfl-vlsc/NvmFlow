@@ -28,12 +28,10 @@ public:
   }
 
   void parse() {
+    Parser parser(M, units);
+    
 #ifdef DBGMODE
     units.printDbgInfo(errs());
-#endif
-
-    Parser parser(M, units);
-#ifdef DBGMODE
     units.printFunctions(errs());
 #endif
   }

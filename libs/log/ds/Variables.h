@@ -76,13 +76,22 @@ struct InstructionInfo {
     return instrType;
   }
 
-  bool isIpInstr() const { return instrType == IpInstr; }
+  bool isIpInstr() const {
+    assert(instruction);
+    return instrType == IpInstr;
+  }
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
-  auto* getVariable() { return variable; }
+  auto* getVariable() {
+    assert(variable);
+    return variable;
+  }
 
-  auto* getInstruction() { return instruction; }
+  auto* getInstruction() {
+    assert(instruction);
+    return instruction;
+  }
 
   static bool isLoggingBasedInstr(InstructionType instrType) {
     return instrType == LoggingInstr;

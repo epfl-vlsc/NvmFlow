@@ -152,6 +152,7 @@ public:
 
     if (!lv.inTx()) {
       buggedVars->insert(var);
+      buggedVars->insert(txVar);
 
       auto bugData = BugData::getOutsideTx(ii);
       bugDataList->push_back(bugData);
@@ -165,7 +166,7 @@ public:
 
     auto& val = state[var];
 
-    if (val.isLogged()) {
+    if (val.isLogFlushLogged()) {
       buggedVars->insert(var);
 
       auto* prevInstr = getLastLocation(var);
@@ -208,7 +209,7 @@ public:
 
     auto& val = state[var];
 
-    if (!val.isLogged()) {
+    if (!val.isLogCommitLogged()) {
       buggedVars->insert(var);
       auto bugData = BugData::getNotCommitted(ii);
       bugDataList->push_back(bugData);
