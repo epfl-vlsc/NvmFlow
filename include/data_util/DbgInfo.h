@@ -1,11 +1,35 @@
 #pragma once
 #include "Common.h"
+#include "llvm/Demangle/Demangle.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 
 #include "StructElement.h"
 
 namespace llvm {
+
+auto demangleFunctionName(Function* f) {
+  std::string name;
+  char buf[100];
+  size_t n;
+  int s;
+  auto* fncNameCstr = f->getName().str().c_str();
+  itaniumDemangle(fncNameCstr, buf, &n, &s);
+  errs() << fncNameCstr << "\n";
+  if (!s) {
+    // successfully demangle
+    name = buf;
+    size_t found = name.find("(");
+    assert(found != std::string::npos && found > 0);
+
+    name = name.substr(0, found);
+
+    return name;
+  } else {
+    name = fncNameCstr;
+    return name;
+  }
+}
 
 // used for a temporary variable's type
 using IdxStrToElement = std::map<std::string, StructElement*>;
@@ -14,6 +38,7 @@ class DbgInfo {
   DebugInfoFinder finder;
 
   // mangled to real name
+  std::set<std::string> demangledFunctions;
   std::map<StringRef, StringRef> functionNames;
 
   // each field or cls, use addr of these
@@ -29,6 +54,9 @@ class DbgInfo {
       auto realName = f->getName();
       auto mangledName = f->getLinkageName();
 
+      if (mangledName.empty())
+        mangledName = realName;
+
       // check skip
       auto fileNameRef = f->getFilename();
       auto fileName = fileNameRef.str();
@@ -42,10 +70,24 @@ class DbgInfo {
 
       functionNames[mangledName] = realName;
     }
+
+    // todo fix
+    // functionNames["flush_range"] = "flush_range";
+
+    for (auto& F : M) {
+      if (F.isDeclaration() && !F.isIntrinsic()) {
+        auto mangledName = F.getName();
+        auto realNameStr = demangleFunctionName(&F);
+        auto [sit, _] = demangledFunctions.insert(realNameStr);
+        StringRef realName(*sit);
+        functionNames[mangledName] = realName;
+      }
+    }
   }
 
   void initFieldNames(IdxStrToElement& idxStrMap) {
     for (const DIType* T : finder.types()) {
+
       if (auto* ST = dyn_cast<DICompositeType>(T)) {
         StringRef typeName = ST->getName();
         if (typeName.empty()) {
@@ -63,6 +105,7 @@ class DbgInfo {
     StringRef realName = T->getName();
     StringRef fileName = T->getFilename();
     unsigned lineNo = T->getLine();
+
     if (lineNo == 0) {
       errs() << realName << " " << fileName << " " << lineNo << "\n";
       report_fatal_error("check case");
@@ -70,8 +113,16 @@ class DbgInfo {
 
     // find element to add info
     auto strIdx = StructElement::getAbsoluteName(typeName, idx);
-    assert(idxStrMap.count(strIdx));
+
+    // type and fields should exist
+    if (!idxStrMap.count(strIdx)) {
+      return;
+    }
+
+    // assert(idxStrMap.count(strIdx));
     auto* element = idxStrMap[strIdx];
+    if (!element)
+      return;
     element->addDbgInfo(realName, fileName, lineNo);
 
     // helper
@@ -111,6 +162,10 @@ class DbgInfo {
 
   void initTypes(IdxStrToElement& idxStrMap) {
     for (auto* st : M.getIdentifiedStructTypes()) {
+      // todo dont include known std types
+      if (st->getName().startswith("struct._"))
+        continue;
+
       // add st
       int idx = StructElement::OBJ_ID;
       auto* obj = addElement(idxStrMap, st, idx, st);
