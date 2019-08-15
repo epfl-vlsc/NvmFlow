@@ -64,13 +64,28 @@ clean_ir(){
 
 #--debug-pass=Structure
 run_tool(){
-		opt -analyze \
+		opt \
 -load $BUILD_DIR/lib/lib${TOOL_NAME}.so -mem2reg -${TOOL_NAME} \
-${SINGLE_FILE_REPO}/${TEST_NAME}.bc
+${SINGLE_FILE_REPO}/${TEST_NAME}.bc > /dev/null
+}
+
+checkers=("pair" "dur" "log" "exp")
+
+function contains() {
+    local n=$#
+    local value=${!n}
+    for ((i=1;i < $#;i++)) {
+        if [ "${!i}" == "${value}" ]; then
+            echo "y"
+            return 0
+        fi
+    }
+    echo "n"
+    return 1
 }
 
 #commands----------------------------------------------------
-if [ "$MODE" == "pair" ] || [ "$MODE" == "dur" ] || [ "$MODE" == "log" ] || [ "$MODE" == "exp" ];then
+if [ $(contains "${checkers[@]}" "$MODE") == "y" ] ;then
 	create_ir
 	run_make
 	run_tool
