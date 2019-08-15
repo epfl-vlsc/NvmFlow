@@ -65,7 +65,7 @@ clean_ir(){
 #--debug-pass=Structure
 run_tool(){
 		opt -analyze \
--load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
+-load $BUILD_DIR/lib/lib${TOOL_NAME}.so -mem2reg -${TOOL_NAME} \
 ${SINGLE_FILE_REPO}/${TEST_NAME}.bc
 }
 
