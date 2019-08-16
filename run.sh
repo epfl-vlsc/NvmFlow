@@ -65,11 +65,11 @@ clean_ir(){
 #--debug-pass=Structure
 run_tool(){
 		opt \
--load $BUILD_DIR/lib/lib${TOOL_NAME}.so -mem2reg -${TOOL_NAME} \
+-load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
 ${SINGLE_FILE_REPO}/${TEST_NAME}.bc > /dev/null
 }
 
-checkers=("pair" "dur" "log" "exp")
+checkers=("pair" "dur" "log" "exp" "cons")
 
 function contains() {
     local n=$#
