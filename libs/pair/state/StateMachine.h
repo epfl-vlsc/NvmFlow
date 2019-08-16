@@ -27,10 +27,11 @@ public:
     units.setActiveFunction(function);
 
 #ifdef DBGMODE
-    errs() << "\n\n";
     units.printVariables(errs());
+    errs() << "\n\n";
 #endif
 
+/*
     breporter.initUnit(function);
 
     DataflowAnalysis dataflow(function, *this);
@@ -40,6 +41,7 @@ public:
 #endif
 
     breporter.print(errs());
+ */
   }
 
   void initLatticeValues(AbstractState& state) {
