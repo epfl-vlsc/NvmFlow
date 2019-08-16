@@ -5,20 +5,20 @@ struct Log {
   log_field int valid;
 
   void log_fnc outsideTx() {
-    log(&valid);
+    tx_log(&valid);
     valid = 5;
   }
 
   void log_fnc correct() {
     tx_begin();
-    log(&valid);
+    tx_log(&valid);
     valid = 6;
     tx_end();
   }
 
   void log_fnc correct2() {
     tx_begin();
-    log(&valid);
+    tx_log(&valid);
     if (valid == 5)
       valid = 6;
     tx_end();
@@ -30,12 +30,12 @@ struct Log {
     tx_end();
   }
 
-  void logValid() { log(&valid); }
+  void logValid() { tx_log(&valid); }
 
   void log_fnc doubleLogged() {
     data = 5;
     tx_begin();
-    log(&valid);
+    tx_log(&valid);
     logValid();
     valid = 5;
     tx_end();
@@ -43,7 +43,7 @@ struct Log {
 
   void log_fnc correctObj() {
     tx_begin();
-    log(this);
+    tx_log(this);
     valid = 5;
     tx_end();
   }
@@ -51,7 +51,7 @@ struct Log {
   void log_fnc missLog() {
     tx_begin();
     if (valid == 6) {
-      log(&valid);
+      tx_log(&valid);
     }
     valid = 1;
     tx_end();
@@ -60,7 +60,7 @@ struct Log {
   void log_fnc loopLog() {
     tx_begin();
     while (true) {
-      log(this);
+      tx_log(this);
       valid = 1;
     }
     tx_end();
@@ -68,7 +68,7 @@ struct Log {
 
   void condLog() {
     if (valid == 6) {
-      log(this);
+      tx_log(this);
     }
   }
 
@@ -81,7 +81,7 @@ struct Log {
 
   void log_fnc recurse() {
     tx_begin();
-    log(&valid);
+    tx_log(&valid);
     recurse();
     tx_end();
   }
