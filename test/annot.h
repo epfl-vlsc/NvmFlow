@@ -24,6 +24,10 @@ void no_inline pfence(){}
 void no_inline clflushopt(void const* p){}
 void no_inline clflush(void const* p){}
 
-void no_inline log(void* ptr){}
+void no_inline tx_log(void* ptr){}
 void no_inline tx_begin(){}
 void no_inline tx_end(){}
+
+void no_inline zfence();
+
+extern bool boolval();
