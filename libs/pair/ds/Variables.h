@@ -127,6 +127,8 @@ private:
   std::map<Variable*, Vars> writeObjMap;
   std::map<Variable*, Vars> flushFieldMap;
 
+  std::map<Instruction*, DILocalVariable*> localVars;
+
 public:
   void setFunction(Function* function_) {
     assert(function_);
@@ -135,6 +137,10 @@ public:
 
   bool isUsedInstruction(Instruction* instr) const {
     return instrToInfo.count(instr) > 0;
+  }
+
+  bool instrHasLocalVar(Instruction* instr) const {
+    return localVars.count(instr) > 0;
   }
 
   bool isIpInstruction(Instruction* instr) const {
@@ -160,6 +166,10 @@ public:
     validSet.insert(valid);
   }
 
+  void insertLocalVariable(Instruction* i, DILocalVariable* diVar) {
+    localVars[i] = diVar;
+  }
+
   void insertObj(Variable* obj) {
     variables.insert(obj);
 
@@ -171,6 +181,8 @@ public:
   auto& getDataSet() { return dataSet; }
 
   auto& getValidSet() { return validSet; }
+
+  auto* getLocalVar(Instruction* i) { return localVars[i]; }
 
   void insertWriteObj(Variable* field, Variable* obj) {
     assert(field);
@@ -272,6 +284,12 @@ public:
       }
       O << "\n";
     }
+
+    O << "local vars---\n";
+    for (auto& [i, var] : localVars) {
+      O << *i << " <=> " << var->getName() << "\n";
+    }
+    O << "\n";
   }
 };
 
@@ -314,6 +332,16 @@ public:
     return activeFunction->isUsedInstruction(i);
   }
 
+  bool instrHasLocalVar(Instruction* i) const {
+    assert(activeFunction);
+    return activeFunction->instrHasLocalVar(i);
+  }
+
+  auto* getLocalVar(Instruction* i) {
+    assert(activeFunction);
+    return activeFunction->getLocalVar(i);
+  }
+
   void insertPair(Variable* data, Variable* valid, bool useDcl) {
     assert(activeFunction);
     activeFunction->insertPair(data, valid, useDcl);
@@ -323,6 +351,11 @@ public:
                          DILocalVariable* diVar) {
     assert(activeFunction);
     activeFunction->insertInstruction(instr, instrType, var, diVar);
+  }
+
+  void insertLocalVariable(Instruction* instr, DILocalVariable* diVar) {
+    assert(activeFunction);
+    activeFunction->insertLocalVariable(instr, diVar);
   }
 
   void insertInstruction(Instruction* instr, InstrType instrType) {

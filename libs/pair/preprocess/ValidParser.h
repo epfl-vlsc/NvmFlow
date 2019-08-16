@@ -3,6 +3,7 @@
 
 #include "analysis_util/MemoryUtil.h"
 #include "ds/Units.h"
+#include "parser_util/ParserUtil.h"
 
 namespace llvm {
 
@@ -62,7 +63,7 @@ class ValidParser {
       if (objv != objd)
         units.variables.insertObj(objd);
 
-      auto* diVar = getDILocalVariable(i);
+      auto* diVar = getDILocalVar(units, i);
 
       if (InstructionInfo::isUsedInstr(instrType))
         units.variables.insertInstruction(i, instrType, valid, diVar);

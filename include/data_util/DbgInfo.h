@@ -15,7 +15,6 @@ auto demangleFunctionName(Function* f) {
   int s;
   auto* fncNameCstr = f->getName().str().c_str();
   itaniumDemangle(fncNameCstr, buf, &n, &s);
-  errs() << fncNameCstr << "\n";
   if (!s) {
     // successfully demangle
     name = buf;

@@ -1,5 +1,6 @@
 #pragma once
 #include "Common.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 namespace llvm {
 
@@ -34,38 +35,25 @@ Function* getParentFunction(Value* v) {
   return nullptr;
 }
 
-DbgDeclareInst* findDbgDeclare(Value* v) {
-  // terrible implementation for finding dbg declare
-  v = v->stripPointerCasts();
+auto* getGepi(Value* v) {
+  // use for accessing gepi of non/annot field
+  auto* inst = v;
 
-  if (!isa<Instruction>(v) && !isa<Argument>(v))
-    return nullptr;
-
-  Function* f = getParentFunction(v);
-  for (auto& I : instructions(*f)) {
-    if (auto* ddi = dyn_cast<DbgDeclareInst>(&I))
-      if (ddi->getAddress() == v)
-        return ddi;
-  }
-
-  return nullptr;
-}
-
-DILocalVariable* getDILocalVariable(Value* v) {
-  if (auto* ai = getAllocaInst(v)) {
-    if (auto* ddi = findDbgDeclare(ai)) {
-      // check if var name exists
-      if (!ddi->getAddress() || !ddi->getVariable()) {
-        return nullptr;
-      }
-
-      auto* var = ddi->getVariable();
-      assert(var);
-      return var;
+  while (true) {
+    if (auto* si = dyn_cast<StoreInst>(inst)) {
+      inst = si->getPointerOperand();
+    } else if (auto* li = dyn_cast<LoadInst>(inst)) {
+      inst = li->getPointerOperand();
+    } else if (auto* ci = dyn_cast<CastInst>(inst)) {
+      inst = ci->stripPointerCasts();
+    } else if (auto* ii = dyn_cast<IntrinsicInst>(inst)) {
+      inst = ii->getOperand(0);
+    } else if (auto* gepi = dyn_cast<GetElementPtrInst>(inst)) {
+      return gepi;
+    } else {
+      return (GetElementPtrInst*)nullptr;
     }
   }
-
-  return nullptr;
 }
 
 auto* getUncasted(Value* v) {
@@ -282,7 +270,7 @@ IntrinsicInst* getAnnotatedFieldVar(Value* v) {
     }
   }
 }
-
+/*
 class AccessType {
   enum VarInfo { Obj, Field, AnnotatedField, None };
   static constexpr const char* VarInfoStr[] = {"Obj", "Field", "AnnotatedField",
@@ -352,7 +340,7 @@ public:
     errs() << *val << "\n";
     return {nullptr, -1, None};
 
-    /*
+
         if (auto* annotField = getAnnotatedFieldVar(i)) {
           auto [st, idx] = getFieldInfo(annotField);
           return {st, idx, AnnotatedField};
@@ -381,24 +369,27 @@ public:
             return {objType, -1, Obj};
           }
         }
-     */
-  }
 
-  static auto* getAliasSet(AliasSetTracker* ast, Instruction* i) {
-    auto* instr = getUncasted(i);
-    if (!isa<LoadInst>(instr) && !isa<StoreInst>(instr)) {
-      return (AliasSet*)nullptr;
-    }
+} // namespace llvm
 
-    auto* type = instr->getType();
-    if (type->isPointerTy()) {
-      auto memLoc = MemoryLocation::get(instr);
-      auto* aliasSet = &(ast->getAliasSetFor(memLoc));
-      return aliasSet;
-    }
-
+static auto* getAliasSet(AliasSetTracker* ast, Instruction* i) {
+  auto* instr = getUncasted(i);
+  if (!isa<LoadInst>(instr) && !isa<StoreInst>(instr)) {
     return (AliasSet*)nullptr;
   }
-};
+
+  auto* type = instr->getType();
+  if (type->isPointerTy()) {
+    auto memLoc = MemoryLocation::get(instr);
+    auto* aliasSet = &(ast->getAliasSetFor(memLoc));
+    return aliasSet;
+  }
+
+  return (AliasSet*)nullptr;
+}
+}
+;
+
+*/
 
 } // namespace llvm

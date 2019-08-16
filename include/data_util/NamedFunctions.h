@@ -49,7 +49,9 @@ public:
 
 class FlushFenceFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("clflush"); }
+  bool sameName(StringRef name) const {
+    return name.equals("clflush") || name.equals("flush_range");
+  }
 
   const char* getName() const { return "flush fence"; }
 };
@@ -70,7 +72,7 @@ public:
 
 class LoggingFunctions : public NamedFunctions {
 public:
-  bool sameName(StringRef name) const { return name.equals("log"); }
+  bool sameName(StringRef name) const { return name.equals("tx_log"); }
 
   const char* getName() const { return "logging"; }
 };

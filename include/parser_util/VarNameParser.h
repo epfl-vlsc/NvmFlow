@@ -8,11 +8,13 @@ template <typename Units> class VarNameParser {
   void insertVarName(DbgValueInst* dvi) {
     auto* val = dvi->getValue();
     auto* var = dvi->getVariable();
-
     assert(var && val);
-    auto* instr = dyn_cast<Instruction>(val);
 
-    units.variables.insertLocalVariable(instr, var);
+    for (auto* u : val->users()) {
+      if (Instruction* instr = dyn_cast<Instruction>(u)) {
+        units.variables.insertLocalVariable(instr, var);
+      }
+    }
   }
 
   void insertVarNames(Function* function) {
