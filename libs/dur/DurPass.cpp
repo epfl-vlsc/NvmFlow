@@ -12,8 +12,8 @@ bool DurPass::runOnModule(Module& M) {
   AAResults AAR(TLI);
 
   //boost analysis with andersen analysis
-  auto& andersAA = getAnalysis<CFLAndersAAWrapperPass>().getResult();
-  AAR.addAAResult(andersAA);
+  auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+  AAR.addAAResult(aaResults);
 
   Analyzer analyzer(M, AAR);
   return false;

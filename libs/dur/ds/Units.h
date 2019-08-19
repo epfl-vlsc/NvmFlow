@@ -21,13 +21,12 @@ struct Units {
 
   void printDbgInfo(raw_ostream& O) const { dbgInfo.print(O); }
 
-  void finalizeDbgInfo() {
-    auto& analyzedFunctions = getAnalyzedFunctions();
-    dbgInfo.finalizeInit(analyzedFunctions);
-  }
-
   void setActiveFunction(Function* function) {
     variables.setFunction(function);
+  }
+
+  void createAliasGroups(){
+    variables.createAliasGroups(&AAR);
   }
 
   void printVariables(raw_ostream& O) const { variables.print(O); }

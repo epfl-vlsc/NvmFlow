@@ -179,9 +179,9 @@ auto* getObj(Value* v) {
   return st;
 }
 
-auto getAnnotatedField(Instruction* i) {
+auto getAnnotatedField(Value* v) {
   // st == nullptr means invalid
-  auto* ii = getII(i);
+  auto* ii = getII(v);
   StructType* st = nullptr;
   int idx = -1;
 

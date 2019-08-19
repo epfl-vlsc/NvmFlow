@@ -11,33 +11,54 @@ struct InstructionInfo {
     FlushInstr,
     FlushFenceInstr,
     PfenceInstr,
-    IpInstr
+    IpInstr,
+    None
   };
 
-  static constexpr const char* iStrs[] = {"write",  "flush",  "flushfence",
-                                          "vfence", "pfence", "ip"};
-  InstructionType iType;
+  static constexpr const char* Strs[] = {
+      "write", "flush", "flushfence", "vfence", "pfence", "ip", "none"};
+
   Instruction* instruction;
-  SingleVariable* variable;
-  SingleVariable* loadedVariable;
+  InstructionType instrType;
+
+  SingleVariable* var;
+  SingleVariable* loadVar;
+
+  auto getVariableName(bool loaded = false) const {
+    if (!loaded && var) {
+      return var->getName();
+    } else if (loaded && loadVar) {
+      return loadVar->getName();
+    } else {
+      return std::string("");
+    }
+  }
+
+  auto getInstructionName() const {
+    assert(instruction);
+    return DbgInstr::getSourceLocation(instruction);
+  }
 
   auto getName() const {
-    auto name = std::string("info: ") + iStrs[(int)iType] + " ";
-    if (variable) {
-      name += variable->getName();
-    }
+    assert(instruction);
+    std::string name;
+    name.reserve(200);
+    name += getInstructionName() + " ";
+    name += std::string(Strs[(int)instrType]) + " ";
+    name += getVariableName() + " ";
+    name += getVariableName(true);
     return name;
   }
 
-  bool isIpInstr() const { return iType == IpInstr; }
+  bool isIpInstr() const { return instrType == IpInstr; }
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
-  auto* getVariable() { return variable; }
+  auto* getVariable() { return var; }
 
   auto* getLoadedVariable() {
-    assert(loadedVariable);
-    return loadedVariable;
+    assert(loadVar);
+    return loadVar;
   }
 
   auto* getInstruction() {
@@ -58,11 +79,9 @@ public:
 private:
   // store location of variables
   std::set<SingleVariable> singleVariables;
-  std::set<SingleVariable*> annots;
-  std::map<Variable*, std::set<SingleVariable*>> tracked;
 
   // alias info
-  AliasSetTracker* ast;
+  AliasGroups ags;
 
   // active function
   Function* function;
@@ -74,13 +93,6 @@ private:
   std::map<Instruction*, InstructionInfo> instrToInfo;
 
 public:
-  ~FunctionVariables() {
-    assert(ast);
-    delete ast;
-  }
-
-  void setAliasSetTracker(AliasSetTracker* ast_) { ast = ast_; }
-
   void setFunction(Function* function_) {
     assert(function_);
     function = function_;
@@ -90,21 +102,32 @@ public:
     return instrToInfo.count(instr) > 0;
   }
 
+  auto* getAliasGroup(Instruction* i, bool loaded) {
+    return ags.getAliasGroup(i, loaded);
+  }
+
   void insertVariable(Variable* var) { variables.insert(var); }
 
-  auto* insertSingleVariable(Type* objType, StructElement* se, bool isAnnotated,
-                             AliasSet* aliasSet) {
-    auto varInfo = SingleVariable::getVarInfo(se, isAnnotated);
-    auto [sit, _] = singleVariables.emplace(objType, se, varInfo, aliasSet);
-    auto* svar = (SingleVariable*)&(*sit);
-    if (isAnnotated) {
-      annots.insert(svar);
-    } else {
-      assert(aliasSet);
-      tracked[aliasSet].insert(svar);
-    }
+  auto* insertSingleVariable(Type* t, StructElement* se, bool ann,
+                             AliasGroup* ag, DILocalVariable* diVar) {
+    auto vi = VarElement::getVarInfo(se, ann);
+    auto [it, _] = singleVariables.emplace(t, se, vi, ag, diVar);
+    auto* sv = (SingleVariable*)(&*it);
+    return sv;
+  }
 
-    return svar;
+  void insertAliasInstr(Instruction* i) { ags.add(i); }
+
+  void insertInstruction(Instruction* instr, InstrType instrType,
+                         SingleVariable* var, SingleVariable* loadVar) {
+    instrToInfo[instr] = {instr, instrType, var, loadVar};
+  }
+
+  void createAliasGroups(AAResults* AAR) {
+    ags.createGroups(AAR);
+    for (auto& ag : ags) {
+      variables.insert((AliasGroup*)&ag);
+    }
   }
 
   bool isIpInstruction(Instruction* instr) const {
@@ -113,11 +136,6 @@ public:
       return info.isIpInstr();
     }
     return false;
-  }
-
-  void insertInstruction(InstrType instrType, Instruction* instr,
-                         SingleVariable* var, SingleVariable* loadedVar) {
-    instrToInfo[instr] = {instrType, instr, var, loadedVar};
   }
 
   auto* getInstructionInfo(Instruction* i) {
@@ -129,25 +147,18 @@ public:
 
   auto& getVariables() { return variables; }
 
-  auto* getAliasSetTracker() { return ast; }
-
   bool inVars(Variable* var) const { return variables.count(var); }
-
-  bool inAnnots(SingleVariable* var) const { return annots.count(var); }
 
   void print(raw_ostream& O) const {
     O << "function: " << function->getName() << "\n";
 
-    O << "variables:";
-    for (auto& variable : variables) {
-      variable->print(O);
-    }
+    O << "alias groups:---\n";
+    ags.print(O);
     O << "\n";
 
     O << "inst to vars:---\n";
     for (auto& [i, ii] : instrToInfo) {
-      O << "\t" << DbgInstr::getSourceLocation(i) << " " << ii.getName()
-        << "\n";
+      O << "\t" << ii.getName() << "\n";
     }
   }
 };
@@ -176,11 +187,6 @@ public:
     activeFunction->setFunction(function);
   }
 
-  void setAliasSetTracker(AliasSetTracker* ast) {
-    assert(activeFunction);
-    return activeFunction->setAliasSetTracker(ast);
-  }
-
   bool isIpInstruction(Instruction* i) const {
     assert(activeFunction);
     return activeFunction->isIpInstruction(i);
@@ -196,33 +202,49 @@ public:
     return activeFunction->insertVariable(var);
   }
 
-  auto* insertSingleVariable(Type* objType, StructElement* se, bool isAnnotated,
-                             AliasSet* aliasSet) {
-    assert(activeFunction);
-    return activeFunction->insertSingleVariable(objType, se, isAnnotated,
-                                                aliasSet);
-  }
-
-  void insertInstruction(InstrType instrType, Instruction* instr,
-                         SingleVariable* var, SingleVariable* loadedVar) {
-    assert(activeFunction);
-    activeFunction->insertInstruction(instrType, instr, var, loadedVar);
-  }
-
   auto* getInstructionInfo(Instruction* i) {
     assert(activeFunction);
     return activeFunction->getInstructionInfo(i);
   }
 
-  auto* getAliasSetTracker() {
-    assert(activeFunction);
-    return activeFunction->getAliasSetTracker();
-  }
-
   bool inVars(Variable* var) const { return activeFunction->inVars(var); }
 
-  bool inAnnots(SingleVariable* var) const {
-    return activeFunction->inAnnots(var);
+  void insertAliasInstr(Instruction* i) {
+    assert(activeFunction);
+    activeFunction->insertAliasInstr(i);
+  }
+
+  auto* insertSingleVariable(Type* t, StructElement* se, bool ann,
+                             AliasGroup* ag, DILocalVariable* diVar) {
+    assert(activeFunction);
+    return activeFunction->insertSingleVariable(t, se, ann, ag, diVar);
+  }
+
+  void createAliasGroups(AAResults* AAR) {
+    assert(activeFunction);
+    activeFunction->createAliasGroups(AAR);
+  }
+
+  auto* getAliasGroup(Instruction* i, bool loaded = false) {
+    assert(activeFunction);
+    return activeFunction->getAliasGroup(i, loaded);
+  }
+
+  void insertInstruction(Instruction* instr, InstrType instrType) {
+    assert(activeFunction);
+    activeFunction->insertInstruction(instr, instrType, nullptr, nullptr);
+  }
+
+  void insertInstruction(Instruction* instr, InstrType instrType,
+                         SingleVariable* var) {
+    assert(activeFunction);
+    activeFunction->insertInstruction(instr, instrType, var, nullptr);
+  }
+
+  void insertInstruction(Instruction* instr, InstrType instrType,
+                         SingleVariable* var, SingleVariable* loadVar) {
+    assert(activeFunction);
+    activeFunction->insertInstruction(instr, instrType, var, loadVar);
   }
 };
 

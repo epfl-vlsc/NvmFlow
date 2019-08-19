@@ -38,22 +38,25 @@ public:
 };
 
 class StructElement : public StructElementBase {
-  Type* fieldType;
+  Type* elementType;
 
   StringRef realName;
   StringRef fileName;
   unsigned lineNo;
 
 public:
-  StructElement(StructType* st_, int idx_, Type* fieldType_)
-      : StructElementBase(st_, idx_), fieldType(fieldType_) {
-    assert(fieldType_);
-    // field type can be useful
-    (void)(fieldType);
+  StructElement(StructType* st_, int idx_, Type* elementType_)
+      : StructElementBase(st_, idx_), elementType(elementType_) {
+    assert(elementType_);
   }
 
   StructElement(StructType* st_, int idx_) : StructElementBase(st_, idx_) {
     // used for temporary objects to search list
+  }
+
+  auto* getType() {
+    assert(elementType);
+    return elementType;
   }
 
   void addDbgInfo(StringRef realName_, StringRef fileName_, unsigned lineNo_) {

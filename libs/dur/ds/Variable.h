@@ -4,7 +4,7 @@
 
 namespace llvm {
 
-using Variable = AliasSet;
+using Variable = AliasGroup;
 
 using SingleVariable = VarElement;
 
