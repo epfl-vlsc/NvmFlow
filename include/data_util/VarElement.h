@@ -1,6 +1,7 @@
 #pragma once
 #include "Common.h"
 #include "StructElement.h"
+#include "analysis_util/AliasGroups.h"
 
 namespace llvm {
 
@@ -14,15 +15,19 @@ private:
   Type* objType;
   StructElement* se;
   VarInfo varInfo;
-  AliasSet* aliasSet;
+  AliasGroup* aliasGroup;
+  DILocalVariable* diVar;
 
   std::set<VarElement*> writeSet;
   std::set<VarElement*> flushSet;
 
 public:
   VarElement(Type* objType_, StructElement* se_, VarInfo varInfo_,
-             AliasSet* aliasSet_)
-      : objType(objType_), se(se_), varInfo(varInfo_), aliasSet(aliasSet_) {}
+             AliasGroup* aliasGroup_, DILocalVariable* diVar_)
+      : objType(objType_), se(se_), varInfo(varInfo_), aliasGroup(aliasGroup_),
+        diVar(diVar_) {
+    assert(objType && varInfo != None && aliasGroup);
+  }
 
   bool isFieldType() const {
     return varInfo == Field || varInfo == AnnotatedField;
@@ -48,6 +53,11 @@ public:
 
   bool isAnnotatedField() const { return varInfo == AnnotatedField; }
 
+  auto getFieldName() const {
+    assert(isField());
+    return se->getFieldName();
+  }
+
   auto getName() const {
     std::string name;
     name.reserve(100);
@@ -60,12 +70,12 @@ public:
 
   bool operator<(const VarElement& X) const {
     return objType < X.objType || se < X.se || varInfo < X.varInfo ||
-           aliasSet < X.aliasSet;
+           aliasGroup < X.aliasGroup || diVar < X.diVar;
   }
 
   bool operator==(const VarElement& X) const {
     return objType == X.objType && se == X.se && varInfo == X.varInfo &&
-           aliasSet == X.aliasSet;
+           aliasGroup == X.aliasGroup && diVar == X.diVar;
   }
 };
 

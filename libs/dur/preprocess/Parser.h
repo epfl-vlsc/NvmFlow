@@ -11,7 +11,6 @@ class Parser {
 public:
   Parser(Module& M, Units& units) {
     // ordering matters!
-    
     FunctionParser fParser(M, units);
     VariableParser vParser(units);
     

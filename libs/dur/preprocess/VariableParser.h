@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
-#include "FlushParser.h"
-#include "WriteParser.h"
+#include "AliasParser.h"
+//#include "DataParser.h"
 
 namespace llvm {
 
@@ -10,9 +10,8 @@ class VariableParser {
 public:
   VariableParser(Units& units) {
     // ordering matters!
-    units.finalizeDbgInfo();
-    FlushParser fParser(units);
-    WriteParser wParser(units);
+    AliasParser aParser(units);
+    //DataParser dParser(units);
   }
 };
 

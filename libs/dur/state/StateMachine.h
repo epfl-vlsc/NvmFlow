@@ -1,11 +1,11 @@
 #pragma once
 #include "Common.h"
 
-#include "BugReporter.h"
+//#include "BugReporter.h"
 #include "FlowTypes.h"
-#include "Lattice.h"
-#include "Transfer.h"
-#include "analysis_util/DataflowAnalysis.h"
+//#include "Lattice.h"
+//#include "Transfer.h"
+//#include "analysis_util/DataflowAnalysis.h"
 #include "ds/Units.h"
 
 namespace llvm {
@@ -16,12 +16,14 @@ public:
 
 private:
   Units& units;
-  BugReporter breporter;
-  Transfer transfer;
+  // BugReporter breporter;
+  // Transfer transfer;
 
 public:
   StateMachine(Module& M_, Units& units_)
-      : units(units_), breporter(units_), transfer(M_, units_, breporter) {}
+      : units(
+            units_) /* , breporter(units_), transfer(M_, units_, breporter) */ {
+  }
 
   void analyze(Function* function) {
     units.setActiveFunction(function);
@@ -32,17 +34,19 @@ public:
     units.printVariables(errs());
 #endif
 
-    breporter.initUnit(function);
+    /*
+        breporter.initUnit(function);
 
-    DataflowAnalysis dataflow(function, *this);
+        DataflowAnalysis dataflow(function, *this);
 
-#ifdef DBGMODE
-    dataflow.print(errs());
-#endif
+    #ifdef DBGMODE
+        dataflow.print(errs());
+    #endif
 
-    breporter.print(errs());
+        breporter.print(errs());
+     */
   }
-
+/*
   void initLatticeValues(AbstractState& state) {
     transfer.initLatticeValues(state);
   }
@@ -54,7 +58,7 @@ public:
   bool isIpInstruction(Instruction* i) const {
     return units.isIpInstruction(i);
   }
-
+ */
   auto& getAnalyzedFunctions() { return units.getAnalyzedFunctions(); }
 };
 
