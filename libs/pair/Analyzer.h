@@ -21,6 +21,8 @@ public:
   }
 
   void dataflow() {
+    errs() << "Dataflow Analysis\n";
+    errs() << "-----------------\n";
     StateMachine stateMachine(M, units);
     for (auto* function : stateMachine.getAnalyzedFunctions()) {
       stateMachine.analyze(function);
@@ -28,10 +30,14 @@ public:
   }
 
   void parse() {
+#ifdef DBGMODE
+    units.printDbgInfo(errs());
+#endif
+
+
     Parser parser(M, units);
 
 #ifdef DBGMODE
-    units.printDbgInfo(errs());
     units.printFunctions(errs());
 #endif
   }

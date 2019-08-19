@@ -52,7 +52,7 @@ class DataParser {
     insertVar(si, InstructionInfo::WriteInstr);
   }
 
-  void insertFlush(CallInst* ci, InstructionInfo::InstructionType instrType) {
+  void insertFlush(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
       insertVar(arg0Instr, instrType);

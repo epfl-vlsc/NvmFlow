@@ -169,7 +169,7 @@ auto getFieldInfo(GetElementPtrInst* gepi) {
 }
 
 auto* getObj(Value* v) {
-  auto* uncastedArg0 = getUncasted(v);
+  auto* uncastedArg0 = v->stripPointerCasts();
   auto* argType = uncastedArg0->getType();
   // must be ptr
   assert(argType->isPointerTy());
