@@ -30,9 +30,9 @@ class AliasSets {
   using AliasMap = std::map<Instruction*, AliasSet*>;
 
   auto* getAliasInstr(Value* v) {
-    v = v->stripPointerCasts();
-
     if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
+      auto num = ii->getNumArgOperands();
+      errs() << num << "\n";
       auto* gepi = ii->getArgOperand(0);
       gepi = gepi->stripPointerCasts();
       return dyn_cast<Instruction>(gepi);
@@ -46,6 +46,16 @@ class AliasSets {
         auto* ptrOpnd = si->getPointerOperand();
 
         auto* ptrInstr = getAliasInstr(ptrOpnd);
+
+        auto* valOpnd = si->getValueOperand();
+
+        auto* valInstr = getAliasInstr(valOpnd);
+
+        errs() << *valOpnd << " " << *valOpnd->stripPointerCasts() << " "
+               << getAliasInstr(valOpnd) << "\n";
+
+        auto res = AAR.alias(valOpnd, ptrInstr);
+        errs() << res << "\n";
 
         instrMap[si] = ptrInstr;
       } else if (auto* ci = dyn_cast<CallInst>(i)) {

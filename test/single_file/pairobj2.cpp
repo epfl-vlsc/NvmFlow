@@ -47,14 +47,14 @@ struct Dcl {
     if (useNvm) {
       clflushopt(this);
       pfence();
-      valid = 1;
     }
+    valid = 1;
   }
 
   void nvm_fnc branchNoFence(bool useNvm) {
     data = 1;
     if (useNvm) {
-      clflush(this);
+      clflushopt(this);
     }
     valid = 1;
   }
@@ -64,7 +64,7 @@ struct Dcl {
   void nvm_fnc wrongIp(bool useNvm) {
     correctWriteData();
     if (useNvm) {
-      clflush(this);
+      clflushopt(this);
     }
     valid = 1;
   }
