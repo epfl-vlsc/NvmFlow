@@ -113,7 +113,9 @@ public:
   }
 
   void print(raw_ostream& O) const {
-    O << currentFunction->getName() << " bugs\n";
+    auto mangledName = currentFunction->getName();
+    auto fncName = units.dbgInfo.getFunctionName(mangledName);
+    O << fncName << " bugs\n";
     for (auto& bugData : *bugDataList) {
       errs() << bugData.getName();
     }
