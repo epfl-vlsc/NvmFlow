@@ -43,12 +43,13 @@ class ValidParser {
 
   auto* getObj(Variable* valid) { return units.dbgInfo.getStructObj(valid); }
 
-  void insertVar(Instruction* i, InstructionType instrType) {
-    if (auto [hasAnnot, annotation] = getAnnotatedField(i, FIELD_ANNOT);
+  void insertVar(Instruction* i, Instruction* instr,
+                 InstructionType instrType) {
+    if (auto [hasAnnot, annotation] = getAnnotatedField(instr, FIELD_ANNOT);
         hasAnnot) {
 
       // find valid
-      auto* valid = getValid(i);
+      auto* valid = getValid(instr);
 
       // find data
       auto [data, useDcl] = getData(annotation, valid->getStType());
@@ -63,23 +64,23 @@ class ValidParser {
       if (objv != objd)
         units.variables.insertObj(objd);
 
-      auto* diVar = getDILocalVar(units, i);
+      auto* diVar = getDILocalVar(units, instr);
 
       if (InstructionInfo::isUsedInstr(instrType))
         units.variables.insertInstruction(i, instrType, valid, diVar);
     }
   }
 
-  void insertRead(LoadInst* li) { insertVar(li, InstructionType::None); }
+  void insertRead(LoadInst* li) { insertVar(li, li, InstructionType::None); }
 
   void insertWrite(StoreInst* si) {
-    insertVar(si, InstructionType::WriteInstr);
+    insertVar(si, si, InstructionType::WriteInstr);
   }
 
   void insertFlush(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      insertVar(arg0Instr, instrType);
+      insertVar(ci, arg0Instr, instrType);
     }
   }
 
