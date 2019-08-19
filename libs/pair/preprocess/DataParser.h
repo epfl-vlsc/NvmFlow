@@ -29,6 +29,7 @@ class DataParser {
     } else if (InstructionInfo::isFlushBasedInstr(instrType)) {
       // obj
       if (auto* st = getObj(i)) {
+        errs() << "obj" << *i << "\n";
         auto* obj = units.dbgInfo.getStructElement(st);
         assert(obj);
         if (units.variables.inVars(obj)) {
@@ -40,22 +41,23 @@ class DataParser {
     return (Variable*)nullptr;
   }
 
-  void insertVar(Instruction* i, InstructionType instrType) {
-    if (auto* var = getVar(i, instrType)) {
-      auto* diVar = getDILocalVar(units, i);
+  void insertVar(Instruction* i, Instruction* instr, InstructionType instrType) {
+    if (auto* var = getVar(instr, instrType)) {
+      errs() << var->getName() << "\n";
+      auto* diVar = getDILocalVar(units, instr);
 
       units.variables.insertInstruction(i, instrType, var, diVar);
     }
   }
 
   void insertWrite(StoreInst* si) {
-    insertVar(si, InstructionInfo::WriteInstr);
+    insertVar(si, si, InstructionInfo::WriteInstr);
   }
 
   void insertFlush(CallInst* ci, InstructionType instrType) {
     auto* arg0 = ci->getArgOperand(0);
     if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      insertVar(arg0Instr, instrType);
+      insertVar(ci, arg0Instr, instrType);
     }
   }
 

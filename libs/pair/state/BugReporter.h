@@ -120,6 +120,7 @@ public:
       errs() << bugData.getName();
     }
     O << "---------------------------------\n";
+    O << "\n\n\n";
   }
 
   bool addCheckNotCommittedBug(Variable* var, InstructionInfo* ii,
