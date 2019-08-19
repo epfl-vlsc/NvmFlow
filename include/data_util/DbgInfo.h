@@ -8,13 +8,16 @@
 
 namespace llvm {
 
-auto demangleFunctionName(Function* f) {
+std::string demangleFunctionName(Function* f) {
   std::string name;
-  char buf[100];
+  char buf[200];
   size_t n;
   int s;
-  auto* fncNameCstr = f->getName().str().c_str();
+  std::string fncNameStr = f->getName().str();
+  const char* fncNameCstr = fncNameStr.c_str();
+
   itaniumDemangle(fncNameCstr, buf, &n, &s);
+  
   if (!s) {
     // successfully demangle
     name = buf;
@@ -22,10 +25,10 @@ auto demangleFunctionName(Function* f) {
     assert(found != std::string::npos && found > 0);
 
     name = name.substr(0, found);
-
+    
     return name;
   } else {
-    name = fncNameCstr;
+    name = fncNameStr;
     return name;
   }
 }
@@ -69,9 +72,6 @@ class DbgInfo {
 
       functionNames[mangledName] = realName;
     }
-
-    // todo fix
-    // functionNames["flush_range"] = "flush_range";
 
     for (auto& F : M) {
       if (F.isDeclaration() && !F.isIntrinsic()) {
