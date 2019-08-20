@@ -55,9 +55,12 @@ struct InstructionInfo {
 
   void print(raw_ostream& O) const { O << this->getName(); }
 
-  auto* getVariable() { return var; }
+  auto* getVariable() {
+    assert(var);
+    return var;
+  }
 
-  auto* getLoadedVariable() {
+  auto* getLoadVariable() {
     assert(loadVar);
     return loadVar;
   }
@@ -65,6 +68,11 @@ struct InstructionInfo {
   auto* getInstruction() {
     assert(instruction);
     return instruction;
+  }
+
+  auto getInstrType() const {
+    assert(instruction);
+    return instrType;
   }
 
   static bool isFlushBasedInstr(InstructionType instrType) {
@@ -169,6 +177,12 @@ public:
 
     O << "alias groups:---\n";
     ags.print(O);
+    O << "\n";
+
+    O << "variables: ";
+    for (auto& variable : variables) {
+      O << variable->getName() << ", ";
+    }
     O << "\n";
 
     O << "inst to vars:---\n";

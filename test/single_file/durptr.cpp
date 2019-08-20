@@ -1,25 +1,43 @@
 #include "annot.h"
 
 struct Dur {
-  dur_field int* valid;
+  dur_field int* next;
+  int* next2;
 
   void nvm_fnc correct() {
-    int* ptr = new int(1);
+    auto* ptr = new int(5);
     clflushopt(ptr);
     pfence();
-    valid = ptr;
+    next = ptr;
+    next2 = new int(6);
   }
 
-  void nvm_fnc fenceNotFlushedData(int* ptr) { valid = ptr; }
+  void nvm_fnc fenceNotFlushedData(int* ptr) { next = ptr; }
 
   void nvm_fnc correctParam(int* ptr) {
     clflush(ptr);
-    valid = ptr;
+    next = ptr;
+  }
+
+  void nvm_fnc correctInt() {
+    auto* data = new int(5);
+
+    clflush(data);
+    next = data;
+  }
+
+  void nvm_fnc writeInt() {
+    auto* data = new int(5);
+
+    clflush(data);
+    *data = 5;
+
+    next = data;
   }
 
   void nvm_fnc branchFlush(int* ptr) {
-    if (*valid == 1)
+    if (*ptr == 1)
       clflush(ptr);
-    valid = ptr;
+    next = ptr;
   }
 };

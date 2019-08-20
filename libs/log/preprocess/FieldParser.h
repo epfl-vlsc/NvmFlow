@@ -33,7 +33,8 @@ class FieldParser {
       auto* obj = getObj(var);
       units.variables.insertObj(obj);
 
-      auto* diVar = getDILocalVariable(i);
+      // auto* diVar = getDILocalVariable(i);
+      DILocalVariable* diVar = nullptr;
 
       if (InstructionInfo::isUsedInstr(instrType))
         units.variables.insertInstruction(i, instrType, var, diVar);

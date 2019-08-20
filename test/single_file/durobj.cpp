@@ -6,20 +6,20 @@ struct Data {
 };
 
 struct Dur {
-  dur_field Data* valid;
+  dur_field Data* next;
 
   void nvm_fnc correct() {
     auto* ptr = new Data();
     clflushopt(ptr);
     pfence();
-    valid = ptr;
+    next = ptr;
   }
 
-  void nvm_fnc fenceNotFlushedData(Data* ptr) { valid = ptr; }
+  void nvm_fnc fenceNotFlushedData(Data* ptr) { next = ptr; }
 
   void nvm_fnc correctParam(Data* ptr) {
     clflush(ptr);
-    valid = ptr;
+    next = ptr;
   }
 
   void nvm_fnc correctObj() {
@@ -27,7 +27,7 @@ struct Dur {
     data->data = 5;
 
     clflush(data);
-    valid = data;
+    next = data;
   }
 
   void nvm_fnc writeObj() {
@@ -37,12 +37,12 @@ struct Dur {
     clflush(data);
     data->data = 5;
 
-    valid = data;
+    next = data;
   }
 
   void nvm_fnc branchFlush(Data* ptr) {
     if (ptr->data == 1)
       clflush(ptr);
-    valid = ptr;
+    next = ptr;
   }
 };

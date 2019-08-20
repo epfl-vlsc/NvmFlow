@@ -3,30 +3,30 @@
 
 namespace llvm {
 
-struct DclValue {
-  enum DclState { Write, Flush, Fence, Unseen };
-  static const constexpr char* DclStr[] = {"Write", "Flush", "Fence", "Unseen"};
+struct DclCommit {
+  enum State { Write, Flush, Fence, Unseen };
+  static const constexpr char* Str[] = {"Write", "Flush", "Fence", "Unseen"};
 
-  DclState dcl;
+  State state;
 
-  DclValue(DclState dcl_) : dcl(dcl_) {}
+  DclCommit(State state_) : state(state_) {}
 
-  DclValue(const DclValue& X) : dcl(X.dcl) {}
+  DclCommit(const DclCommit& X) : state(X.state) {}
 
-  DclValue() : dcl(Unseen) {}
+  DclCommit() : state(Unseen) {}
 
-  bool operator<(const DclValue& X) const { return dcl < X.dcl; }
+  bool operator<(const DclCommit& X) const { return state < X.state; }
 
-  bool operator==(const DclValue& X) const { return dcl == X.dcl; }
+  bool operator==(const DclCommit& X) const { return state == X.state; }
 
-  void meetValue(const DclValue& X) {
-    if (dcl > X.dcl) {
-      dcl = X.dcl;
+  void meetValue(const DclCommit& X) {
+    if (state > X.state) {
+      state = X.state;
     }
   }
 
   auto getName() const {
-    auto name = std::string("dcl:") + DclStr[(int)dcl];
+    auto name = std::string("commit:") + Str[(int)state];
     return name;
   }
 
@@ -34,7 +34,7 @@ struct DclValue {
 };
 
 class Lattice {
-  DclValue dclValue;
+  DclCommit dclCommit;
 
 public:
   Lattice() {}
@@ -42,46 +42,45 @@ public:
   Lattice(const Lattice& X) { *this = X; }
 
   Lattice meet(const Lattice& X) {
-    dclValue.meetValue(X.dclValue);
+    dclCommit.meetValue(X.dclCommit);
     return *this;
   }
 
   static Lattice getInit() { return Lattice(); }
 
   static Lattice getWrite(Lattice lattice) {
-    lattice.dclValue.dcl = DclValue::Write;
+    lattice.dclCommit.state = DclCommit::Write;
     return lattice;
   }
 
   static Lattice getFlush(Lattice lattice) {
-    lattice.dclValue.dcl = DclValue::Flush;
+    lattice.dclCommit.state = DclCommit::Flush;
     return lattice;
   }
 
   static Lattice getFence(Lattice lattice) {
-    lattice.dclValue.dcl = DclValue::Fence;
+    lattice.dclCommit.state = DclCommit::Fence;
     return lattice;
   }
 
-  bool isWrite() const { return dclValue.dcl == DclValue::Write; }
-
-  bool isFlush() const { return dclValue.dcl == DclValue::Flush; }
-
-  bool isFence() const { return dclValue.dcl == DclValue::Fence; }
-
-  auto getName() const { return dclValue.getName(); }
-
-  void print(raw_ostream& O) const {
-    dclValue.print(O);
+  static Lattice getFlushFence(Lattice lattice) {
+    lattice.dclCommit.state = DclCommit::Fence;
+    return lattice;
   }
 
-  bool operator<(const Lattice& X) const {
-    return dclValue < X.dclValue;
-  }
+  bool isWrite() const { return dclCommit.state == DclCommit::Write; }
 
-  bool operator==(const Lattice& X) const {
-    return dclValue == X.dclValue;
-  }
+  bool isFlush() const { return dclCommit.state == DclCommit::Flush; }
+
+  bool isFence() const { return dclCommit.state == DclCommit::Fence; }
+
+  auto getName() const { return dclCommit.getName(); }
+
+  void print(raw_ostream& O) const { dclCommit.print(O); }
+
+  bool operator<(const Lattice& X) const { return dclCommit < X.dclCommit; }
+
+  bool operator==(const Lattice& X) const { return dclCommit == X.dclCommit; }
 };
 
 } // namespace llvm

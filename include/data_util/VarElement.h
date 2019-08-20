@@ -57,6 +57,11 @@ public:
     return varInfo == AnnotatedField || varInfo == Field;
   }
 
+  auto* getAliasGroup() {
+    assert(aliasGroup);
+    return aliasGroup;
+  }
+
   auto getFieldName() const {
     assert(isField());
     return se->getFieldName();
@@ -81,7 +86,7 @@ public:
       assert(se);
       name += "->" + se->getFieldName();
     }
-    
+
     return name;
   }
 

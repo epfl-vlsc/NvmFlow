@@ -23,50 +23,34 @@ class Transfer {
     return stateChanged;
   }
 
-  bool doFlushFence(Variable* var, AbstractState& state) {
-    auto& val = state[var];
-
-    if (val.isWrite()) {
-      val = LatVal::getFence(val);
-      return true;
-    }
-
-    return false;
-  }
-
-  bool doNormalFlush(Variable* var, AbstractState& state) {
-    auto& val = state[var];
-
-    if (val.isWrite()) {
-      val = LatVal::getFlush(val);
-      return true;
-    }
-
-    return false;
-  }
-
-  bool doFlush(Variable* var, AbstractState& state, bool useFence) {
-    if (!useFence)
-      return doNormalFlush(var, state);
-    else
-      return doFlushFence(var, state);
-  }
-
   bool handleFlush(InstructionInfo* ii, AbstractState& state, bool useFence) {
+    bool stateChanged = false;
     auto* var = ii->getVariable();
-    assert(var);
-   
-    return doFlush(var, state, useFence);
+    auto* ag = var->getAliasGroup();
+
+    auto& val = state[ag];
+
+    if (val.isFlush() && !useFence)
+      return false;
+    else if (val.isFence() && useFence)
+      return false;
+
+    //do flush
+    if (useFence) {
+      val = LatVal::getFence(val);
+    } else {
+      val = LatVal::getFlush(val);
+    }
+    return true;
   }
 
   bool handleWrite(InstructionInfo* ii, AbstractState& state) {
     breporter.checkNotCommittedBug(ii, state);
 
     auto* var = ii->getVariable();
-    assert(var);
+    auto* ag = var->getAliasGroup();
 
-    // todo find var
-    auto& val = state[var];
+    auto& val = state[ag];
 
     if (val.isWrite())
       return false;
@@ -92,27 +76,37 @@ public:
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
+    bool stateChanged = false;
+
     auto* ii = units.variables.getInstructionInfo(i);
     if (!ii)
-      return false;
+      return stateChanged;
 
-#ifdef DBGMODE
-    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
-#endif
-
-    switch (ii->iType) {
+    switch (ii->getInstrType()) {
     case InstructionInfo::WriteInstr:
-      return handleWrite(ii, state);
+      stateChanged = handleWrite(ii, state);
+      break;
     case InstructionInfo::FlushInstr:
-      return handleFlush(ii, state, false);
+      stateChanged = handleFlush(ii, state, false);
+      break;
     case InstructionInfo::FlushFenceInstr:
-      return handleFlush(ii, state, true);
+      stateChanged = handleFlush(ii, state, true);
+      break;
     case InstructionInfo::PfenceInstr:
-      return handlePfence(ii, state);
+      stateChanged = handlePfence(ii, state);
+      break;
     default:
       report_fatal_error("not correct instruction");
       return false;
     }
+
+#ifdef DBGMODE
+    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
+    if (stateChanged)
+      printState(state);
+#endif
+
+    return stateChanged;
   }
 };
 

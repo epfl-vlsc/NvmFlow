@@ -22,7 +22,6 @@
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DebugLoc.h"
 
-#include "llvm/Analysis/AliasSetTracker.h"
 #include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 
 #include <array>

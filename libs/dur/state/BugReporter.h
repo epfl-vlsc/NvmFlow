@@ -9,35 +9,37 @@ class BugReporter {
   struct BugData {
     enum BugType { NotCommittedBug };
     BugType bugType;
-    Variable* var;
-    Variable* loadedVar;
-    Instruction* instr;
+    InstructionInfo* ii;
 
-    static BugData getNotCommitted(Variable* var_, Variable* loadedVar_,
-                                   Instruction* instr_) {
-      return {NotCommittedBug, var_, loadedVar_, instr_};
+    static BugData getNotCommitted(InstructionInfo* ii_) {
+      assert(ii_);
+      return {NotCommittedBug, ii_};
     }
 
     auto notCommittedBugStr() const {
       std::string name;
       name.reserve(200);
 
-      name += "Commit " + loadedVar->getName() + " for " + var->getName();
-      name += " at " + DbgInstr::getSourceLocation(instr);
-      name += "\n";
+      name += "For " + ii->getVariableName();
+      name += " commit " + ii->getVariableName(true);
+      name += " at " + ii->getInstructionName() + "\n";
 
       return name;
     }
 
-    auto getName() const {
-      if (bugType == NotCommittedBug)
-        return notCommittedBugStr();
-    }
+    auto getName() const { return notCommittedBugStr(); }
   };
+
+  using BugDataList = std::vector<BugData>;
+  using LastLocationMap = std::map<Variable*, Instruction*>;
+  using BuggedVars = std::set<Variable*>;
 
   void deleteStructures() {
     if (bugDataList) {
       delete bugDataList;
+    }
+    if (lastLocationMap) {
+      delete lastLocationMap;
     }
     if (buggedVars) {
       delete buggedVars;
@@ -46,22 +48,22 @@ class BugReporter {
 
   void allocStructures() {
     bugDataList = new BugDataList();
+    lastLocationMap = new LastLocationMap();
     buggedVars = new BuggedVars();
   }
-
-  using BugDataList = std::vector<BugData>;
-  using BuggedVars = std::set<Variable*>;
 
   // data structures
   Units& units;
   Function* currentFunction;
   BugDataList* bugDataList;
+  LastLocationMap* lastLocationMap;
   BuggedVars* buggedVars;
 
 public:
   BugReporter(Units& units_) : units(units_) {
     currentFunction = nullptr;
     bugDataList = nullptr;
+    lastLocationMap = nullptr;
     buggedVars = nullptr;
   }
 
@@ -73,42 +75,45 @@ public:
     allocStructures();
   }
 
+  void updateLastLocation(Variable* var, InstructionInfo* ii) {
+    auto* instr = ii->getInstruction();
+    assert(instr);
+    (*lastLocationMap)[var] = instr;
+  }
+
+  auto* getLastLocation(Variable* var) {
+    assertInDs(lastLocationMap, var);
+    return (*lastLocationMap)[var];
+  }
+
   void print(raw_ostream& O) const {
-    O << currentFunction->getName() << " bugs\n";
+    auto mangledName = currentFunction->getName();
+    auto fncName = units.dbgInfo.getFunctionName(mangledName);
+    O << fncName << " bugs\n";
     for (auto& bugData : *bugDataList) {
       errs() << bugData.getName();
     }
     O << "---------------------------------\n";
-  }
-
-  void addCheckNotCommittedBug(Variable* var, InstructionInfo* ii,
-                               AbstractState& state) {
-    if (buggedVars->count(var))
-      return;
-
-    if (units.variables.inAnnots(var)) {
-      auto* loadedVar = ii->getLoadedVariable();
-      if (buggedVars->count(loadedVar))
-        return;
-
-      // todo find var
-      auto& loadedVal = state[loadedVar];
-      if (!loadedVal.isFence()) {
-        buggedVars->insert(var);
-        buggedVars->insert(loadedVar);
-
-        auto* instr = ii->getInstruction();
-        auto bugData = BugData::getNotCommitted(var, loadedVar, instr);
-        bugDataList->push_back(bugData);
-      }
-    }
+    O << "\n\n\n";
   }
 
   void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    assert(var);
+    auto* loadVar = ii->getLoadVariable();
 
-    addCheckNotCommittedBug(var, ii, state);
+    auto* loadVarAg = loadVar->getAliasGroup();
+
+    if (buggedVars->count(loadVarAg))
+      return;
+
+    if (var->isAnnotatedField()) {
+      auto& val = state[loadVarAg];
+
+      if (!val.isFence()) {
+        auto bugData = BugData::getNotCommitted(ii);
+        bugDataList->push_back(bugData);
+      }
+    }
   }
 };
 

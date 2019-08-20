@@ -1,20 +1,25 @@
 #include "annot.h"
+#include <cstdlib>
+
+//__attribute__((noinline))
 
 struct A {
-  log_field A* a;
-  log_field A* b;
+  A* a;
+  A* b;
 };
 
-void __attribute__((noinline)) m1(A* a) { 
-  if(a->b == a->a){
-    a->b = a; 
-  }else{
-    a->a = a; 
-  }
+void m1(A* a, A* b) {
+  b = new A;
+  a = b;
 }
 
-void m3(A* a, A* c) { 
-  A* b = a;
-  b->a = c;
-  m1(b);
-}
+struct Dur {
+  dur_field int* next;
+
+  void nvm_fnc correct() {
+    auto* ptr = new int(5);
+    clflushopt(ptr);
+    pfence();
+    next = ptr;
+  }
+};

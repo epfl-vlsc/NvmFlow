@@ -21,6 +21,8 @@ public:
   }
 
   void dataflow() {
+    errs() << "Dataflow Analysis\n";
+    errs() << "-----------------\n";
     StateMachine stateMachine(M, units);
     for (auto* function : stateMachine.getAnalyzedFunctions()) {
       stateMachine.analyze(function);
