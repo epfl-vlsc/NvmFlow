@@ -75,7 +75,7 @@ GetElementPtrInst* getGEPI(Value* v) {
     if (auto* si = dyn_cast<StoreInst>(inst)) {
       inst = si->getPointerOperand();
     } else if (auto* ci = dyn_cast<CastInst>(inst)) {
-      inst = ci->getOperand(0);
+      inst = ci->stripPointerCasts();
     } else if (auto* gepi = dyn_cast<GetElementPtrInst>(inst)) {
       return gepi;
     } else {
@@ -104,12 +104,11 @@ IntrinsicInst* getII(Value* v) {
   }
 }
 
-std::pair<bool, StringRef> getAnnotatedField(Instruction* i,
-                                             const char* annotation) {
+std::pair<bool, StringRef> getAnnotatedField(Value* v, const char* annotation) {
   static const StringRef emptyStr = StringRef("");
   static const unsigned llvm_ptr_annotation = 186;
 
-  auto* ii = getII(i);
+  auto* ii = getII(v);
   if (!ii) {
     return {false, emptyStr};
   }
@@ -211,9 +210,9 @@ auto getAnnotatedField(Value* v) {
   return std::pair(st, idx);
 }
 
-auto getField(Instruction* i) {
+auto getField(Value* v) {
   // st == nullptr means invalid
-  auto* gepi = getGEPI(i);
+  auto* gepi = getGEPI(v);
   StructType* st = nullptr;
   int idx = -1;
 

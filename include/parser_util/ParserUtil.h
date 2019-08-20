@@ -4,17 +4,16 @@
 
 namespace llvm {
 
-template <typename Units>
-auto* getDILocalVar(Units& units, Instruction* instr) {
+template <typename Units> auto* getDILocalVar(Units& units, Value* v) {
   // try objects
-  if (units.variables.instrHasLocalVar(instr)) {
-    auto* var = units.variables.getLocalVar(instr);
+  if (auto* var = units.variables.getLocalVar(v)) {
     return var;
   }
 
-  if (auto* gepi = getGepi(instr)){
-      auto* var = units.variables.getLocalVar(gepi);
-      return var;
+  // try field
+  if (auto* gepi = getGepi(v)) {
+    auto* var = units.variables.getLocalVar(gepi);
+    return var;
   }
 
   return (DILocalVariable*)nullptr;

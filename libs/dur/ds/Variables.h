@@ -92,6 +92,9 @@ private:
   // used for instruction processing
   std::map<Instruction*, InstructionInfo> instrToInfo;
 
+  // local var names
+  std::map<Value*, DILocalVariable*> localVars;
+
 public:
   void setFunction(Function* function_) {
     assert(function_);
@@ -145,6 +148,17 @@ public:
     return (InstructionInfo*)nullptr;
   }
 
+  auto* getLocalVar(Value* v) {
+    if (localVars.count(v))
+      return localVars[v];
+
+    return (DILocalVariable*)nullptr;
+  }
+
+  void insertLocalVariable(Value* v, DILocalVariable* diVar) {
+    localVars[v] = diVar;
+  }
+
   auto& getVariables() { return variables; }
 
   bool inVars(Variable* var) const { return variables.count(var); }
@@ -160,6 +174,12 @@ public:
     for (auto& [i, ii] : instrToInfo) {
       O << "\t" << ii.getName() << "\n";
     }
+
+    O << "local vars---\n";
+    for (auto& [i, var] : localVars) {
+      O << *i << " <=> " << var->getName() << "\n";
+    }
+    O << "\n";
   }
 };
 
@@ -245,6 +265,16 @@ public:
                          SingleVariable* var, SingleVariable* loadVar) {
     assert(activeFunction);
     activeFunction->insertInstruction(instr, instrType, var, loadVar);
+  }
+
+  auto* getLocalVar(Value* v) {
+    assert(activeFunction);
+    return activeFunction->getLocalVar(v);
+  }
+
+  void insertLocalVariable(Value* v, DILocalVariable* diVar) {
+    assert(activeFunction);
+    activeFunction->insertLocalVariable(v, diVar);
   }
 };
 

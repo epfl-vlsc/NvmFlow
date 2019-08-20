@@ -127,7 +127,8 @@ private:
   std::map<Variable*, Vars> writeObjMap;
   std::map<Variable*, Vars> flushFieldMap;
 
-  std::map<Instruction*, DILocalVariable*> localVars;
+  // local var names
+  std::map<Value*, DILocalVariable*> localVars;
 
 public:
   void setFunction(Function* function_) {
@@ -137,10 +138,6 @@ public:
 
   bool isUsedInstruction(Instruction* instr) const {
     return instrToInfo.count(instr) > 0;
-  }
-
-  bool instrHasLocalVar(Instruction* instr) const {
-    return localVars.count(instr) > 0;
   }
 
   bool isIpInstruction(Instruction* instr) const {
@@ -166,8 +163,8 @@ public:
     validSet.insert(valid);
   }
 
-  void insertLocalVariable(Instruction* i, DILocalVariable* diVar) {
-    localVars[i] = diVar;
+  void insertLocalVariable(Value* v, DILocalVariable* diVar) {
+    localVars[v] = diVar;
   }
 
   void insertObj(Variable* obj) {
@@ -182,7 +179,12 @@ public:
 
   auto& getValidSet() { return validSet; }
 
-  auto* getLocalVar(Instruction* i) { return localVars[i]; }
+  auto* getLocalVar(Value* v) {
+    if (localVars.count(v))
+      return localVars[v];
+
+    return (DILocalVariable*)nullptr;
+  }
 
   void insertWriteObj(Variable* field, Variable* obj) {
     assert(field);
@@ -286,8 +288,8 @@ public:
     }
 
     O << "local vars---\n";
-    for (auto& [i, var] : localVars) {
-      O << *i << " <=> " << var->getName() << "\n";
+    for (auto& [v, var] : localVars) {
+      O << *v << " <=> " << var->getName() << "\n";
     }
     O << "\n";
   }
@@ -332,14 +334,9 @@ public:
     return activeFunction->isUsedInstruction(i);
   }
 
-  bool instrHasLocalVar(Instruction* i) const {
+  auto* getLocalVar(Value* v) {
     assert(activeFunction);
-    return activeFunction->instrHasLocalVar(i);
-  }
-
-  auto* getLocalVar(Instruction* i) {
-    assert(activeFunction);
-    return activeFunction->getLocalVar(i);
+    return activeFunction->getLocalVar(v);
   }
 
   void insertPair(Variable* data, Variable* valid, bool useDcl) {
