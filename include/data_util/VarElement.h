@@ -12,7 +12,7 @@ public:
                                                "None"};
 
 private:
-  Type* objType;
+  Type* eleType;
   StructElement* se;
   VarInfo varInfo;
   AliasGroup* aliasGroup;
@@ -22,11 +22,11 @@ private:
   std::set<VarElement*> flushSet;
 
 public:
-  VarElement(Type* objType_, StructElement* se_, VarInfo varInfo_,
+  VarElement(Type* eleType_, StructElement* se_, VarInfo varInfo_,
              AliasGroup* aliasGroup_, DILocalVariable* diVar_)
-      : objType(objType_), se(se_), varInfo(varInfo_), aliasGroup(aliasGroup_),
+      : eleType(eleType_), se(se_), varInfo(varInfo_), aliasGroup(aliasGroup_),
         diVar(diVar_) {
-    assert(objType && varInfo != None && aliasGroup);
+    assert(eleType && varInfo != None && aliasGroup);
   }
 
   bool isFieldType() const {
@@ -53,28 +53,45 @@ public:
 
   bool isAnnotatedField() const { return varInfo == AnnotatedField; }
 
+  bool isAllField() const {
+    return varInfo == AnnotatedField || varInfo == Field;
+  }
+
   auto getFieldName() const {
     assert(isField());
     return se->getFieldName();
   }
 
+  auto getObjName() const {
+    std::string name;
+    name.reserve(25);
+    if (diVar) {
+      name += diVar->getName();
+    } else {
+      name += "this";
+    }
+    return name;
+  }
+
   auto getName() const {
     std::string name;
-    name.reserve(100);
-    name += getTypeName(objType) + " ";
-    if (se)
-      name += se->getName() + " ";
-    name += VarInfoStr[(int)varInfo];
+    name.reserve(250);
+    name += getObjName();
+    if (isAllField()) {
+      assert(se);
+      name += "->" + se->getFieldName();
+    }
+    
     return name;
   }
 
   bool operator<(const VarElement& X) const {
-    return objType < X.objType || se < X.se || varInfo < X.varInfo ||
+    return eleType < X.eleType || se < X.se || varInfo < X.varInfo ||
            aliasGroup < X.aliasGroup || diVar < X.diVar;
   }
 
   bool operator==(const VarElement& X) const {
-    return objType == X.objType && se == X.se && varInfo == X.varInfo &&
+    return eleType == X.eleType && se == X.se && varInfo == X.varInfo &&
            aliasGroup == X.aliasGroup && diVar == X.diVar;
   }
 };

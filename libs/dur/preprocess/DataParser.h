@@ -15,59 +15,152 @@ class DataParser {
     Type* type;
     StructElement* se;
     bool annotated;
+    AliasGroup* ag;
     DILocalVariable* diVar;
   };
 
   using InstructionType = typename InstructionInfo::InstructionType;
 
-  auto* getPtr(Value* v) {
-    auto [st, idx] = getAnnotatedField(v);
-    if (st)
-      return units.dbgInfo.getStructElement(st, idx);
-    else
-      return (StructElement*)nullptr;
-  }
-
   auto* getObj(StructElement* se) { return units.dbgInfo.getStructObj(se); }
 
-  auto getVarInfo(Instruction* i, Value* v, InstructionType instrType) {
-    /*
-    if (auto [hasAnnot, annotation] = getAnnotatedField(i, FIELD_ANNOT);
+  DataInfo getVarInfo(Instruction* i, Value* v, bool loaded = false) {
+    //errs() << *i << "\n";
+
+    if (auto [hasAnnot, annotation] = getAnnotatedField(v, FIELD_ANNOT);
         hasAnnot) {
       // annotated field
+      auto [st, idx] = getAnnotatedField(v);
+      assert(st);
 
-      // find valid
-      auto* ptr = getPtr(v);
+      auto* se = units.dbgInfo.getStructElement(st, idx);
+      assert(se);
 
-      auto*
+      auto* ptrType = se->getType();
+      auto* type = ptrType->getPointerElementType();
 
-      return DataInfo{se->getType(), se, true, };
-    } else if ()
-     */
-    return 2;
+      bool ann = true;
+      auto* ag = units.variables.getAliasGroup(i, loaded);
+      auto* diVar = getDILocalVar(units, v);
+
+      /*
+      errs() << "annotfield: ";
+      errs() << *type << " " << se->getName() << " " << ann << " " << ag << " "
+             << diVar << "\n";
+       */
+      return {true, type, se, ann, ag, diVar};
+    } else if (auto [st, idx] = getField(v); st) {
+      // field
+      auto* se = units.dbgInfo.getStructElement(st, idx);
+      assert(se);
+
+      auto* type = se->getType();
+      bool ann = false;
+      auto* ag = units.variables.getAliasGroup(i, loaded);
+      auto* diVar = getDILocalVar(units, v);
+
+      /*
+      errs() << "field: ";
+      errs() << *type << " " << se->getName() << " " << ann << " " << ag << " "
+             << diVar << "\n";
+       */
+      return {true, type, se, ann, ag, diVar};
+    } else if (auto* type = v->getType(); type->isPointerTy()) {
+      // ptr obj
+      v = v->stripPointerCasts();
+
+      auto* objPtrType = v->getType();
+      // must be ptr
+      assert(objPtrType->isPointerTy());
+      auto* objType = objPtrType->getPointerElementType();
+      if (auto* st = dyn_cast<StructType>(objType)) {
+        //obj type
+        errs() << *st << "\n";
+        auto* se = units.dbgInfo.getStructElement(st);
+        assert(se);
+
+        auto* type = se->getType();
+        bool ann = false;
+        auto* ag = units.variables.getAliasGroup(i, loaded);
+        auto* diVar = getDILocalVar(units, v);
+
+        /*
+        errs() << "obj: ";
+        errs() << *type << " " << se << " " << ann << " " << ag
+               << " " << diVar << "\n";
+         */
+        return {true, type, se, ann, ag, diVar};
+      } else {
+        //normal type
+        auto* se = (StructElement*)nullptr;
+
+        auto* type = objType;
+        bool ann = false;
+        auto* ag = units.variables.getAliasGroup(i, loaded);
+        auto* diVar = getDILocalVar(units, v);
+        /*
+        errs() << "type: ";
+        errs() << *type << " " << se << " " << ann << " " << ag
+               << " " << diVar << "\n";
+         */
+        return {true, type, se, ann, ag, diVar};
+      }
+    }
+    return {false, nullptr, nullptr, false, nullptr, nullptr};
+  }
+
+  auto* getSingleVariable(DataInfo& di) {
+    auto [isUsed, type, se, annotated, ag, diVar] = di;
+    if (!isUsed)
+      return (SingleVariable*)nullptr;
+
+    auto* sv =
+        units.variables.insertSingleVariable(type, se, annotated, ag, diVar);
+
+    return sv;
+  }
+
+  bool usesPointer(StoreInst* si) const {
+    auto* val = si->getValueOperand();
+    auto* valType = val->getType();
+    return valType->isPointerTy();
   }
 
   void insertWrite(StoreInst* si) {
-    auto instrType = InstructionType::WriteInstr;
-    if (auto* ptrOpnd = si->getPointerOperand()) {
-      auto ptrVar = getVarInfo(si, ptrOpnd, instrType);
+    if (!usesPointer(si)) {
+      return;
     }
 
-    if (auto* valOpnd = si->getValueOperand()) {
-      auto valVar = getVarInfo(si, valOpnd, instrType);
-    }
+    auto instrType = InstructionType::WriteInstr;
+
+    auto* ptrOpnd = si->getPointerOperand();
+    auto ptrInfo = getVarInfo(si, ptrOpnd);
+
+    auto* valOpnd = si->getValueOperand();
+    auto valInfo = getVarInfo(si, valOpnd, true);
+
+    auto* var = getSingleVariable(ptrInfo);
+    if (!var)
+      return;
+
+    auto* loadVar = getSingleVariable(valInfo);
+
+    units.variables.insertInstruction(si, instrType, var, loadVar);
   }
 
   void insertFlush(CallInst* ci, InstructionType instrType) {
-    if (auto* arg0Opnd = ci->getArgOperand(0)) {
-      auto valVar = getVarInfo(ci, arg0Opnd, instrType);
-    }
+    auto* arg0Opnd = ci->getArgOperand(0);
+    auto ptrInfo = getVarInfo(ci, arg0Opnd);
+
+    auto* var = getSingleVariable(ptrInfo);
+    assert(var);
+
+    units.variables.insertInstruction(ci, instrType, var);
   }
 
   void insertCall(CallInst* ci) {
     auto* callee = ci->getCalledFunction();
 
-    if (!callee || callee->isIntrinsic() ||
+    if (!callee || callee->isIntrinsic() || callee->getName().equals("_Znwm") ||
         units.functions.isSkippedFunction(callee)) {
       return;
     } else if (units.functions.isPfenceFunction(callee)) {

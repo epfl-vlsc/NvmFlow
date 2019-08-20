@@ -350,9 +350,9 @@ public:
     activeFunction->insertInstruction(instr, instrType, var, diVar);
   }
 
-  void insertLocalVariable(Instruction* instr, DILocalVariable* diVar) {
+  void insertLocalVariable(Value* v, DILocalVariable* diVar) {
     assert(activeFunction);
-    activeFunction->insertLocalVariable(instr, diVar);
+    activeFunction->insertLocalVariable(v, diVar);
   }
 
   void insertInstruction(Instruction* instr, InstrType instrType) {

@@ -4,17 +4,33 @@
 namespace llvm {
 
 template <typename Units> class VarNameParser {
+  std::set<Value*> visited;
+
+  void insertVarUsers(Value* val, DILocalVariable* var) {
+    if (visited.count(val))
+      return;
+
+    visited.insert(val);
+
+    if (auto* ci = dyn_cast<CastInst>(val)) {
+      auto* v = ci->stripPointerCasts();
+      insertVarUsers(v, var);
+    }
+
+    units.variables.insertLocalVariable(val, var);
+
+    for (auto* u : val->users()) {
+      if (Instruction* i = dyn_cast<Instruction>(u)) {
+        insertVarUsers(i, var);
+      }
+    }
+  }
 
   void insertVarName(DbgValueInst* dvi) {
     auto* val = dvi->getValue();
     auto* var = dvi->getVariable();
     assert(var && val);
-
-    for (auto* u : val->users()) {
-      if (Instruction* instr = dyn_cast<Instruction>(u)) {
-        units.variables.insertLocalVariable(instr, var);
-      }
-    }
+    insertVarUsers(val, var);
   }
 
   void insertVarNames(Function* function) {

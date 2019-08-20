@@ -48,7 +48,7 @@ class AliasGroups {
 
   static constexpr const unsigned llvmPtrAnnotArgs = 4;
 
-  Value* getAliasValue(Value* v) {
+  Value* getAliasValue(Value* v) const {
     v = v->stripPointerCasts();
 
     if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
@@ -62,7 +62,8 @@ class AliasGroups {
     return v;
   }
 
-  auto* getPtr(Value* v) {
+  auto* getPtr(Value* v) const {
+    assert(v);
     auto* vType = v->getType();
 
     if (vType->isPointerTy()) {
@@ -82,6 +83,33 @@ class AliasGroups {
     aliasMap[v] = agPtr;
   }
 
+  auto* getStoreOpnd(StoreInst* si, bool loaded) const {
+    if (!loaded) {
+      auto* opnd = si->getPointerOperand();
+      return getPtr(opnd);
+    } else {
+      auto* opnd = si->getValueOperand();
+      return getPtr(opnd);
+    }
+  }
+
+  auto* getCallOpnd(CallInst* ci) const {
+    auto* opnd = ci->getOperand(0);
+    return getPtr(opnd);
+  }
+
+  auto* getInstOpnd(Instruction* i, bool loaded = false) const {
+    assert(isa<StoreInst>(i) || isa<CallInst>(i));
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      return getStoreOpnd(si, loaded);
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      return getCallOpnd(ci);
+    }
+
+    report_fatal_error("invalid instr");
+    return (Value*)nullptr;
+  }
+
   AAResults* AAR;
   std::set<AliasGroup> aliasGroups;
   std::map<Value*, AliasGroup*> aliasMap;
@@ -93,14 +121,12 @@ public:
 
   void add(StoreInst* si) {
     // errs() << *si << "\n";
-    auto* siOpnd = si->getPointerOperand();
-    if (auto* siPtr = getPtr(siOpnd)) {
+    if (auto* siPtr = getInstOpnd(si, false)) {
       // errs() << "p" << *siPtr << "\n";
       addAliasGroup(siPtr);
     }
 
-    auto* valOpnd = si->getValueOperand();
-    if (auto* valPtr = getPtr(valOpnd)) {
+    if (auto* valPtr = getInstOpnd(si, true)) {
       // errs() << "p" << *valPtr << "\n";
       addAliasGroup(valPtr);
     }
@@ -108,8 +134,7 @@ public:
 
   void add(CallInst* ci) {
     // errs() << *ci << "\n";
-    auto* ciOpnd = ci->getArgOperand(0);
-    if (auto* ciPtr = getPtr(ciOpnd)) {
+    if (auto* ciPtr = getInstOpnd(ci)) {
       // errs() << "p" << *ciPtr << "\n";
       addAliasGroup(ciPtr);
     }
@@ -125,14 +150,10 @@ public:
   }
 
   auto* getAliasGroup(Instruction* i, bool loaded) {
-    assert(isa<StoreInst>(i) || isa<CallInst>(i));
-    /*
-    if (auto* si = dyn_cast<StoreInst>(i)) {
-      add(si);
-    } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      add(ci);
-    }
-     */
+    auto* opnd = getInstOpnd(i, loaded);
+    if (aliasMap.count(opnd))
+      return aliasMap[opnd];
+
     return (AliasGroup*)nullptr;
   }
 

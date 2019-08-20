@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
 #include "AliasParser.h"
-//#include "DataParser.h"
+#include "DataParser.h"
 #include "parser_util/VarNameParser.h"
 
 namespace llvm {
@@ -13,7 +13,7 @@ public:
     // ordering matters!
     VarNameParser vnParser(units);
     AliasParser aParser(units);
-    //DataParser dParser(units);
+    DataParser dParser(units);
   }
 };
 

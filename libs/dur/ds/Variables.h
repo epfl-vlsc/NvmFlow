@@ -10,6 +10,7 @@ struct InstructionInfo {
     WriteInstr,
     FlushInstr,
     FlushFenceInstr,
+    VfenceInstr,
     PfenceInstr,
     IpInstr,
     None
