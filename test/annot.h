@@ -27,7 +27,3 @@ extern void no_inline clflush(void const* p);
 extern void no_inline tx_log(void* ptr);
 extern void no_inline tx_begin();
 extern void no_inline tx_end();
-
-void no_inline zfence();
-
-extern bool boolval();
