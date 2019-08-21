@@ -1,14 +1,21 @@
 extern void x(int a, int b);
 
-int main() {
-  int a, b, c;
-  a = 1;
+struct A {
+  int a;
+};
+
+void doStuff(A* obj) {
+  int b, c;
+  obj->a = 1;
   b = 2;
-  if (a) {
-    c = a + b;
+  if (b) {
+    c = obj->a + b;
   }
 
-  x(a, c);
+  x(obj->a, c);
+}
 
+int main() {
+  doStuff(new A);
   return 0;
 }
