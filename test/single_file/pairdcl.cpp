@@ -6,10 +6,10 @@ struct Dcl {
 
   void nvm_fnc correct() {
     data = 1;
-    clflushopt(&data);
+    pm_clflushopt(&data);
     pfence();
     valid = 1;
-    clflushopt(&valid);
+    pm_clflushopt(&valid);
     pfence();
   }
 
@@ -21,22 +21,22 @@ struct Dcl {
 
   void nvm_fnc doubleFlush() {
     data = 1;
-    clflush(&data);
+    pm_clflush(&data);
     valid = 1;
-    clflush(&data);
+    pm_clflush(&data);
   }
 
   void nvm_fnc doubleLoopFlush() {
     while (valid == 1){
       data = 1;
-      clflush(&data);
+      pm_clflush(&data);
     }
-    clflush(&data);  
+    pm_clflush(&data);  
   }
 
   void nvm_fnc writeUncommittedData() {
     data = 1;
-    clflushopt(&data);
+    pm_clflushopt(&data);
     data = 1;
     pfence();
     valid = 1;
@@ -45,7 +45,7 @@ struct Dcl {
   void nvm_fnc correctBranch(bool useNvm) {
     data = 1;
     if (useNvm) {
-      clflushopt(&data);
+      pm_clflushopt(&data);
       pfence();
       valid = 1;
     }
@@ -54,7 +54,7 @@ struct Dcl {
   void nvm_fnc branchNoFence(bool useNvm) {
     data = 1;
     if (useNvm) {
-      clflushopt(&data);
+      pm_clflushopt(&data);
     }
     valid = 1;
   }
@@ -64,14 +64,14 @@ struct Dcl {
   void nvm_fnc wrongIp(bool useNvm) {
     correctWriteData();
     if (useNvm) {
-      clflushopt(&data);
+      pm_clflushopt(&data);
     }
     valid = 1;
   }
 
   void skip_fnc skip() {
     data = 1;
-    clflushopt(&data);
+    pm_clflushopt(&data);
     valid = 1;
     pfence();
     valid = 1;

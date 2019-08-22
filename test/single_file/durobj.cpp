@@ -10,7 +10,7 @@ struct Dur {
 
   void nvm_fnc correct() {
     auto* ptr = new Data();
-    clflushopt(ptr);
+    pm_clflushopt(ptr);
     pfence();
     next = ptr;
   }
@@ -18,7 +18,7 @@ struct Dur {
   void nvm_fnc fenceNotFlushedData(Data* ptr) { next = ptr; }
 
   void nvm_fnc correctParam(Data* ptr) {
-    clflush(ptr);
+    pm_clflush(ptr);
     next = ptr;
   }
 
@@ -26,7 +26,7 @@ struct Dur {
     auto* data = new Data();
     data->data = 5;
 
-    clflush(data);
+    pm_clflush(data);
     next = data;
   }
 
@@ -34,7 +34,7 @@ struct Dur {
     auto* data = new Data();
     data->data = 5;
 
-    clflush(data);
+    pm_clflush(data);
     data->data = 5;
 
     next = data;
@@ -42,7 +42,7 @@ struct Dur {
 
   void nvm_fnc branchFlush(Data* ptr) {
     if (ptr->data == 1)
-      clflush(ptr);
+      pm_clflush(ptr);
     next = ptr;
   }
 };

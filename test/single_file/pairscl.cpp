@@ -50,7 +50,7 @@ struct Scl {
 
   void skip_fnc skip() {
     data = 1;
-    clflushopt(&data);
+    pm_clflushopt(&data);
     valid = 1;
     pfence();
     valid = 1;

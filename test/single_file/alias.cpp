@@ -18,7 +18,7 @@ struct Dur {
 
   void nvm_fnc correct() {
     auto* ptr = new int(5);
-    clflushopt(ptr);
+    pm_clflushopt(ptr);
     pfence();
     next = ptr;
   }

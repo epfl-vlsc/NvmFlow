@@ -9,15 +9,15 @@ struct Dcl {
     data = 1;
     vfence();
     valid = 1;
-    clflush(&valid);
+    pm_clflush(&valid);
     valid2 = 1;
   }
 
   void nvm_fnc correctCircular() {
     valid2 = 1;
-    clflush(&valid2);
+    pm_clflush(&valid2);
     data = 1;
-    clflush(&data);
+    pm_clflush(&data);
     valid = 1;
   }
 
@@ -30,8 +30,8 @@ struct Dcl {
 
   void nvm_fnc doubleFlush() {
     valid = 1;
-    clflush(&valid);
+    pm_clflush(&valid);
     valid2 = 1;
-    clflush(&valid);
+    pm_clflush(&valid);
   }
 };

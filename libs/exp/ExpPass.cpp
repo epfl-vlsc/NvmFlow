@@ -49,12 +49,9 @@ bool ExpPass::runOnModule(Module& M) {
   ags.print(errs());
    */
 
-  auto* f = M.getFunction("_ZN3Dur7correctEv");
-  for (Instruction& I : instructions(*f)) {
-    if (auto* si = dyn_cast<StoreInst>(&I)) {
-      auto* p = si->getValueOperand()->getType();
-      auto res = p->isPointerTy();
-      errs() << *si << " " << res << "\n";
+  for (auto& F : M) {
+    for (Instruction& I : instructions(F)) {
+      errs() << I << "\n";
     }
   }
 
