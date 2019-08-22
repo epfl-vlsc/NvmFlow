@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdio.h>
-
 #define MACRO_PARAM_STRINGIFY(x) #x
 #define MACRO_TOSTRING(x) MACRO_PARAM_STRINGIFY(x)
 
