@@ -3,5 +3,6 @@ add_subdirectory(exp)
 add_subdirectory(pair)
 add_subdirectory(cons)
 add_subdirectory(dur)
+add_subdirectory(alias)
 
 
