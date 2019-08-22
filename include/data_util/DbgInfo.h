@@ -17,7 +17,7 @@ std::string demangleFunctionName(Function* f) {
   const char* fncNameCstr = fncNameStr.c_str();
 
   itaniumDemangle(fncNameCstr, buf, &n, &s);
-  
+
   if (!s) {
     // successfully demangle
     name = buf;
@@ -25,7 +25,7 @@ std::string demangleFunctionName(Function* f) {
     assert(found != std::string::npos && found > 0);
 
     name = name.substr(0, found);
-    
+
     return name;
   } else {
     name = fncNameStr;
@@ -254,19 +254,23 @@ public:
 
   void print(raw_ostream& O) const {
     O << "Debug Info\n";
-    O << "function names: ";
+    O << "----------\n";
+
+    O << "Function names---\n";
     for (auto& [mangledName, realName] : functionNames) {
-      O << "|" << mangledName << "=" << realName << "|,";
+      O << "\"" << mangledName << "\"=\"" << realName << "\", ";
     }
     O << "\n";
 
-    O << "type to fields: ";
+    O << "Struct types and their fields---\n";
     for (auto& [st, fields] : fieldMap) {
-      O << "|" << st->getName() << "-->";
+      O << st->getName() << ": ";
+      int c = 0;
       for (auto& field : fields) {
-        O << field->getName() << ",";
+        c++;
+        O << c << ")" << field->getFieldName() << " ";
       }
-      O << "|,";
+      O << "\n";
     }
     O << "\n\n";
   }
