@@ -270,13 +270,54 @@ IntrinsicInst* getAnnotatedFieldVar(Value* v) {
   }
 }
 
-class StoreParser{
+class ParsedVarData {
+  enum VarCategory {
+    FieldData,
+    FieldPtr,
+    AnnotFieldData,
+    AnnotFieldPtr,
+    Obj,
+    None
+  };
 
+  VarCategory vc;
+  Type* type;
+  StructType* st;
+  int idx;
+  StringRef annotation;
+
+public:
+  bool isUseful() const { return vc != None; }
+
+  bool isAnnotated() const {
+    return vc == AnnotFieldData || vc == AnnotFieldPtr;
+  }
+
+  bool isFieldPtr() const { return vc == FieldPtr || vc == AnnotFieldPtr; }
+
+  bool isFieldData() const { return vc == FieldData || vc == AnnotFieldData; }
+
+  bool isField() const { return isFieldData() || isFieldPtr(); }
+
+  bool isObj() const { return vc == Obj; }
+
+  void assertAnnotated() const { assert(isAnnotated()); }
+
+  void assertField() const { assert(isField()); }
+
+  auto getAnnotation() const {
+    assertAnnotated();
+    return annotation;
+  }
+
+  auto getFieldStructInfo() const {
+    assertField();
+    return 0;
+  }
 };
 
-class FlushParser{
+struct StoreParser {};
 
-
-};
+class FlushParser {};
 
 } // namespace llvm
