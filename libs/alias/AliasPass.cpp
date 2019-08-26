@@ -21,8 +21,10 @@ void AliasPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; 
 void addToAgs(Function& F, AliasGroups& ags) {
   for (Instruction& I : instructions(F)) {
     if (auto* si = dyn_cast<StoreInst>(&I)) {
+      errs() << "sol\n";
       ags.add(si);
     } else if (auto* ci = dyn_cast<CallInst>(&I)) {
+      errs() << "yol\n";
       ags.add(ci);
       auto* f = ci->getCalledFunction();
       addToAgs(*f, ags);
@@ -35,14 +37,17 @@ void runOnFunction(Function& F, AAResults& AAR) {
   addToAgs(F, ags);
   ags.createGroups(&AAR);
   ags.print(errs());
+  errs() << "lol\n";
 }
 
 bool AliasPass::runOnModule(Module& M) {
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
   auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(cflResult);
+  
 
   for (auto& F : M) {
+    errs() << "lol\n";
     runOnFunction(F, AAR);
   }
 

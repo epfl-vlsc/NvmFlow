@@ -270,4 +270,13 @@ IntrinsicInst* getAnnotatedFieldVar(Value* v) {
   }
 }
 
+class StoreParser{
+
+};
+
+class FlushParser{
+
+
+};
+
 } // namespace llvm

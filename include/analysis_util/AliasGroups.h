@@ -190,6 +190,7 @@ public:
   }
 
   void print(raw_ostream& O) const {
+    O << "Num of alias groups: " << aliasGroups.size() << "\n";
     for (auto ag : aliasGroups) {
       O << "set " << ag.getName() << ":";
       for (auto* v : ag) {
