@@ -50,9 +50,20 @@ bool ExpPass::runOnModule(Module& M) {
    */
 
   for (auto& F : M) {
-    for (Instruction& I : instructions(F)) {
-      errs() << I << "\n";
-    }
+    if (F.getName().contains("m1"))
+      for (Instruction& I : instructions(F)) {
+        if (auto* ci = dyn_cast<CallInst>(&I)) {
+          auto* f = ci->getCalledFunction();
+          if (f->isIntrinsic() || f->getName().contains("_Znwm") ||
+              f->getName().contains("x"))
+            continue;
+        }
+
+        auto pv = InstructionParser::parseInstruction(&I);
+        errs() << I << "\n";
+        pv.print(errs());
+        errs() << "\n";
+      }
   }
 
   return false;
