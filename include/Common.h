@@ -69,6 +69,7 @@ auto getTypeName(Type* type) {
       "float128", "labels",    "metadata", "mmxvector", "token",   "int",
       "func",     "structure", "array",    "pointer",   "simd"};
 
+  assert(type);
   auto tid = type->getTypeID();
   int typeNo = (int)tid;
   if (typeNo == StructNo) {

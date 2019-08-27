@@ -82,28 +82,26 @@ class SetConstant {
     }
   }
 
-  void runOptimization() {}
-
   void makeUseNvmTrue(Module& M) {
-    /*
-       PassBuilder PB;
-       FunctionPassManager FPM;
-       FunctionAnalysisManager FA;
-       PB.registerFunctionAnalyses(FA);
-    */
+    PassBuilder PB;
+    FunctionPassManager FPM;
+    FunctionAnalysisManager FA;
+    PB.registerFunctionAnalyses(FA);
 
     for (auto& F : M) {
       if (F.isDeclaration() || F.isIntrinsic())
         continue;
-      /*
-            FPM.addPass(SROA());
-            FPM.addPass(SCCPPass());
-            FPM.addPass(ADCEPass());
-            FPM.addPass(SimplifyCFGPass());
-       */
+
+      // add optimization passes
+      // FPM.addPass(SROA());
+      FPM.addPass(SCCPPass());
+      FPM.addPass(ADCEPass());
+      FPM.addPass(SimplifyCFGPass());
+
       makeUseNvmTrue(F);
 
-      //      FPM.run(F, FA);
+      // run optimizations
+      FPM.run(F, FA);
     }
   }
 

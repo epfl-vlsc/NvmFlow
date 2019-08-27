@@ -11,13 +11,14 @@ CHECKER_FLAGS := -fno-discard-value-names -ggdb -femit-all-decls -fstandalone-de
 INC_FLAGS := -I./..
 LLVM_FLAGS := -emit-llvm ${CHECKER_FLAGS} -c
 CONS_FLAGS := -load $(BUILD_DIR)/lib/libcons.so -cons
-INITOPT := -O1 -mllvm -disable-llvm-optzns
-FINOPT := -O3
+INITOPT := -O0 -Xclang -disable-O0-optnone
+
+#opt -debug-pass=Structure
 
 $(BC_DIR)/%.bc: $(SRC_DIR)/%.cpp
 	clang++ $(INITOPT) $(LLVM_FLAGS) $(INC_FLAGS) -o $@ $<
-	opt $(CONS_FLAGS) -o $@ $@ > /dev/null 2>&1
-	clang++ $(FINOPT) $(LLVM_FLAGS) -o $@ $@
+	opt -mem2reg $(CONS_FLAGS) -o $@ $@ > /dev/null 2>&1
+	#opt $(CONS_FLAGS) -o $@ $@ > /dev/null 2>&1
 	
 $(LL_DIR)/%.ll: $(SRC_DIR)/%.bc
 	llvm-dis -o $@ $<

@@ -11,6 +11,13 @@ void ConsPass::print(raw_ostream& OS, const Module* m) const {
 bool ConsPass::runOnModule(Module& M) {
   SetConstant useNvm(M);
 
+  for (auto& F : M) {
+    errs() << F.getName() << "\n";
+    for (auto& I : instructions(F)) {
+      errs() << I << "\n";
+    }
+  }
+
   return true;
 }
 
