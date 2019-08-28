@@ -348,10 +348,12 @@ struct ParsedVariable {
   }
 
   void print(raw_ostream& O) const {
-    O << ICStr[(int)ic];
+    O << "|" << ICStr[(int)ic];
     O << " " << VCStr[(int)vc];
-    if (!isUsed())
+    if (!isUsed()) {
+      O << "|";
       return;
+    }
 
     O << " " << RCStr[(int)rt];
 
@@ -363,6 +365,8 @@ struct ParsedVariable {
 
     if (isAnnotated())
       O << " " << annotation;
+
+    O << "|";
   }
 
   static bool isUsed(InsCat ic_) { return ic_ != NoneIns; }
@@ -453,15 +457,22 @@ class InstructionParser {
   static auto* skipBackwards(Value* v) {
     assert(v);
     while (true) {
-      if (auto* li = dyn_cast<LoadInst>(v)) {
-        v = li->getPointerOperand();
-      } else if (auto* ci = dyn_cast<CastInst>(v)) {
+      if (auto* ci = dyn_cast<CastInst>(v)) {
         v = ci->stripPointerCasts();
       } else {
         return v;
       }
     }
     return (Value*)nullptr;
+  }
+
+  static bool usesPtr(Value* opnd) {
+    // assume islocref is false
+    auto* type = opnd->getType();
+    auto* ptrType = dyn_cast<PointerType>(type);
+    assert(ptrType);
+    auto* eType = ptrType->getPointerElementType();
+    return eType->isPointerTy();
   }
 
 public:
@@ -481,6 +492,18 @@ public:
 
     // get rid of pointers
     auto* v = skipBackwards(opnd);
+
+    // ref
+    if (auto* li = dyn_cast<LoadInst>(v)) {
+      // use location
+      v = li->getPointerOperand();
+      v = skipBackwards(v);
+      isLocRef = true;
+      isPtr = true;
+    } else {
+      // use variable
+      isPtr = usesPtr(opnd);
+    }
 
     // check annotation
     if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
