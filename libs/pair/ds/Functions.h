@@ -72,6 +72,10 @@ public:
   void insertAnnotatedFunction(Function* f, StringRef annotation) {
     analyzedFunctions.insertAnnotatedFunction(f, annotation);
     skippedFunctions.insertAnnotatedFunction(f, annotation);
+    pfenceFunctions.insertNamedFunction(f, annotation);
+    vfenceFunctions.insertNamedFunction(f, annotation);
+    flushFunctions.insertNamedFunction(f, annotation);
+    flushFenceFunctions.insertNamedFunction(f, annotation);
   }
 
   void insertNamedFunction(Function* f, StringRef realName) {
