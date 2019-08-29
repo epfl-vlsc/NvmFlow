@@ -13,6 +13,7 @@ public:
 
 private:
   AnnotatedFunctions analyzedFunctions;
+  FunctionSet allAnalyzedFunctions;
   AnnotatedFunctions skippedFunctions;
 
   PfenceFunctions pfenceFunctions;
@@ -25,14 +26,15 @@ public:
 
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
 
+  auto& getAllAnalyzedFunctions() { return allAnalyzedFunctions; }
+
   void getUnitFunctions(Function* f, std::set<Function*>& visited) {
     visited.insert(f);
 
     for (auto& I : instructions(*f)) {
       if (auto* ci = dyn_cast<CallInst>(&I)) {
         auto* callee = ci->getCalledFunction();
-        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
-                    !skipFunction(callee);
+        bool doIp = !visited.count(callee) && !skipFunction(callee);
         if (doIp) {
           getUnitFunctions(callee, visited);
         }
@@ -56,7 +58,7 @@ public:
   }
 
   bool isSkippedFunction(Function* f) const {
-    return skippedFunctions.count(f);
+    return !f || f->isIntrinsic() || skippedFunctions.count(f);
   }
 
   bool isPfenceFunction(Function* f) const { return pfenceFunctions.count(f); }
@@ -85,8 +87,12 @@ public:
     flushFenceFunctions.insertNamedFunction(f, realName);
   }
 
+  void insertToAllAnalyzed(Function* f) { allAnalyzedFunctions.insert(f); }
+
   void print(raw_ostream& O) const {
     O << "Functions Info\n";
+    O << "--------------\n";
+
     analyzedFunctions.print(O);
     skippedFunctions.print(O);
     pfenceFunctions.print(O);

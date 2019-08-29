@@ -5,6 +5,7 @@
 #include "llvm/IR/DebugInfoMetadata.h"
 
 #include "StructField.h"
+#include "data_util/FunctionSet.h"
 
 namespace llvm {
 
@@ -36,7 +37,7 @@ std::string demangleFunctionName(Function* f) {
 class DbgInfo {
   // used for a temporary variable's type
 
-  void addLocalVariables(std::set<Function*>& funcSet) {
+  void addLocalVariables(FunctionSet& funcSet) {
     for (auto* f : funcSet) {
       for (auto& I : instructions(*f)) {
         if (auto* dvi = dyn_cast<DbgValueInst>(&I)) {
@@ -213,7 +214,7 @@ public:
 
   // var related--------------------------------------
 
-  void addDbgInfoFunctions(std::set<Function*>& funcSet,
+  void addDbgInfoFunctions(FunctionSet& funcSet,
                            std::set<StructType*>& trackTypes) {
     addTypeFields(trackTypes);
     addLocalVariables(funcSet);
@@ -234,7 +235,7 @@ public:
 
   void print(raw_ostream& O) const {
     O << "Global Debug Info\n";
-    O << "----------\n";
+    O << "-----------------\n";
 
     O << "Struct types and their fields---\n";
     for (auto& [st, fields] : fieldMap) {
