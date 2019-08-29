@@ -4,7 +4,7 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 
-#include "StructElement.h"
+#include "StructField.h"
 
 namespace llvm {
 
@@ -33,25 +33,23 @@ std::string demangleFunctionName(Function* f) {
   }
 }
 
-// used for a temporary variable's type
-using IdxStrToElement = std::map<std::string, StructElement*>;
-
 class DbgInfo {
-  DebugInfoFinder finder;
+  // used for a temporary variable's type
 
-  // mangled to real name
-  std::set<std::string> demangledFunctions;
-  std::map<StringRef, StringRef> functionNames;
+  void addLocalVariables(std::set<Function*>& funcSet) {
+    for (auto* f : funcSet) {
+      for (auto& I : instructions(*f)) {
+        if (auto* dvi = dyn_cast<DbgValueInst>(&I)) {
+          auto* val = dvi->getValue();
+          auto* var = dvi->getVariable();
+          assert(val && var);
+          localVarNames[val] = var;
+        }
+      }
+    }
+  }
 
-  // each field or cls, use addr of these
-  std::set<StructElement> elements;
-
-  // auxilliary helpers
-  std::map<std::string, StructElement*> fieldToElement;
-
-  std::map<StructElement*, std::set<StructElement*>> fieldMap;
-
-  void initFunctionNames() {
+  void addFunctionNames() {
     for (auto* f : finder.subprograms()) {
       auto realName = f->getName();
       auto mangledName = f->getLinkageName();
@@ -84,116 +82,117 @@ class DbgInfo {
     }
   }
 
-  void initFieldNames(IdxStrToElement& idxStrMap) {
-    for (const DIType* T : finder.types()) {
+  void addFieldDbgInfo(const DIType* T, int idx, StringRef& typeName) {
+    // get debug info
+    StringRef realName = T->getName();
+    assert(!realName.empty());
+    StringRef fileName = T->getFilename();
+    assert(!fileName.empty());
+    unsigned lineNo = T->getLine();
+    assert(lineNo);
 
+    // find element to add info
+    auto strIdx = StructField::getIdxName(typeName, idx);
+
+    if (!fieldIdxStrMap.count(strIdx))
+      return;
+
+    if (auto* field = fieldIdxStrMap[strIdx]) {
+      field->addDbgInfo(realName, fileName, lineNo);
+      auto nameStr = field->getStrName();
+      fieldNameStrMap[nameStr] = field;
+    }
+  }
+
+  void addFieldDbgInfo(const DICompositeType* ST) {
+    StringRef typeName = ST->getName();
+    DINodeArray elements = ST->getElements();
+    int idx = 0;
+    for (auto element : elements) {
+      // get field
+      if (auto* E = dyn_cast<DIType>(element)) {
+        // get field data
+        addFieldDbgInfo(E, idx, typeName);
+      }
+      ++idx;
+    }
+  }
+
+  void addFieldDbgInfo() {
+    for (const DIType* T : finder.types()) {
       if (auto* ST = dyn_cast<DICompositeType>(T)) {
         StringRef typeName = ST->getName();
         if (typeName.empty()) {
           continue;
         }
-
-        initFields(ST, idxStrMap);
+        addFieldDbgInfo(ST);
       }
     }
   }
 
-  void addElementDbgInfo(IdxStrToElement& idxStrMap, const DIType* T, int idx,
-                         StringRef& typeName) {
-    // get debug info
-    StringRef realName = T->getName();
-    StringRef fileName = T->getFilename();
-    unsigned lineNo = T->getLine();
-
-    if (lineNo == 0) {
-      errs() << realName << " " << fileName << " " << lineNo << "\n";
-      report_fatal_error("check case");
-    }
-
-    // find element to add info
-    auto strIdx = StructElement::getAbsoluteName(typeName, idx);
-
-    // type and fields should exist
-    if (!idxStrMap.count(strIdx)) {
-      return;
-    }
-
-    // assert(idxStrMap.count(strIdx));
-    auto* element = idxStrMap[strIdx];
-    if (!element)
-      return;
-    element->addDbgInfo(realName, fileName, lineNo);
-
-    // helper
-    auto fieldStrIdx = StructElement::getAbsoluteName(typeName, realName);
-    assert(!fieldToElement.count(fieldStrIdx));
-    fieldToElement[fieldStrIdx] = element;
-  }
-
-  void initFields(const DICompositeType* ST, IdxStrToElement& idxStrMap) {
-    // add st
-    int idx = StructElement::OBJ_ID;
-    StringRef typeName = ST->getName();
-    addElementDbgInfo(idxStrMap, ST, idx, typeName);
-
-    DINodeArray elements = ST->getElements();
-    for (auto element : elements) {
-      ++idx;
-
-      // get field
-      if (auto* E = dyn_cast<DIType>(element)) {
-        // get field data
-        addElementDbgInfo(idxStrMap, E, idx, typeName);
-      }
-    }
-  }
-
-  auto* addElement(IdxStrToElement& idxStrMap, StructType* st, int idx,
-                   Type* ft) {
-    auto [ePtr, added] = elements.emplace(st, idx, ft);
-    if (!added || ePtr == elements.end())
+  auto* addField(StructType* st, int idx, Type* ft) {
+    auto [fPtr, added] = fields.emplace(st, idx, ft);
+    if (!added || fPtr == fields.end())
       report_fatal_error("element not added");
-    auto* element = (StructElement*)&(*ePtr);
-    auto strIdx = StructElement::getAbsoluteName(st, idx);
-    idxStrMap[strIdx] = element;
-    return element;
+    auto* field = (StructField*)&(*fPtr);
+    return field;
   }
 
-  void initTypes(IdxStrToElement& idxStrMap) {
+  void addInitFieldInfo(StructType* st, int idx, Type* ft) {
+    auto* field = addField(st, idx, ft);
+    fieldMap[st].push_back(field);
+
+    auto idxName = field->getIdxName();
+    fieldIdxStrMap[idxName] = field;
+  }
+
+  void addFieldTypeInfo(std::set<StructType*>& trackTypes) {
     for (auto* st : M.getIdentifiedStructTypes()) {
-      // todo dont include known std types
-      if (st->getName().startswith("struct._"))
+      // only gather data about used types
+      if (!trackTypes.count(st))
         continue;
 
-      // add st
-      int idx = StructElement::OBJ_ID;
-      auto* obj = addElement(idxStrMap, st, idx, st);
-      fieldMap[obj];
-
       // add fields
+      int idx = 0;
       for (auto* ft : st->elements()) {
+        addInitFieldInfo(st, idx, ft);
         ++idx;
-        auto* field = addElement(idxStrMap, st, idx, ft);
-        fieldMap[obj].insert(field);
       }
     }
+  }
+
+  void addTypeFields(std::set<StructType*>& trackTypes) {
+    // string are used temporarily to map dbg info to struct type
+    addFieldTypeInfo(trackTypes);
+    addFieldDbgInfo();
   }
 
   Module& M;
 
+  // llvm debug info parser
+  DebugInfoFinder finder;
+
+  // function names: mangled->real
+  std::set<std::string> demangledFunctions;
+  std::map<StringRef, StringRef> functionNames;
+
+  // variable infos
+  std::set<StructField> fields;
+  std::map<StructType*, std::vector<StructField*>> fieldMap;
+  std::map<std::string, StructField*> fieldIdxStrMap;
+  std::map<std::string, StructField*> fieldNameStrMap;
+
+  // variable names
+  std::map<Value*, DILocalVariable*> localVarNames;
+
 public:
   DbgInfo(Module& M_) : M(M_) {
-    // must do initVariableNames outside the constructor for efficiency
-
     // function names
     finder.processModule(M);
-    initFunctionNames();
-
-    // field and type names
-    IdxStrToElement idxStrMap;
-    initTypes(idxStrMap);
-    initFieldNames(idxStrMap);
+    addFunctionNames();
   }
+
+  // function related---------------------------------
 
   StringRef getFunctionName(StringRef mangledName) {
     assert(functionNames.count(mangledName));
@@ -204,73 +203,53 @@ public:
     return functionNames.count(mangledName) > 0;
   }
 
-  auto* getStructElement(std::string& name) {
-    assert(fieldToElement.count(name) && "wrong annotation");
-    return fieldToElement[name];
-  }
-
-  auto* getStructElement(StructElement& tempSe) {
-    assertInDs(elements, tempSe);
-    auto eIt = elements.find(tempSe);
-    auto* se = (StructElement*)&(*eIt);
-    return se;
-  }
-
-  auto* getStructElement(StructType* st, int idx) {
-    StructElement tempSe{st, idx};
-    return getStructElement(tempSe);
-  }
-
-  auto getVariableName(Instruction* i) const {
-    assert(isa<StoreInst>(i) || isa<LoadInst>(i));
-    return nullptr;
-  }
-
-  auto* getStructElement(StructType* st) {
-    StructElement tempSe{st, StructElement::OBJ_ID};
-    return getStructElement(tempSe);
-  }
-
-  auto* getStructElementFromType(Type* type, int idx) {
-    if (auto* st = dyn_cast<StructType>(type)) {
-      StructElement tempSe{st, idx};
-      return getStructElement(tempSe);
-    }
-    return (StructElement*)nullptr;
-  }
-
-  auto* getStructObj(StructElement* se) {
-    auto tempObjSe = se->getObj();
-    assertInDs(elements, tempObjSe);
-    auto eIt = elements.find(tempObjSe);
-    auto* objSe = (StructElement*)&(*eIt);
-    return objSe;
-  }
-
-  auto& getFieldMap(StructElement* se) {
-    assertInDs(fieldMap, se);
-    return fieldMap[se];
-  }
-
-  void print(raw_ostream& O) const {
-    O << "Debug Info\n";
-    O << "----------\n";
-
+  void printFunctionNames(raw_ostream& O) const {
     O << "Function names---\n";
     for (auto& [mangledName, realName] : functionNames) {
       O << "\"" << mangledName << "\"=\"" << realName << "\", ";
     }
     O << "\n";
+  }
+
+  // var related--------------------------------------
+
+  void addDbgInfoFunctions(std::set<Function*>& funcSet,
+                           std::set<StructType*>& trackTypes) {
+    addTypeFields(trackTypes);
+    addLocalVariables(funcSet);
+  }
+
+  auto* getStructField(StructType* st, int idx) {
+    assert(st && idx >= 0);
+    StructField temp{st, idx};
+    auto sfIt = fields.find(temp);
+    auto* sf = (StructField*)&(*sfIt);
+    return sf;
+  }
+
+  auto& getFieldMap(StructType* st) {
+    assertInDs(fieldMap, st);
+    return fieldMap[st];
+  }
+
+  void print(raw_ostream& O) const {
+    O << "Global Debug Info\n";
+    O << "----------\n";
 
     O << "Struct types and their fields---\n";
     for (auto& [st, fields] : fieldMap) {
       O << st->getName() << ": ";
       int c = 0;
       for (auto& field : fields) {
+        O << c << ")" << field->getName() << " ";
         c++;
-        O << c << ")" << field->getFieldName() << " ";
       }
       O << "\n";
+    }
+
+    O << "Local Variable names-----------\n";
+    for (auto& [v, lv] : localVarNames) {
+      O << *v << ": " << lv->getName() << "\n";
     }
     O << "\n\n";
   }
