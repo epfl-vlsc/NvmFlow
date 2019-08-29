@@ -1,133 +1,107 @@
 #pragma once
 #include "Common.h"
 
-#include "analysis_util/MemoryUtil.h"
-#include "ds/Units.h"
-#include "parser_util/ParserUtil.h"
+#include "analysis_util/InstrParser.h"
+#include "ds/Globals.h"
+#include "ds/InstrInfo.h"
 
 namespace llvm {
 
 class ValidParser {
-  static constexpr const char* FIELD_ANNOT = "pair";
-  static constexpr const char* SCL_ANNOT = "scl";
-  static constexpr const char* SEP = "-";
+  using InstrType = typename InstrInfo::InstrType;
 
-  using InstructionType = typename InstructionInfo::InstructionType;
+  void addVar(Instruction* i, InstrType instrType) {
+    auto pv = InstrParser::parseInstruction(i);
 
-  std::pair<std::string, bool> parseAnnotation(StringRef annotation) {
-    bool useDcl = annotation.contains(SCL_ANNOT) ? false : true;
-    auto [_, name] = annotation.rsplit(SEP);
-    return {name.str(), useDcl};
-  }
+    if (!pv.isAnnotated())
+      return;
 
-  std::pair<Variable*, bool> getData(StringRef annotation, StructType* st) {
-    auto [dataStrIdx, useDcl] = parseAnnotation(annotation);
-    Variable* data = nullptr;
-    if (dataStrIdx.empty()) {
-      // whole object
-      data = units.dbgInfo.getStructElement(st);
+    // get annotation
+    auto annot = pv.getAnnotation();
+    if (!AnnotParser::isValidAnnotation(annot))
+      return;
+
+    // valid
+    auto [st, idx] = pv.getStructInfo();
+    auto* validSf = globals.dbgInfo.getStructField(st, idx);
+    auto* valid = globals.locals.addVariable(validSf);
+
+    // obj
+    auto* obj = globals.locals.addVariable(st);
+
+    // data
+    auto [parsedAnnot, useDcl] = AnnotParser::parseAnnotation(annot);
+    auto* data = (Variable*)nullptr;
+    if (!parsedAnnot.empty()) {
+      // data
+      auto* dataSf = globals.dbgInfo.getStructField(st, idx);
+      data = globals.locals.addVariable(dataSf);
     } else {
-      // field
-      data = units.dbgInfo.getStructElement(dataStrIdx);
+      // obj
+      data = obj;
     }
 
-    assert(data);
-    return {data, useDcl};
+    // pair
+    globals.locals.addPair(data, valid, useDcl);
+
+    // ii
+    globals.locals.addInstrInfo(i, instrType, valid, pv);
   }
 
-  auto* getValid(Instruction* i) {
-    auto [st, idx] = getAnnotatedField(i);
-    assert(st);
-    return units.dbgInfo.getStructElement(st, idx);
+  void addRead(LoadInst* li) { addVar(li, InstrType::None); }
+
+  void addWrite(StoreInst* si) { addVar(si, InstrType::WriteInstr); }
+
+  void addFlush(CallInst* ci, InstrType instrType) { addVar(ci, instrType); }
+
+  void addInstrInfo(CallInst* ci, InstrType instrType) {
+    auto pv = ParsedVariable();
+    globals.locals.addInstrInfo(ci, instrType, nullptr, pv);
   }
 
-  auto* getObj(Variable* valid) { return units.dbgInfo.getStructObj(valid); }
-
-  void insertVar(Instruction* i, Instruction* instr,
-                 InstructionType instrType) {
-    if (auto [hasAnnot, annotation] = getAnnotatedField(instr, FIELD_ANNOT);
-        hasAnnot) {
-
-      // find valid
-      auto* valid = getValid(instr);
-
-      // find data
-      auto [data, useDcl] = getData(annotation, valid->getStType());
-
-      // insert to ds
-      units.variables.insertPair(data, valid, useDcl);
-
-      // insert obj
-      auto* objv = getObj(valid);
-      auto* objd = getObj(data);
-      units.variables.insertObj(objv);
-      if (objv != objd)
-        units.variables.insertObj(objd);
-
-      auto* diVar = getDILocalVar(units, instr);
-
-      if (InstructionInfo::isUsedInstr(instrType))
-        units.variables.insertInstruction(i, instrType, valid, diVar);
-    }
-  }
-
-  void insertRead(LoadInst* li) { insertVar(li, li, InstructionType::None); }
-
-  void insertWrite(StoreInst* si) {
-    insertVar(si, si, InstructionType::WriteInstr);
-  }
-
-  void insertFlush(CallInst* ci, InstructionType instrType) {
-    auto* arg0 = ci->getArgOperand(0);
-    if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      insertVar(ci, arg0Instr, instrType);
-    }
-  }
-
-  void insertCall(CallInst* ci) {
+  void addCall(CallInst* ci) {
     auto* callee = ci->getCalledFunction();
 
-    if (!callee || callee->isIntrinsic() ||
-        units.functions.isSkippedFunction(callee)) {
+    if (globals.functions.isSkippedFunction(callee)) {
       return;
-    } else if (units.functions.isPfenceFunction(callee)) {
-      units.variables.insertInstruction(ci, InstructionInfo::PfenceInstr);
-    } else if (units.functions.isVfenceFunction(callee)) {
-      units.variables.insertInstruction(ci, InstructionInfo::VfenceInstr);
-    } else if (units.functions.isFlushFunction(callee)) {
-      insertFlush(ci, InstructionInfo::FlushInstr);
-    } else if (units.functions.isFlushFenceFunction(callee)) {
-      insertFlush(ci, InstructionInfo::FlushFenceInstr);
+    } else if (globals.functions.isPfenceFunction(callee)) {
+      addInstrInfo(ci, InstrInfo::PfenceInstr);
+    } else if (globals.functions.isVfenceFunction(callee)) {
+      addInstrInfo(ci, InstrInfo::VfenceInstr);
+    } else if (globals.functions.isFlushFunction(callee)) {
+      addFlush(ci, InstrInfo::FlushInstr);
+    } else if (globals.functions.isFlushFenceFunction(callee)) {
+      addFlush(ci, InstrInfo::FlushFenceInstr);
     } else {
-      units.variables.insertInstruction(ci, InstructionInfo::IpInstr);
+      addInstrInfo(ci, InstrInfo::IpInstr);
     }
   }
 
-  void insertI(Instruction* i) {
+  void addI(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      insertWrite(si);
+      addWrite(si);
     } else if (auto* li = dyn_cast<LoadInst>(i)) {
-      insertRead(li);
+      // addRead(li);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      insertCall(ci);
+      addCall(ci);
     }
   }
 
-  void insertFields(Function* function) {
-    for (auto* f : units.functions.getUnitFunctions(function)) {
+  void addValids(Function* func) {
+    for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
-        insertI(&I);
+        addI(&I);
       }
     }
   }
 
-  Units& units;
+  Globals& globals;
 
 public:
-  ValidParser(Units& units_) : units(units_) {
-    for (auto* function : units.functions.getAnalyzedFunctions()) {
-      units.setActiveFunction(function);
-      insertFields(function);
+  ValidParser(Globals& globals_) : globals(globals_) {
+    for (auto* f : globals.functions.getAnalyzedFunctions()) {
+      globals.setActiveFunction(f);
+      addValids(f);
     }
   }
 };
