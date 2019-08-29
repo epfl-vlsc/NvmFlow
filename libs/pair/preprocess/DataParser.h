@@ -1,104 +1,75 @@
 #pragma once
 #include "Common.h"
 
-#include "analysis_util/MemoryUtil.h"
-#include "ds/Units.h"
-#include "parser_util/ParserUtil.h"
+#include "analysis_util/InstrParser.h"
+#include "ds/Globals.h"
+#include "ds/InstrInfo.h"
 
 namespace llvm {
 
 class DataParser {
-  using InstructionType = typename InstructionInfo::InstructionType;
+  using InstrType = typename InstrInfo::InstrType;
 
-  auto* getVar(Instruction* i, InstructionType instrType) {
-    if (auto [st, idx] = getField(i); st) {
-      // field - data field is always unannotated
+  void addVar(Instruction* i, InstrType instrType) {
+    auto pv = InstrParser::parseInstruction(i);
 
-      // try field
-      auto* data = units.dbgInfo.getStructElement(st, idx);
-
-      if (units.variables.inDataSet(data)) {
-        return data;
-      }
-
-      // try obj since field is not registered
-      auto* obj = units.dbgInfo.getStructObj(data);
-      if (units.variables.inVars(obj)) {
-        return obj;
-      }
-    } else if (InstructionInfo::isFlushBasedInstr(instrType)) {
+    auto* data = (Variable*)nullptr;
+    if (pv.isObjPtr()) {
       // obj
-      if (auto* st = getObj(i)) {
-        errs() << "obj" << *i << "\n";
-        auto* obj = units.dbgInfo.getStructElement(st);
-        assert(obj);
-        if (units.variables.inVars(obj)) {
-          return obj;
-        }
-      }
+      auto* type = pv.getObjElementType();
+      auto* st = dyn_cast<StructType>(type);
+      assert(st);
+      data = globals.locals.getVariable(st);
+    } else {
+      // data
+      auto [st, idx] = pv.getStructInfo();
+      auto* dataSf = globals.dbgInfo.getStructField(st, idx);
+      data = globals.locals.getVariable(dataSf);
     }
 
-    return (Variable*)nullptr;
+    globals.locals.addInstrInfo(i, instrType, data, pv);
   }
 
-  void insertVar(Instruction* i, Instruction* instr, InstructionType instrType) {
-    if (auto* var = getVar(instr, instrType)) {
-      errs() << var->getName() << "\n";
-      auto* diVar = getDILocalVar(units, instr);
+  void addWrite(StoreInst* si) { addVar(si, InstrInfo::WriteInstr); }
 
-      units.variables.insertInstruction(i, instrType, var, diVar);
-    }
-  }
+  void addFlush(CallInst* ci, InstrType instrType) { addVar(ci, instrType); }
 
-  void insertWrite(StoreInst* si) {
-    insertVar(si, si, InstructionInfo::WriteInstr);
-  }
-
-  void insertFlush(CallInst* ci, InstructionType instrType) {
-    auto* arg0 = ci->getArgOperand(0);
-    if (auto* arg0Instr = dyn_cast<Instruction>(arg0)) {
-      insertVar(ci, arg0Instr, instrType);
-    }
-  }
-
-  void insertCall(CallInst* ci) {
+  void addCall(CallInst* ci) {
     auto* callee = ci->getCalledFunction();
 
-    if (!callee || callee->isIntrinsic() ||
-        units.functions.isSkippedFunction(callee)) {
+    if (globals.functions.isSkippedFunction(callee)) {
       return;
-    } else if (units.functions.isFlushFunction(callee)) {
-      insertFlush(ci, InstructionInfo::FlushInstr);
-    } else if (units.functions.isFlushFenceFunction(callee)) {
-      insertFlush(ci, InstructionInfo::FlushFenceInstr);
+    } else if (globals.functions.isFlushFunction(callee)) {
+      addFlush(ci, InstrInfo::FlushInstr);
+    } else if (globals.functions.isFlushFenceFunction(callee)) {
+      addFlush(ci, InstrInfo::FlushFenceInstr);
     }
   }
 
-  void insertI(Instruction* i) {
+  void addI(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      insertWrite(si);
+      addWrite(si);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      insertCall(ci);
+      addCall(ci);
     }
   }
 
-  void insertFields(Function* function) {
-    for (auto* f : units.functions.getUnitFunctions(function)) {
+  void addDatas(Function* func) {
+    for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
-        auto* i = &I;
-        if (!units.variables.isUsedInstruction(i))
-          insertI(i);
+        if (!globals.locals.isUsedInstruction(&I))
+          addI(&I);
       }
     }
   }
 
-  Units& units;
+  Globals& globals;
 
 public:
-  DataParser(Units& units_) : units(units_) {
-    for (auto* function : units.functions.getAnalyzedFunctions()) {
-      units.setActiveFunction(function);
-      insertFields(function);
+  DataParser(Globals& globals_) : globals(globals_) {
+    for (auto* f : globals.functions.getAnalyzedFunctions()) {
+      globals.setActiveFunction(f);
+      addDatas(f);
     }
   }
 };

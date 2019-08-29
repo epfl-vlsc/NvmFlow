@@ -205,11 +205,13 @@ public:
   }
 
   void printFunctionNames(raw_ostream& O) const {
-    O << "Function names---\n";
+    O << "Unmangled Names\n";
+    O << "---------------\n";
+
     for (auto& [mangledName, realName] : functionNames) {
       O << "\"" << mangledName << "\"=\"" << realName << "\", ";
     }
-    O << "\n";
+    O << "\n\n";
   }
 
   // var related--------------------------------------
@@ -222,9 +224,16 @@ public:
 
   auto* getStructField(StructType* st, int idx) {
     assert(st && idx >= 0);
-    StructField temp{st, idx};
-    auto sfIt = fields.find(temp);
-    auto* sf = (StructField*)&(*sfIt);
+    auto fieldIdxStr = StructField::getIdxName(st, idx);
+    assert(fieldIdxStrMap.count(fieldIdxStr));
+    auto* sf = fieldIdxStrMap[fieldIdxStr];
+    return sf;
+  }
+
+  auto* getStructField(std::string& fieldNameStr) {
+    assert(!fieldNameStr.empty());
+    assert(fieldNameStrMap.count(fieldNameStr));
+    auto* sf = fieldNameStrMap[fieldNameStr];
     return sf;
   }
 

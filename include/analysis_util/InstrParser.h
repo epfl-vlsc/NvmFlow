@@ -95,6 +95,16 @@ struct ParsedVariable {
     return st;
   }
 
+  auto* getObjElementType() {
+    assert(localVar);
+    auto* type = localVar->getType();
+    assert(type->isPointerTy());
+    auto* ptrType = dyn_cast<PointerType>(type);
+    auto* objType = ptrType->getPointerElementType();
+    assert(type);
+    return objType;
+  }
+
   auto getStructInfo() {
     assert(st && idx >= 0);
     return std::pair(st, idx);

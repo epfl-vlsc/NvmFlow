@@ -29,7 +29,6 @@ public:
 };
 
 class StructField : public StructFieldBase {
-
   static auto stripStructStr(StructType* st_) {
     auto fullClsName = st_->getName().str();
     auto clsName = fullClsName.substr(fullClsName.find(".") + 1);
@@ -78,10 +77,18 @@ public:
     return name;
   }
 
-  static auto getIdxName(StringRef& typeName, int idx) {
+  static auto getIdxName(StringRef& typeName, int idx_) {
     std::string name;
     name.reserve(150);
-    name += typeName.str() + "::" + std::to_string(idx);
+    name += typeName.str() + "::" + std::to_string(idx_);
+    return name;
+  }
+
+  static auto getIdxName(StructType* st_, int idx) {
+    std::string name;
+    name.reserve(150);
+    auto clsName = stripStructStr(st_);
+    name += clsName + "::" + std::to_string(idx);
     return name;
   }
 
