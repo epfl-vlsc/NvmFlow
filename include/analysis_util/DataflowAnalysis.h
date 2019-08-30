@@ -255,6 +255,15 @@ public:
     computeDataflow();
   }
 
+  auto& getFinalAbstractState() {
+    assert(topFunction);
+    auto context = Context();
+    auto& results = allResults[context];
+    auto* functionExitKey = Forward::getFunctionExitKey(topFunction);
+    auto& state = results[functionExitKey];
+    return state;
+  }
+
   void print(raw_ostream& O) const {
     O << "---------------------------------\n";
     O << "all results:\n";

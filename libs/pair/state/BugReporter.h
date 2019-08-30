@@ -158,12 +158,14 @@ public:
     }
   }
 
-  void checkSentinelCommitBug(AbstractState& state) {
+  void checkFinalBugs(AbstractState& state) {
     for (auto& [var, val] : state) {
       if (globals.locals.inSentinels(var) && !val.isDclFence()) {
         auto mangledName = currentFunction->getName();
-        auto fncName = globals.dbgInfo.getFunctionName(mangledName);
-
+        auto fncName = globals.dbgInfo.getFunctionName(mangledName).str();
+        auto varName = var->getName();
+        auto* bugData = BugFactory::getSentinelCommitBug(varName, fncName);
+        bugDataList.push_back(bugData);
       }
     }
   }

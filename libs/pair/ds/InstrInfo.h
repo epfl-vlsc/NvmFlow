@@ -57,6 +57,16 @@ struct InstrInfo {
     return instr;
   }
 
+  std::string getVarName() const {
+    assert(var);
+    return var->getName();
+  }
+
+  std::string getSrcLoc() const {
+    assert(instr);
+    return DbgInstr::getSourceLocation(instr);
+  }
+
   auto getName() const {
     assert(instr);
     std::string name;

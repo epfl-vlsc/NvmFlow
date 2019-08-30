@@ -28,6 +28,9 @@ public:
 
     DataflowAnalysis dataflow(function, *this);
 
+    auto& as = dataflow.getFinalAbstractState();
+    breporter.checkFinalBugs(as);
+
 #ifdef DBGMODE
     //dataflow.print(errs());
 #endif

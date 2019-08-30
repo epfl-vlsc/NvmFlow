@@ -163,6 +163,11 @@ public:
            dclFlush.state == DclFlush::Flush;
   }
 
+  bool isDclFence() const {
+    return dclCommit.state == DclCommit::Fence &&
+           dclFlush.state == DclFlush::Flush;
+  }
+
   bool isDclFlushFlush() const { return dclFlush.state == DclFlush::Flush; }
 
   bool isWrite() const {
