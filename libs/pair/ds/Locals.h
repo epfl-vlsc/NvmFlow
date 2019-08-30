@@ -91,6 +91,13 @@ public:
     return activeUnit->vars;
   }
 
+  bool inVariables(StructField* sf) const{
+    assert(activeUnit);
+    auto var = Variable(sf);
+    auto& vars = activeUnit->vars;
+    return vars.count(var);
+  }
+
   Variable* getVariable(Variable& var) {
     assert(activeUnit);
     auto& vars = activeUnit->vars;

@@ -28,6 +28,9 @@ class VarFiller {
 
       auto* st = var->getStructType();
       for (auto* sf : globals.dbgInfo.getFieldMap(st)) {
+        if (!globals.locals.inVariables(sf))
+          continue;
+
         auto* field = globals.locals.getVariable(sf);
         var->addToFlushSet(field);
       }

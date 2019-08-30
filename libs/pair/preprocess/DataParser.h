@@ -15,9 +15,8 @@ class DataParser {
 
     auto* data = (Variable*)nullptr;
 
-    
     if (pv.isObjPtr()) {
-      // obj
+      // objptr
       auto* type = pv.getObjElementType();
       auto* st = dyn_cast<StructType>(type);
       assert(st);
@@ -26,7 +25,14 @@ class DataParser {
       // data
       auto [st, idx] = pv.getStructInfo();
       auto* dataSf = globals.dbgInfo.getStructField(st, idx);
-      data = globals.locals.getVariable(dataSf);
+
+      if (globals.locals.inVariables(dataSf)) {
+        // field
+        data = globals.locals.getVariable(dataSf);
+      } else {
+        // objptr
+        data = globals.locals.getVariable(st);
+      }
     }
 
     globals.locals.addInstrInfo(i, instrType, data, pv);
