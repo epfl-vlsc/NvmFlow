@@ -255,13 +255,9 @@ public:
     computeDataflow();
   }
 
-  auto& getFinalAbstractState() {
+  auto& getResults() {
     assert(topFunction);
-    auto context = Context();
-    auto& results = allResults[context];
-    auto* functionExitKey = Forward::getFunctionExitKey(topFunction);
-    auto& state = results[functionExitKey];
-    return state;
+    return allResults;
   }
 
   void print(raw_ostream& O) const {

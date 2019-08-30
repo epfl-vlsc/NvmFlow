@@ -1,19 +1,12 @@
 #pragma once
-#include "BugReporter.h"
 #include "Common.h"
 #include "FlowTypes.h"
-
 #include "analysis_util/DfUtil.h"
-
 #include "ds/Globals.h"
 
 namespace llvm {
 
 class Transfer {
-  void trackVar(Variable* var, InstrInfo* ii) {
-    breporter.updateLastLocation(var, ii);
-  }
-
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
     bool stateChanged = false;
 
@@ -67,21 +60,13 @@ class Transfer {
   }
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
-    breporter.checkDoubleFlushBug(ii, state);
-
     auto* var = ii->getVariable();
     assert(var);
 
     bool stateChanged = doFlush(var, state, useFence);
-    if (stateChanged)
-      trackVar(var, ii);
 
     for (auto* fvar : var->getFlushSet()) {
-      bool fieldStateChanged = doFlush(fvar, state, useFence);
-      if (fieldStateChanged)
-        trackVar(fvar, ii);
-
-      stateChanged |= fieldStateChanged;
+      stateChanged |= doFlush(fvar, state, useFence);
     }
 
     return stateChanged;
@@ -98,32 +83,23 @@ class Transfer {
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
-    breporter.checkNotCommittedBug(ii, state);
-
     auto* var = ii->getVariable();
     assert(var);
 
     bool stateChanged = doWrite(var, state);
-    if (stateChanged)
-      trackVar(var, ii);
 
     for (auto* wvar : var->getWriteSet()) {
-      bool objStateChanged = doWrite(wvar, state);
-      if (objStateChanged)
-        trackVar(wvar, ii);
-
-      stateChanged |= objStateChanged;
+      stateChanged |= doWrite(wvar, state);
     }
 
     return stateChanged;
   }
 
   Globals& globals;
-  BugReporter& breporter;
 
 public:
-  Transfer(Module& M_, Globals& globals_, BugReporter& breporter_)
-      : globals(globals_), breporter(breporter_) {}
+  Transfer(Module& M_, Globals& globals_)
+      : globals(globals_){}
 
   ~Transfer() {}
 

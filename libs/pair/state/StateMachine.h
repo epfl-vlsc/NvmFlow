@@ -21,25 +21,21 @@ private:
 
 public:
   StateMachine(Module& M_, Globals& globals_)
-      : globals(globals_), breporter(globals_), transfer(M_, globals_, breporter) {}
+      : globals(globals_), breporter(globals_),
+        transfer(M_, globals_) {}
 
   void analyze(Function* function) {
     breporter.initUnit(function);
 
     DataflowAnalysis dataflow(function, *this);
 
-    auto& as = dataflow.getFinalAbstractState();
-    breporter.checkFinalBugs(as);
+    auto& allResults = dataflow.getResults();
 
 #ifdef DBGMODE
-    //dataflow.print(errs());
+    // dataflow.print(errs());
 #endif
 
-    breporter.print(errs());
-  }
-
-  void run(){
-    
+    breporter.checkBugs(allResults);
   }
 
   void initLatticeValues(AbstractState& state) {

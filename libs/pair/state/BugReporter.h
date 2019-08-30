@@ -191,6 +191,11 @@ public:
       }
     }
   }
+
+  template<typename DfResults>
+  void checkBugs(DfResults& dfResults){
+    errs() << "lol\n";
+  }
 };
 
 } // namespace llvm
