@@ -3,20 +3,18 @@
 
 #include "DataParser.h"
 #include "ValidParser.h"
-#include "VarFinalizerParser.h"
-#include "parser_util/VarNameParser.h"
+#include "VarFiller.h"
 
 namespace llvm {
 
 class VariableParser {
 
 public:
-  VariableParser(Units& units) {
+  VariableParser(Globals& globals) {
     // ordering matters!
-    VarNameParser vnParser(units);
-    ValidParser vParser(units);
-    DataParser dParser(units);
-    VarFinalizerParser vfParser(units);
+    ValidParser vParser(globals);
+    DataParser dParser(globals);
+    VarFiller vFiller(globals);
   }
 };
 

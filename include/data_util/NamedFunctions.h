@@ -53,7 +53,8 @@ public:
   FlushFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("clflushopt") || name.equals("clwb");
+    return name.equals("clflushopt") || name.equals("clwb") ||
+           name.equals("pm_clflushopt");
   }
 
   const char* getName() const { return "clflushopt"; }
@@ -65,7 +66,8 @@ public:
   FlushFenceFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("clflush") || name.equals("flush_range");
+    return name.equals("clflush") || name.equals("flush_range") ||
+           name.equals("pm_clflush");
   }
 
   const char* getName() const { return "flush fence"; }

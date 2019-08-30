@@ -5,46 +5,35 @@
 namespace llvm {
 
 class VarFiller {
-  /*
-    void fillFlushFieldData() {
-      for (auto* var : globals.variables.getDataSet()) {
-        if (!var->isObj())
-          continue;
+  void fillWriteSets() {
+    for (auto& variable : globals.locals.getVariables()) {
+      auto* var = (Variable*)&variable;
 
-        assert(var->isObj());
-        for (auto* field : globals.dbgInfo.getFieldMap(var)) {
-          if (globals.variables.inVars(field)) {
-            globals.variables.insertFlushField(var, field);
-          }
-        }
+      if (globals.locals.inSentinels(var) || var->isObj())
+        continue;
+
+      auto* st = var->getStructType();
+      auto* obj = globals.locals.getVariable(st);
+      var->addToWriteSet(obj);
+    }
+  }
+
+  void fillFlushSets() {
+    for (auto& variable : globals.locals.getVariables()) {
+      auto* var = (Variable*)&variable;
+
+      // assuming: sentinels dont have flush sets
+      if (globals.locals.inSentinels(var) || !var->isObj())
+        continue;
+
+      auto* st = var->getStructType();
+      for (auto* sf : globals.dbgInfo.getFieldMap(st)) {
+        auto* field = globals.locals.getVariable(sf);
+        var->addToFlushSet(field);
       }
     }
+  }
 
-    void fillWriteObjData() {
-      for (auto* field : globals.variables.getDataSet()) {
-        if (!field->isField() || globals.variables.inValidSet(field))
-          continue;
-
-        auto* obj = globals.dbgInfo.getStructObj(field);
-        assert(obj);
-        globals.variables.insertWriteObj(field, obj);
-      }
-    }
-
-    void fillWriteObjValid() {
-      for (auto* field : globals.variables.getValidSet()) {
-        assert(field->isField());
-        globals.variables.insertWriteObj(field, nullptr);
-      }
-    }
-    */
-  /*
-    void fillObjFieldInfo() {
-      fillWriteObjValid();
-      fillWriteObjData();
-      fillFlushFieldData();
-    }
-  */
   void fillPairs() {
     for (auto& pairVar : globals.locals.getPairs()) {
       auto* pair = (PairVariable*)&pairVar;
@@ -60,8 +49,10 @@ public:
   VarFiller(Globals& globals_) : globals(globals_) {
     for (auto* function : globals.functions.getAnalyzedFunctions()) {
       globals.setActiveFunction(function);
-      // fillFlushSet();
-      // fillWriteSet();
+      /*
+      fillWriteSets();
+      fillFlushSets();
+      */
       fillPairs();
     }
   }

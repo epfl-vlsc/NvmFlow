@@ -1,8 +1,7 @@
 #pragma once
 #include "Common.h"
 
-#include "analysis_util/MemoryUtil.h"
-#include "ds/Units.h"
+#include "ds/Globals.h"
 
 namespace llvm {
 
@@ -25,8 +24,8 @@ class FunctionParser {
           Function* annotatedFunction =
               dyn_cast<Function>(CS->getOperand(0)->getOperand(0));
 
-          units.functions.insertAnnotatedFunction(annotatedFunction,
-                                                  annotation);
+          globals.functions.insertAnnotatedFunction(annotatedFunction,
+                                                    annotation);
         }
       }
     }
@@ -37,22 +36,31 @@ class FunctionParser {
       auto* f = &F;
       auto mangledName = f->getName();
 
-      if (!units.dbgInfo.functionExists(mangledName)) {
+      if (!globals.dbgInfo.functionExists(mangledName)) {
         continue;
       }
 
-      auto realName = units.dbgInfo.getFunctionName(mangledName);
-      units.functions.insertNamedFunction(f, realName);
+      auto realName = globals.dbgInfo.getFunctionName(mangledName);
+      globals.functions.insertNamedFunction(f, realName);
+    }
+  }
+
+  void insertAllAnalyzedFunctions() {
+    for (auto* function : globals.functions.getAnalyzedFunctions()) {
+      for (auto* f : globals.functions.getUnitFunctions(function)) {
+        globals.functions.insertToAllAnalyzed(f);
+      }
     }
   }
 
   Module& M;
-  Units& units;
+  Globals& globals;
 
 public:
-  FunctionParser(Module& M_, Units& units_) : M(M_), units(units_) {
+  FunctionParser(Module& M_, Globals& globals_) : M(M_), globals(globals_) {
     insertAnnotatedFunctions();
     insertNamedFunctions();
+    insertAllAnalyzedFunctions();
   }
 };
 

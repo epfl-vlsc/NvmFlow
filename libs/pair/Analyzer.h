@@ -2,8 +2,7 @@
 
 #include "Common.h"
 
-#include "data_util/DbgInfo.h"
-#include "ds/Units.h"
+#include "ds/Globals.h"
 #include "preprocess/Parser.h"
 #include "state/StateMachine.h"
 
@@ -11,10 +10,10 @@ namespace llvm {
 
 class Analyzer {
   Module& M;
-  Units units;
+  Globals globals;
 
 public:
-  Analyzer(Module& M_) : M(M_), units(M_) {
+  Analyzer(Module& M_) : M(M_), globals(M_) {
     parse();
 
     dataflow();
@@ -23,26 +22,29 @@ public:
   void dataflow() {
     errs() << "Dataflow Analysis\n";
     errs() << "-----------------\n";
-    StateMachine stateMachine(M, units);
-    for (auto* function : stateMachine.getAnalyzedFunctions()) {
-      stateMachine.analyze(function);
+
+    for (auto* f : globals.getAnalyzedFunctions()) {
+      globals.setActiveFunction(f);
+
+#ifdef DBGMODE
+      globals.printLocals(errs());
+#endif
+
+      StateMachine(M, globals).analyze(f);
     }
   }
 
   void parse() {
 #ifdef DBGMODE
-    units.printDbgInfo(errs());
+    globals.printFunctionNames(errs());
 #endif
 
-
-    Parser parser(M, units);
+    Parser parser(M, globals);
 
 #ifdef DBGMODE
-    units.printFunctions(errs());
+    globals.printFunctions(errs());
 #endif
   }
-
-  void report() {}
 };
 
 } // namespace llvm

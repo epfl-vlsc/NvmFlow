@@ -47,7 +47,7 @@ public:
   }
 
   bool operator<(const Context& X) const {
-    return (caller < X.caller || callee < X.callee);
+    return std::tie(caller, callee) < std::tie(X.caller, X.callee);
   }
 
   bool operator==(const Context& X) const {

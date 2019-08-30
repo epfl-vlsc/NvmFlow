@@ -25,6 +25,7 @@ class ValidParser {
     auto [st, idx] = pv.getStructInfo();
     auto* validSf = globals.dbgInfo.getStructField(st, idx);
     auto* valid = globals.locals.addVariable(validSf);
+    globals.locals.addSentinel(valid);
 
     // obj
     auto* obj = globals.locals.addVariable(st);
@@ -34,7 +35,7 @@ class ValidParser {
     auto* data = (Variable*)nullptr;
     if (!parsedAnnot.empty()) {
       // data
-      auto* dataSf = globals.dbgInfo.getStructField(st, idx);
+      auto* dataSf = globals.dbgInfo.getStructField(parsedAnnot);
       data = globals.locals.addVariable(dataSf);
     } else {
       // obj

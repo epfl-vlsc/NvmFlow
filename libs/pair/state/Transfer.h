@@ -5,16 +5,16 @@
 
 #include "analysis_util/DfUtil.h"
 
-#include "ds/Units.h"
+#include "ds/Globals.h"
 
 namespace llvm {
 
 class Transfer {
-  void trackVar(Variable* var, InstructionInfo* ii) {
+  void trackVar(Variable* var, InstrInfo* ii) {
     breporter.updateLastLocation(var, ii);
   }
 
-  bool handlePfence(InstructionInfo* ii, AbstractState& state) {
+  bool handlePfence(InstrInfo* ii, AbstractState& state) {
     bool stateChanged = false;
 
     for (auto& [var, val] : state) {
@@ -32,7 +32,7 @@ class Transfer {
     return stateChanged;
   }
 
-  bool handleVfence(InstructionInfo* ii, AbstractState& state) {
+  bool handleVfence(InstrInfo* ii, AbstractState& state) {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isSclCommitWrite()) {
@@ -66,7 +66,7 @@ class Transfer {
     return stateChanged;
   }
 
-  bool handleFlush(InstructionInfo* ii, AbstractState& state, bool useFence) {
+  bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
     breporter.checkDoubleFlushBug(ii, state);
 
     auto* var = ii->getVariable();
@@ -76,14 +76,12 @@ class Transfer {
     if (stateChanged)
       trackVar(var, ii);
 
-    if (var->isObj()) {
-      for (auto* field : units.variables.getFlushFields(var)) {
-        bool fieldStateChanged = doFlush(field, state, useFence);
-        if (fieldStateChanged)
-          trackVar(field, ii);
+    for (auto* fvar : var->getFlushSet()) {
+      bool fieldStateChanged = doFlush(fvar, state, useFence);
+      if (fieldStateChanged)
+        trackVar(fvar, ii);
 
-        stateChanged |= fieldStateChanged;
-      }
+      stateChanged |= fieldStateChanged;
     }
 
     return stateChanged;
@@ -99,7 +97,7 @@ class Transfer {
     return true;
   }
 
-  bool handleWrite(InstructionInfo* ii, AbstractState& state) {
+  bool handleWrite(InstrInfo* ii, AbstractState& state) {
     breporter.checkNotCommittedBug(ii, state);
 
     auto* var = ii->getVariable();
@@ -109,56 +107,55 @@ class Transfer {
     if (stateChanged)
       trackVar(var, ii);
 
-    if (var->isField()) {
-      for (auto* obj : units.variables.getWriteObjs(var)) {
-        bool objStateChanged = doWrite(obj, state);
-        if (objStateChanged)
-          trackVar(obj, ii);
+    for (auto* wvar : var->getWriteSet()) {
+      bool objStateChanged = doWrite(wvar, state);
+      if (objStateChanged)
+        trackVar(wvar, ii);
 
-        stateChanged |= objStateChanged;
-      }
+      stateChanged |= objStateChanged;
     }
 
     return stateChanged;
   }
 
-  Units& units;
+  Globals& globals;
   BugReporter& breporter;
 
 public:
-  Transfer(Module& M_, Units& units_, BugReporter& breporter_)
-      : units(units_), breporter(breporter_) {}
+  Transfer(Module& M_, Globals& globals_, BugReporter& breporter_)
+      : globals(globals_), breporter(breporter_) {}
 
   ~Transfer() {}
 
   void initLatticeValues(AbstractState& state) {
-    // for tracking variables
-    for (auto& var : units.getVariables()) {
-      state[var] = LatVal::getInit();
+    // for tracking locals
+    for (auto& var : globals.getVariables()) {
+      auto* varPtr = (Variable*)&var;
+      state[varPtr] = LatVal::getInit();
     }
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
     bool stateChanged = false;
 
-    auto* ii = units.variables.getInstructionInfo(i);
+    auto* ii = globals.locals.getInstrInfo(i);
     if (!ii)
       return stateChanged;
 
     switch (ii->getInstrType()) {
-    case InstructionInfo::WriteInstr:
+    case InstrInfo::WriteInstr:
       stateChanged = handleWrite(ii, state);
       break;
-    case InstructionInfo::FlushInstr:
+    case InstrInfo::FlushInstr:
       stateChanged = handleFlush(ii, state, false);
       break;
-    case InstructionInfo::FlushFenceInstr:
+    case InstrInfo::FlushFenceInstr:
       stateChanged = handleFlush(ii, state, true);
       break;
-    case InstructionInfo::VfenceInstr:
+    case InstrInfo::VfenceInstr:
       stateChanged = handleVfence(ii, state);
       break;
-    case InstructionInfo::PfenceInstr:
+    case InstrInfo::PfenceInstr:
       stateChanged = handlePfence(ii, state);
       break;
     default:

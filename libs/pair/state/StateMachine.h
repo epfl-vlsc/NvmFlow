@@ -6,7 +6,7 @@
 #include "Lattice.h"
 #include "Transfer.h"
 #include "analysis_util/DataflowAnalysis.h"
-#include "ds/Units.h"
+#include "ds/Globals.h"
 
 namespace llvm {
 
@@ -15,22 +15,15 @@ public:
   using AbstractState = AbstractState;
 
 private:
-  Units& units;
+  Globals& globals;
   BugReporter breporter;
   Transfer transfer;
 
 public:
-  StateMachine(Module& M_, Units& units_)
-      : units(units_), breporter(units_), transfer(M_, units_, breporter) {}
+  StateMachine(Module& M_, Globals& globals_)
+      : globals(globals_), breporter(globals_), transfer(M_, globals_, breporter) {}
 
   void analyze(Function* function) {
-    units.setActiveFunction(function);
-
-#ifdef DBGMODE
-    units.printVariables(errs());
-    errs() << "\n\n";
-#endif
-
     breporter.initUnit(function);
 
     DataflowAnalysis dataflow(function, *this);
@@ -42,6 +35,10 @@ public:
     breporter.print(errs());
   }
 
+  void run(){
+    
+  }
+
   void initLatticeValues(AbstractState& state) {
     transfer.initLatticeValues(state);
   }
@@ -51,10 +48,10 @@ public:
   }
 
   bool isIpInstruction(Instruction* i) const {
-    return units.isIpInstruction(i);
+    return globals.isIpInstruction(i);
   }
 
-  auto& getAnalyzedFunctions() { return units.getAnalyzedFunctions(); }
+  auto& getAnalyzedFunctions() { return globals.getAnalyzedFunctions(); }
 };
 
 } // namespace llvm

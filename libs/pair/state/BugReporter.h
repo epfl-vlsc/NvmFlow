@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
 #include "FlowTypes.h"
-#include "ds/Units.h"
+#include "ds/Globals.h"
 
 namespace llvm {
 
@@ -9,17 +9,15 @@ class BugReporter {
   struct BugData {
     enum BugType { NotCommittedBug, DoubleFlushBug };
     BugType bugType;
-    InstructionInfo* ii;
-    InstructionInfo* previi;
+    InstrInfo* ii;
+    InstrInfo* previi;
 
-    static BugData getNotCommitted(InstructionInfo* ii_,
-                                   InstructionInfo* previi_) {
+    static BugData getNotCommitted(InstrInfo* ii_, InstrInfo* previi_) {
       assert(ii_ && previi_);
       return {NotCommittedBug, ii_, previi_};
     }
 
-    static BugData getDoubleFlush(InstructionInfo* ii_,
-                                  InstructionInfo* previi_) {
+    static BugData getDoubleFlush(InstrInfo* ii_, InstrInfo* previi_) {
       assert(ii_ && previi_);
       return {DoubleFlushBug, ii_, previi_};
     }
@@ -28,10 +26,15 @@ class BugReporter {
       std::string name;
       name.reserve(200);
 
-      name += "For " + ii->getVariableName();
-      name += " at " + ii->getInstructionName() + "\n";
-      name += "\tCommit " + previi->getVariableName();
-      name += " at " + previi->getInstructionName() + "\n";
+      auto* var = ii->getVariable();
+      auto* instr = ii->getInstruction();
+      auto* prevVar = previi->getVariable();
+      auto* prevInstr = previi->getInstruction();
+
+      name += "For " + var->getName();
+      name += " at " + DbgInstr::getSourceLocation(instr) + "\n";
+      name += "\tCommit " + prevVar->getName();
+      name += " at " + DbgInstr::getSourceLocation(prevInstr) + "\n";
 
       return name;
     }
@@ -40,10 +43,15 @@ class BugReporter {
       std::string name;
       name.reserve(200);
 
-      name += "Double flush " + ii->getVariableName();
-      name += " at " + ii->getInstructionName() + "\n";
-      name += "\tFlushed before " + previi->getVariableName();
-      name += " at " + previi->getInstructionName() + "\n";
+      auto* var = ii->getVariable();
+      auto* instr = ii->getInstruction();
+      auto* prevVar = previi->getVariable();
+      auto* prevInstr = previi->getInstruction();
+
+      name += "Double flush " + var->getName();
+      name += " at " + DbgInstr::getSourceLocation(instr) + "\n";
+      name += "\tFlushed before " + prevVar->getName();
+      name += " at " + DbgInstr::getSourceLocation(prevInstr) + "\n";
 
       return name;
     }
@@ -79,14 +87,14 @@ class BugReporter {
   }
 
   // data structures
-  Units& units;
+  Globals& globals;
   Function* currentFunction;
   BugDataList* bugDataList;
   LastLocationMap* lastLocationMap;
   BuggedVars* buggedVars;
 
 public:
-  BugReporter(Units& units_) : units(units_) {
+  BugReporter(Globals& globals_) : globals(globals_) {
     currentFunction = nullptr;
     bugDataList = nullptr;
     lastLocationMap = nullptr;
@@ -101,7 +109,7 @@ public:
     allocStructures();
   }
 
-  void updateLastLocation(Variable* var, InstructionInfo* ii) {
+  void updateLastLocation(Variable* var, InstrInfo* ii) {
     auto* instr = ii->getInstruction();
     assert(instr);
     (*lastLocationMap)[var] = instr;
@@ -114,7 +122,7 @@ public:
 
   void print(raw_ostream& O) const {
     auto mangledName = currentFunction->getName();
-    auto fncName = units.dbgInfo.getFunctionName(mangledName);
+    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
     O << fncName << " bugs\n";
     for (auto& bugData : *bugDataList) {
       errs() << bugData.getName();
@@ -123,13 +131,13 @@ public:
     O << "\n\n\n";
   }
 
-  bool addCheckNotCommittedBug(Variable* var, InstructionInfo* ii,
+  bool addCheckNotCommittedBug(Variable* var, InstrInfo* ii,
                                AbstractState& state) {
     if (buggedVars->count(var))
       return false;
 
-    for (auto* pair : units.variables.getPairs(var)) {
-      auto* pairVar = pair->getPair(var);
+    for (auto* pair : var->getPairs()) {
+      auto* pairVar = pair->getOther(var);
 
       if (buggedVars->count(pairVar))
         continue;
@@ -143,7 +151,7 @@ public:
         buggedVars->insert(pairVar);
 
         auto* pairInst = getLastLocation(pairVar);
-        auto* previi = units.variables.getInstructionInfo(pairInst);
+        auto* previi = globals.locals.getInstrInfo(pairInst);
 
         auto bugData = BugData::getNotCommitted(ii, previi);
         bugDataList->push_back(bugData);
@@ -154,7 +162,7 @@ public:
     return false;
   }
 
-  void checkNotCommittedBug(InstructionInfo* ii, AbstractState& state) {
+  void checkNotCommittedBug(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
@@ -163,18 +171,15 @@ public:
       return;
     }
 
-    if (var->isField()) {
-      for (auto* obj : units.variables.getWriteObjs(var)) {
-        bugFound = addCheckNotCommittedBug(obj, ii, state);
-        if (bugFound) {
-          return;
-        }
+    for (auto* wvar : var->getWriteSet()) {
+      bugFound = addCheckNotCommittedBug(wvar, ii, state);
+      if (bugFound) {
+        return;
       }
     }
   }
 
-  bool addDoubleFlushBug(Variable* var, InstructionInfo* ii,
-                         AbstractState& state) {
+  bool addDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state) {
     if (buggedVars->count(var))
       return false;
 
@@ -184,7 +189,7 @@ public:
       buggedVars->insert(var);
 
       auto* prevInstr = getLastLocation(var);
-      auto* previi = units.variables.getInstructionInfo(prevInstr);
+      auto* previi = globals.locals.getInstrInfo(prevInstr);
 
       auto bugData = BugData::getDoubleFlush(ii, previi);
       bugDataList->push_back(bugData);
@@ -194,7 +199,7 @@ public:
     return false;
   }
 
-  void checkDoubleFlushBug(InstructionInfo* ii, AbstractState& state) {
+  void checkDoubleFlushBug(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
@@ -203,12 +208,10 @@ public:
       return;
     }
 
-    if (var->isObj()) {
-      for (auto* field : units.variables.getFlushFields(var)) {
-        bugFound = addDoubleFlushBug(field, ii, state);
-        if (bugFound) {
-          return;
-        }
+    for (auto* field : var->getFlushSet()) {
+      bugFound = addDoubleFlushBug(field, ii, state);
+      if (bugFound) {
+        return;
       }
     }
   }
