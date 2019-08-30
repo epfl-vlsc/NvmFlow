@@ -67,7 +67,7 @@ public:
   void print(raw_ostream& O) const { O << getName(); }
 };
 
-class Forward {
+class Traversal {
 public:
   static auto getInstructions(BasicBlock* bb) {
     return iterator_range(bb->begin(), bb->end());

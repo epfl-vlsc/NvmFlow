@@ -192,9 +192,9 @@ public:
     }
   }
 
-  template<typename DfResults>
-  void checkBugs(DfResults& dfResults){
-    errs() << "lol\n";
+  template <typename DataflowResults>
+  void checkBugs(DataflowResults& allResults) {
+    
   }
 };
 
