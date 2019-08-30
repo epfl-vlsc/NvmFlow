@@ -26,9 +26,31 @@ public:
     name.reserve(200);
 
     name += "For " + varName;
-    name += " at " + prevName + "\n";
-    name += "\tCommit " + srcLoc;
+    name += " at " + srcLoc + "\n";
+    name += "\tCommit " + prevName;
     name += " at " + prevLoc + "\n";
+
+    return name;
+  }
+};
+
+class SentinelFirstBug : public BugData {
+  std::string varName;
+  std::string prevName;
+  std::string srcLoc;
+
+public:
+  SentinelFirstBug(std::string& varName_, std::string& prevName_,
+                   std::string& srcLoc_)
+      : varName(varName_), prevName(prevName_), srcLoc(srcLoc_) {}
+
+  std::string getName() const override {
+    std::string name;
+    name.reserve(200);
+
+    name += "Writing " + varName;
+    name += " at " + srcLoc;
+    name += " before writing " + prevName + "\n";
 
     return name;
   }
@@ -51,8 +73,8 @@ public:
     name.reserve(200);
 
     name += "Double flush " + varName;
-    name += " at " + prevName + "\n";
-    name += "\tFlushed before " + srcLoc;
+    name += " at " + srcLoc + "\n";
+    name += "\tFlushed before " + prevName;
     name += " at " + prevLoc + "\n";
 
     return name;
@@ -83,6 +105,11 @@ public:
   static auto* getNotCommittedBug(std::string& varName, std::string& prevName,
                                   std::string& srcLoc, std::string& prevLoc) {
     return new NotCommittedBug{varName, prevName, srcLoc, prevLoc};
+  }
+
+  static auto* getSentinelFirstBug(std::string& varName, std::string& prevName,
+                                   std::string& srcLoc) {
+    return new SentinelFirstBug{varName, prevName, srcLoc};
   }
 
   static auto* getDoubleFlushBug(std::string& varName, std::string& prevName,

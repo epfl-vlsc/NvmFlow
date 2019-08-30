@@ -176,6 +176,11 @@ public:
            sclCommit.state == SclCommit::Write;
   }
 
+  bool isUnseen() const {
+    return dclCommit.state == DclCommit::Unseen ||
+           sclCommit.state == SclCommit::Unseen;
+  }
+
   auto getName() const {
     return dclCommit.getName() + " " + dclFlush.getName() + " " +
            sclCommit.getName();

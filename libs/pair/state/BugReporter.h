@@ -73,10 +73,32 @@ public:
         continue;
 
       auto& pairVal = state[pairVar];
-      bool badPairValStates = (pair->isDcl()) ? pairVal.isDclCommitWrite() ||
-                                                    pairVal.isDclCommitFlush()
-                                              : pairVal.isSclCommitWrite();
-      if (badPairValStates) {
+
+      bool isNotCommitted = false;
+      bool isSentinelFirst = pairVal.isUnseen() && pair->isSentinel(var);
+
+      if (pair->isDcl()) {
+        isNotCommitted =
+            pairVal.isDclCommitWrite() || pairVal.isDclCommitFlush();
+      } else {
+        isNotCommitted = pairVal.isSclCommitWrite();
+      }
+
+      if (isSentinelFirst) {
+        buggedVars.insert(var);
+        buggedVars.insert(pairVar);
+
+        auto varName = ii->getVarName();
+        auto prevName = pairVar->getName();
+        auto srcLoc = ii->getSrcLoc();
+
+        auto* bugData =
+            BugFactory::getSentinelFirstBug(varName, prevName, srcLoc);
+        bugDataList.push_back(bugData);
+        return true;
+      }
+
+      if (isNotCommitted) {
         buggedVars.insert(var);
         buggedVars.insert(pairVar);
 

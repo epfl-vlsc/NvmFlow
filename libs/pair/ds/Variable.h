@@ -79,6 +79,11 @@ public:
 
   auto getPair() { return std::pair(data, valid); }
 
+  bool isSentinel(Variable* var) const {
+    assert(var == data || var == valid);
+    return var == valid;
+  }
+
   auto* getOther(Variable* var) {
     assert(var == data || var == valid);
     return (var == data) ? (valid) : data;

@@ -69,7 +69,7 @@ run_tool(){
 ${SINGLE_FILE_REPO}/${TEST_NAME}.bc > /dev/null
 }
 
-checkers=("pair" "dur" "log" "exp" "cons")
+checkers=("pair" "dur" "log" "exp" "cons" "simp" "alias")
 
 function contains() {
     local n=$#
