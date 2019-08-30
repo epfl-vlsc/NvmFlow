@@ -49,10 +49,8 @@ public:
   VarFiller(Globals& globals_) : globals(globals_) {
     for (auto* function : globals.functions.getAnalyzedFunctions()) {
       globals.setActiveFunction(function);
-      /*
       fillWriteSets();
       fillFlushSets();
-      */
       fillPairs();
     }
   }

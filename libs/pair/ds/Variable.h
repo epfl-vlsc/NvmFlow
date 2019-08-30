@@ -119,12 +119,12 @@ void Variable::print(raw_ostream& O) const {
 
   O << ": writeSet:(";
   for (auto* var : writeSet) {
-    O << var->getName();
+    O << var->getName() << ",";
   }
 
-  O << " ) flushSet:(";
+  O << ") flushSet:(";
   for (auto* var : flushSet) {
-    O << var->getName();
+    O << var->getName() << ",";
   }
   O << ") pairs:(";
   for (auto* pair : pairs) {

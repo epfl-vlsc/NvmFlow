@@ -244,6 +244,11 @@ public:
       auto* localVar = ai;
 
       return ParsedVariable(opnd, localVar, instCat, isLocRef);
+    } else if (auto* a = dyn_cast<Argument>(v)) {
+      // objptr
+      auto* localVar = a;
+
+      return ParsedVariable(opnd, localVar, instCat, isLocRef);
     }
 
     return ParsedVariable();

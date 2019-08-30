@@ -14,13 +14,15 @@ class DataParser {
     auto pv = InstrParser::parseInstruction(i);
 
     auto* data = (Variable*)nullptr;
+
+    
     if (pv.isObjPtr()) {
       // obj
       auto* type = pv.getObjElementType();
       auto* st = dyn_cast<StructType>(type);
       assert(st);
       data = globals.locals.getVariable(st);
-    } else {
+    } else if (pv.isField()) {
       // data
       auto [st, idx] = pv.getStructInfo();
       auto* dataSf = globals.dbgInfo.getStructField(st, idx);

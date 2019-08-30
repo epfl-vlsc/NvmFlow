@@ -29,7 +29,7 @@ public:
     DataflowAnalysis dataflow(function, *this);
 
 #ifdef DBGMODE
-    dataflow.print(errs());
+    //dataflow.print(errs());
 #endif
 
     breporter.print(errs());
