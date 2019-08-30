@@ -1,10 +1,63 @@
 #pragma once
 #include "Common.h"
-#include "data_util/StructElement.h"
+#include "data_util/StructField.h"
 
 namespace llvm {
 
-using Variable = StructElement;
+class PairVariable;
+
+class Variable {
+  using VarSet = std::set<Variable*>;
+  using PairSet = std::set<PairVariable*>;
+
+  StructField* sf;
+  StructType* st;
+  VarSet writeSet;
+  VarSet flushSet;
+  PairSet pairs;
+
+public:
+  Variable(StructField* sf_) : sf(sf_), st(nullptr) { assert(sf); }
+  Variable(StructType* st_) : sf(nullptr), st(st_) { assert(st_); }
+
+  bool isField() const { return sf != nullptr; }
+
+  bool isObj() const { return st != nullptr; }
+
+  void addToWriteSet(Variable* var) { writeSet.insert(var); }
+
+  void addToFlushSet(Variable* var) { flushSet.insert(var); }
+
+  void addToPairs(PairVariable* pv) { pairs.insert(pv); }
+
+  auto& getWriteSet() { return writeSet; }
+
+  auto& getFlushSet() { return flushSet; }
+
+  auto& getPairs() { return pairs; }
+
+  auto* getStructType() {
+    if (st)
+      return st;
+    else
+      return sf->getStType();
+  }
+
+  void print(raw_ostream& O) const;
+
+  std::string getName() const {
+    if (sf)
+      return sf->getName();
+    else
+      return st->getName().str();
+  }
+
+  bool operator<(const Variable& X) const {
+    return std::tie(sf, st) < std::tie(X.sf, X.st);
+  }
+
+  bool operator==(const Variable& X) const { return sf == X.sf && st == X.st; }
+};
 
 class PairVariable {
   Variable* data;
@@ -24,7 +77,9 @@ public:
 
   auto* getValid() { return valid; }
 
-  auto* getPair(Variable* var) {
+  auto getPair() { return std::pair(data, valid); }
+
+  auto* getOther(Variable* var) {
     assert(var == data || var == valid);
     return (var == data) ? (valid) : data;
   }
@@ -51,12 +106,32 @@ public:
   void print(raw_ostream& O) const { O << getName(); }
 
   bool operator<(const PairVariable& X) const {
-    return data < X.data || valid < X.valid;
+    return std::tie(data, valid) < std::tie(X.data, X.valid);
   }
 
   bool operator==(const PairVariable& X) const {
     return data == X.data && valid == X.valid;
   }
 };
+
+void Variable::print(raw_ostream& O) const {
+  O << this->getName();
+
+  O << ": writeSet:(";
+  for (auto* var : writeSet) {
+    O << var->getName();
+  }
+
+  O << " ) flushSet:(";
+  for (auto* var : flushSet) {
+    O << var->getName();
+  }
+  O << ") pairs:(";
+  for (auto* pair : pairs) {
+    auto* curVar = (Variable*)this;
+    O << pair->getOther(curVar)->getName() << ",";
+  }
+  O << ")";
+}
 
 } // namespace llvm

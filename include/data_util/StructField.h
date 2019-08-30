@@ -20,7 +20,7 @@ public:
   auto getInfo() { return std::pair(st, idx); }
 
   bool operator<(const StructFieldBase& X) const {
-    return st < X.st || idx < X.idx;
+    return std::tie(st, idx) < std::tie(X.st, X.idx);
   }
 
   bool operator==(const StructFieldBase& X) const {
