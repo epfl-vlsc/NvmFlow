@@ -158,6 +158,11 @@ public:
 
   bool isDclCommitFlush() const { return dclCommit.state == DclCommit::Flush; }
 
+  bool isDclCommitWriteFlush() const {
+    return dclCommit.state == DclCommit::Write ||
+           dclCommit.state == DclCommit::Flush;
+  }
+
   bool isDclFlush() const {
     return dclCommit.state == DclCommit::Flush &&
            dclFlush.state == DclFlush::Flush;

@@ -1,6 +1,5 @@
 #pragma once
 #include "Common.h"
-#include "DataflowResults.h"
 #include "DfUtil.h"
 #include "data_util/DbgInfo.h"
 
@@ -8,9 +7,9 @@ namespace llvm {
 
 template <typename StateMachine> class DataflowAnalysis {
   // df results
-  using DfResults = DataflowResults<StateMachine>;
-  using AbstractState = typename DfResults::AbstractState;
-  using FunctionResults = typename DfResults::FunctionResults;
+  using AllResults = typename StateMachine::AllResults;
+  using AbstractState = typename AllResults::AbstractState;
+  using FunctionResults = typename AllResults::FunctionResults;
 
   // context helpers
   using FunctionContext = std::pair<Function*, Context>;
@@ -20,16 +19,6 @@ template <typename StateMachine> class DataflowAnalysis {
   // worklist
   using ContextWorklist = Worklist<FunctionContext>;
   using BlockWorklist = Worklist<BasicBlock*>;
-
-  // data structures
-  DfResults allResults;
-  ContextWorklist contextWork;
-  FunctionContextMap callers;
-  FunctionContextSet active;
-
-  // top info
-  Function* topFunction;
-  StateMachine& stateMachine;
 
   void initTopEntryValues(Function* function, FunctionResults& results) {
     // initialize entry block
@@ -249,9 +238,21 @@ template <typename StateMachine> class DataflowAnalysis {
     }
   }
 
+  // data structures
+  AllResults& allResults;
+  ContextWorklist contextWork;
+  FunctionContextMap callers;
+  FunctionContextSet active;
+
+  // top info
+  Function* topFunction;
+  StateMachine& stateMachine;
+
 public:
-  DataflowAnalysis(Function* function, StateMachine& stateMachine_)
-      : topFunction(function), stateMachine(stateMachine_) {
+  DataflowAnalysis(Function* function, AllResults& allResults_,
+                   StateMachine& stateMachine_)
+      : topFunction(function), allResults(allResults_),
+        stateMachine(stateMachine_) {
     contextWork.insert({function, Context()});
     computeDataflow();
   }

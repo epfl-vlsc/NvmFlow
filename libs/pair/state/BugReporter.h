@@ -2,41 +2,26 @@
 #include "BugData.h"
 #include "Common.h"
 #include "FlowTypes.h"
+#include "analysis_util/DataflowResults.h"
+#include "analysis_util/DfUtil.h"
 #include "ds/Globals.h"
 
 namespace llvm {
 
 class BugReporter {
+  using AllResults = DataflowResults<AbstractState>;
   using BugDataList = std::vector<BugData*>;
   using LastLocationMap = std::map<Variable*, Instruction*>;
   using BuggedVars = std::set<Variable*>;
+  using SeenContext = std::set<Context>;
 
-  void deleteStructures() {
+  void resetStructures() {
     for (auto* bd : bugDataList) {
       delete bd;
     }
     bugDataList.clear();
     lastLocationMap.clear();
     buggedVars.clear();
-  }
-
-  // data structures
-  Globals& globals;
-  Function* currentFunction;
-  BugDataList bugDataList;
-  LastLocationMap lastLocationMap;
-  BuggedVars buggedVars;
-
-public:
-  BugReporter(Globals& globals_) : globals(globals_) {
-    currentFunction = nullptr;
-  }
-
-  ~BugReporter() {}
-
-  void initUnit(Function* function) {
-    currentFunction = function;
-    deleteStructures();
   }
 
   void updateLastLocation(Variable* var, InstrInfo* ii) {
@@ -51,7 +36,7 @@ public:
   }
 
   void print(raw_ostream& O) const {
-    auto mangledName = currentFunction->getName();
+    auto mangledName = topFunction->getName();
     auto fncName = globals.dbgInfo.getFunctionName(mangledName);
     O << fncName << " bugs\n";
     for (auto& bugData : bugDataList) {
@@ -61,8 +46,37 @@ public:
     O << "\n\n\n";
   }
 
-  bool addCheckNotCommittedBug(Variable* var, InstrInfo* ii,
-                               AbstractState& state) {
+  void addNotCommittedBug(Variable* var, Variable* pairVar, InstrInfo* ii) {
+    buggedVars.insert(var);
+    buggedVars.insert(pairVar);
+
+    auto* pairInst = getLastLocation(pairVar);
+    auto* previi = globals.locals.getInstrInfo(pairInst);
+
+    auto varName = ii->getVarName();
+    auto prevName = previi->getVarName();
+    auto srcLoc = ii->getSrcLoc();
+    auto prevLoc = previi->getSrcLoc();
+
+    auto* bugData =
+        BugFactory::getNotCommittedBug(varName, prevName, srcLoc, prevLoc);
+    bugDataList.push_back(bugData);
+  }
+
+  void addSentinelFirstBug(Variable* var, Variable* pairVar, InstrInfo* ii,
+                           AbstractState& state) {
+    buggedVars.insert(var);
+    buggedVars.insert(pairVar);
+
+    auto varName = ii->getVarName();
+    auto prevName = pairVar->getName();
+    auto srcLoc = ii->getSrcLoc();
+
+    auto* bugData = BugFactory::getSentinelFirstBug(varName, prevName, srcLoc);
+    bugDataList.push_back(bugData);
+  }
+
+  bool checkWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
     if (buggedVars.count(var))
       return false;
 
@@ -74,45 +88,18 @@ public:
 
       auto& pairVal = state[pairVar];
 
-      bool isNotCommitted = false;
+      bool isNotCommitted = (pair->isDcl())
+                                ? pairVal.isDclCommitWriteFlush()
+                                : isNotCommitted = pairVal.isSclCommitWrite();
       bool isSentinelFirst = pairVal.isUnseen() && pair->isSentinel(var);
 
-      if (pair->isDcl()) {
-        isNotCommitted =
-            pairVal.isDclCommitWrite() || pairVal.isDclCommitFlush();
-      } else {
-        isNotCommitted = pairVal.isSclCommitWrite();
-      }
-
       if (isSentinelFirst) {
-        buggedVars.insert(var);
-        buggedVars.insert(pairVar);
-
-        auto varName = ii->getVarName();
-        auto prevName = pairVar->getName();
-        auto srcLoc = ii->getSrcLoc();
-
-        auto* bugData =
-            BugFactory::getSentinelFirstBug(varName, prevName, srcLoc);
-        bugDataList.push_back(bugData);
+        addSentinelFirstBug(var, pairVar, ii);
         return true;
       }
 
       if (isNotCommitted) {
-        buggedVars.insert(var);
-        buggedVars.insert(pairVar);
-
-        auto* pairInst = getLastLocation(pairVar);
-        auto* previi = globals.locals.getInstrInfo(pairInst);
-
-        auto varName = ii->getVarName();
-        auto prevName = previi->getVarName();
-        auto srcLoc = ii->getSrcLoc();
-        auto prevLoc = previi->getSrcLoc();
-
-        auto* bugData =
-            BugFactory::getNotCommittedBug(varName, prevName, srcLoc, prevLoc);
-        bugDataList.push_back(bugData);
+        addNotCommittedBug(var, pairVar, ii);
         return true;
       }
     }
@@ -120,17 +107,17 @@ public:
     return false;
   }
 
-  void checkNotCommittedBug(InstrInfo* ii, AbstractState& state) {
+  void checkWrite(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
-    bool bugFound = addCheckNotCommittedBug(var, ii, state);
+    bool bugFound = checkWriteBug(var, ii, state);
     if (bugFound) {
       return;
     }
 
     for (auto* wvar : var->getWriteSet()) {
-      bugFound = addCheckNotCommittedBug(wvar, ii, state);
+      bugFound = checkWriteBug(wvar, ii, state);
       if (bugFound) {
         return;
       }
@@ -183,7 +170,7 @@ public:
   void checkFinalBugs(AbstractState& state) {
     for (auto& [var, val] : state) {
       if (globals.locals.inSentinels(var) && !val.isDclFence()) {
-        auto mangledName = currentFunction->getName();
+        auto mangledName = topFunction->getName();
         auto fncName = globals.dbgInfo.getFunctionName(mangledName).str();
         auto varName = var->getName();
         auto* bugData = BugFactory::getSentinelCommitBug(varName, fncName);
@@ -192,9 +179,73 @@ public:
     }
   }
 
-  template <typename DataflowResults>
-  void checkBugs(DataflowResults& allResults) {
-    
+  template <typename FunctionResults>
+  void checkPairBugs(Instruction* i, Context& context,
+                     FunctionResults& results) {
+    auto* ii = globals.locals.getInstrInfo(i);
+    if (!ii)
+      return;
+
+    auto* instKey = Traversal::getInstructionKey(i);
+    auto& state = results[instKey];
+
+    switch (ii->getInstrType()) {
+    case InstrInfo::WriteInstr:
+      checkWrite(ii, state);
+      break;
+    case InstrInfo::FlushInstr:
+      // checkFlush(ii, state, false);
+      break;
+    case InstrInfo::FlushFenceInstr:
+      // checkFlush(ii, state, true);
+      break;
+    case InstrInfo::IpInstr: {
+      auto* ci = dyn_cast<CallInst>(i);
+      auto* f = ci->getCalledFunction();
+      Context newContext(context, ci);
+      checkPairBugs(f, newContext);
+      break;
+    }
+    default:
+      return;
+    }
+  }
+
+  void checkPairBugs(Function* f, Context& context) {
+    if (seen.count(context))
+      return;
+    seen.insert(context);
+
+    for (auto& BB : Traversal::getBlocks(f)) {
+      for (auto& I : Traversal::getInstructions(&BB)) {
+        auto& results = allResults.getFunctionResults(context);
+        checkPairBugs(&I, context, results);
+      }
+    }
+  }
+
+  // data structures
+  Globals& globals;
+  Function* topFunction;
+  AllResults& allResults;
+  BugDataList bugDataList;
+  LastLocationMap lastLocationMap;
+  BuggedVars buggedVars;
+  SeenContext seen;
+
+public:
+  BugReporter(Globals& globals_, AllResults& allResults_)
+      : globals(globals_), topFunction(nullptr), allResults(allResults_) {}
+
+  ~BugReporter() { resetStructures(); }
+
+  void checkBugs(Function* f) {
+    resetStructures();
+    topFunction = f;
+    auto context = Context();
+    checkPairBugs(f, context);
+    auto& finalState = allResults.getFinalState(f);
+    checkFinalBugs(finalState);
   }
 };
 
