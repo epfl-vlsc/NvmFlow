@@ -70,9 +70,6 @@ public:
     auto beginState = results[instKey];
     auto beginVal = beginState[curVar];
 
-    errs() << "states" << DbgInstr::getSourceLocation(curInstr) << "\n";
-    printState(beginState);
-
     // add the previous instructions in the current BB
     addToQueue(curInstr);
 
@@ -92,10 +89,8 @@ public:
           auto state = results[iKey];
           auto val = state[curVar];
 
-          errs() << "test " << val.getName() << *i << "\n";
           if (eq(val, beginVal)) {
             // same lattice val
-            errs() << "add " << val.getName() << *i << "\n";
             instrs.push_back(i);
           } else {
             // return last same state instr

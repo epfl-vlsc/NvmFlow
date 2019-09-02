@@ -100,11 +100,7 @@ class BugReporter {
     auto srcLoc = ii->getSrcLoc();
     auto prevLoc = prevII->getSrcLoc();
     bool isDoubleFlush = val.isDclFlushFlush() && prevII->isFlushBasedInstr();
-    errs() << *instr << var->getName() << *prevInstr << srcLoc << prevLoc
-           << "\n";
-    errs() << val.isDclFlushFlush() << prevII->isFlushBasedInstr() << "lol\n";
     if (isDoubleFlush) {
-
       buggedVars.insert(var);
 
       auto varName = ii->getVarName();
@@ -251,7 +247,7 @@ public:
   ~BugReporter() { resetStructures(nullptr); }
 
   void checkBugs(Function* f) {
-    //allResults.print(errs());
+    // allResults.print(errs());
     resetStructures(f);
 
     auto c = Context();

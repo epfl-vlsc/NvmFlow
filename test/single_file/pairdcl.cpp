@@ -1,5 +1,7 @@
 #include "annot.h"
 
+extern int x();
+
 struct Dcl {
   int data;
   sentinel(Dcl::data) int valid;
@@ -10,6 +12,23 @@ struct Dcl {
     pfence();
     valid = 1;
     pm_clflushopt(&valid);
+    pfence();
+  }
+
+  void nvm_fnc notFinalizeValid() {
+    data = 1;
+    pm_clflushopt(&data);
+    pfence();
+    valid = 1;
+    pm_clflushopt(&valid);
+  }
+
+  void nvm_fnc writeValidFirst() {
+    valid = 1;
+    pm_clflushopt(&valid);
+    pfence();
+    data = 1;
+    pm_clflushopt(&data);
     pfence();
   }
 
@@ -31,7 +50,8 @@ struct Dcl {
       data = 1;
       pm_clflush(&data);
     }
-    pm_clflush(&data);  
+    pm_clflush(&data);
+    valid = 1;
   }
 
   void nvm_fnc writeUncommittedData() {
@@ -48,7 +68,15 @@ struct Dcl {
       pm_clflushopt(&data);
       pfence();
       valid = 1;
+      pm_clflush(&valid);
     }
+  }
+
+  void nvm_fnc validNotCommitted(bool useNvm) {
+    data = 1;
+    pm_clflush(&data);
+    valid = 1;
+    pm_clflushopt(&valid);
   }
 
   void nvm_fnc branchNoFence(bool useNvm) {
@@ -80,9 +108,9 @@ struct Dcl {
 
 void nvm_fnc recursion(Dcl* dcl) {
   if (dcl->data == 1) {
-    dcl->valid = 1;
-  } else {
     dcl->data--;
     recursion(dcl);
+  } else {
+    dcl->valid = 1;
   }
 }
