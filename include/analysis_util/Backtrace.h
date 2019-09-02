@@ -6,8 +6,6 @@ namespace llvm {
 class Backtrace {
   using ContextList = std::vector<Context>;
 
-  std::queue<Value*> travQueue;
-
   void addToQueue(Function* f) {
     assert(f);
     auto* bb = &f->back();
@@ -34,22 +32,37 @@ class Backtrace {
 
   bool isValidContext(int contextNo) { return contextNo >= 0; }
 
+  auto* getContextFunction(Context& context) {
+    if (auto* ci = context.getCallee()) {
+      return ci->getCalledFunction();
+    }
+    return topFunction;
+  }
+
+  std::queue<Value*> travQueue;
+  Function* topFunction;
+
 public:
+  Backtrace(Function* f) : topFunction(f) {}
+
   template <typename Variable, typename AllResults>
   auto* getValueInstruction(Instruction* curInstr, Variable* curVar,
                             AllResults& allResults, ContextList& contextList) {
     std::vector<Instruction*> instrs;
+
+    // get context
     int contextNo = contextList.size() - 1;
     auto context = contextList[contextNo];
+
+    // get initial state and value
     assert(allResults.inAllResults(context));
     auto results = allResults.getFunctionResults(context);
-
     auto* instKey = Traversal::getInstructionKey(curInstr);
     assert(results.count(instKey));
-
     auto& beginState = results[instKey];
     auto& beginVal = beginState[curVar];
 
+    // add the previous instructions in the current BB
     addToQueue(curInstr);
 
     while (isValidContext(contextNo)) {
@@ -66,7 +79,7 @@ public:
             continue;
 
           auto state = results[instKey];
-          auto& val = beginState[curVar];
+          auto val = beginState[curVar];
 
           if (val == beginVal) {
             // same lattice val
@@ -85,15 +98,16 @@ public:
       contextNo--;
       if (isValidContext(contextNo)) {
         context = contextList[contextNo];
-        if (auto* f = context.getCaller()) {
-          addToQueue(f);
-          assert(allResults.inAllResults(context));
-          results = allResults.getFunctionResults(context);
-        }
+        auto* f = getContextFunction(context);
+        addToQueue(f);
+        results = allResults.getFunctionResults(context);
       }
     }
+    
+    if (instrs.empty())
+      return curInstr;
 
-    return (Instruction*)nullptr;
+    return instrs.back();
   }
 };
 

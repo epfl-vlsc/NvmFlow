@@ -15,36 +15,13 @@ class BugReporter {
   using SeenContext = std::set<Context>;
   using ContextList = std::vector<Context>;
 
-  void addNotCommittedBug(Variable* var, Variable* pairVar, InstrInfo* ii,
-                          InstrInfo* prevII) {
-    buggedVars.insert(var);
-    buggedVars.insert(pairVar);
-
-    auto varName = var->getName();
-    auto prevName = pairVar->getName();
-    auto srcLoc = ii->getSrcLoc();
-    auto prevLoc = prevII->getSrcLoc();
-    NotCommittedBug::report(varName, prevName, srcLoc, prevLoc);
-    bugNo++;
-  }
-
-  void addSentinelFirstBug(Variable* var, Variable* pairVar, InstrInfo* ii) {
-    buggedVars.insert(var);
-    buggedVars.insert(pairVar);
-
-    auto varName = var->getName();
-    auto prevName = pairVar->getName();
-    auto srcLoc = ii->getSrcLoc();
-
-    SentinelFirstBug::report(varName, prevName, srcLoc);
-    bugNo++;
-  }
-
-  bool checkWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  bool reportWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
     if (buggedVars.count(var))
       return false;
 
+    // look at each pair
     for (auto* pair : var->getPairs()) {
+
       auto* pairVar = pair->getOther(var);
 
       if (buggedVars.count(pairVar))
@@ -52,24 +29,39 @@ class BugReporter {
 
       auto& pairVal = state[pairVar];
 
+      bool isSentinelFirst = pairVal.isUnseen() && pair->isSentinel(var);
       bool isNotCommitted = (pair->isDcl())
                                 ? pairVal.isDclCommitWriteFlush()
                                 : isNotCommitted = pairVal.isSclCommitWrite();
-      bool isSentinelFirst = pairVal.isUnseen() && pair->isSentinel(var);
 
-      Backtrace backtrace;
-      auto* instr = ii->getInstruction();
-      auto* prevInstr =
-          backtrace.getValueInstruction(instr, pairVar, allResults, contextList);
-      auto* prevII = globals.locals.getInstrInfo(prevInstr);
+      if (!isSentinelFirst && !isNotCommitted)
+        return false;
 
+      // ensure same bug is not reported
+      buggedVars.insert(var);
+      buggedVars.insert(pairVar);
+      bugNo++;
+
+      // bug details
+      auto varName = var->getName();
+      auto pairVarName = pairVar->getName();
+      auto srcLoc = ii->getSrcLoc();
+
+      // check sentinel bug
       if (isSentinelFirst) {
-        addSentinelFirstBug(var, pairVar, ii);
+        SentinelFirstBug::report(varName, pairVarName, srcLoc);
         return true;
       }
 
       if (isNotCommitted) {
-        addNotCommittedBug(var, pairVar, ii, prevII);
+        Backtrace backtrace(topFunction);
+        auto* instr = ii->getInstruction();
+        auto* prevInstr = backtrace.getValueInstruction(
+            instr, pairVar, allResults, contextList);
+        assert(prevInstr);
+        auto* prevII = globals.locals.getInstrInfo(prevInstr);
+        auto prevLoc = prevII->getSrcLoc();
+        NotCommittedBug::report(varName, pairVarName, srcLoc, prevLoc);
         return true;
       }
     }
@@ -79,32 +71,28 @@ class BugReporter {
 
   void checkWrite(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    assert(var);
 
-    bool bugFound = checkWriteBug(var, ii, state);
-    if (bugFound) {
+    if (reportWriteBug(var, ii, state))
       return;
-    }
 
     for (auto* wvar : var->getWriteSet()) {
-      bugFound = checkWriteBug(wvar, ii, state);
-      if (bugFound) {
+      if (reportWriteBug(wvar, ii, state))
         return;
-      }
     }
   }
 
-  bool addDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  bool reportDoubleFlushBug(Variable* var, InstrInfo* ii,
+                            AbstractState& state) {
     if (buggedVars.count(var))
       return false;
 
     auto& val = state[var];
 
-    Backtrace backtrace;
+    Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
     auto* prevInstr =
         backtrace.getValueInstruction(instr, var, allResults, contextList);
-    if(!prevInstr)
+    if (!prevInstr)
       return false;
 
     auto* prevII = globals.locals.getInstrInfo(prevInstr);
@@ -112,12 +100,11 @@ class BugReporter {
     if (val.isDclFlushFlush() && prevII->isFlushBasedInstr()) {
       buggedVars.insert(var);
 
-      auto str = std::string("");
-
       auto varName = ii->getVarName();
       auto srcLoc = ii->getSrcLoc();
+      auto prevLoc = prevII->getSrcLoc();
 
-      DoubleFlushBug::report(varName, str, srcLoc, str);
+      DoubleFlushBug::report(varName, varName, srcLoc, prevLoc);
       bugNo++;
       return true;
     }
@@ -127,22 +114,18 @@ class BugReporter {
 
   void checkFlush(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    assert(var);
 
-    bool bugFound = addDoubleFlushBug(var, ii, state);
-    if (bugFound) {
+    if (reportDoubleFlushBug(var, ii, state))
       return;
-    }
 
     for (auto* field : var->getFlushSet()) {
-      bugFound = addDoubleFlushBug(field, ii, state);
-      if (bugFound) {
+      if (reportDoubleFlushBug(field, ii, state))
         return;
-      }
     }
   }
 
-  void checkFinalBugs(AbstractState& state) {
+  void checkFinalBugs() {
+    auto& state = allResults.getFinalState();
     for (auto& [var, val] : state) {
       if (buggedVars.count(var))
         continue;
@@ -160,6 +143,7 @@ class BugReporter {
   template <typename FunctionResults>
   void checkBugs(Instruction* i, Context& context, FunctionResults& results) {
     // get instruction info
+    
     auto* ii = globals.locals.getInstrInfo(i);
     if (!ii)
       return;
@@ -172,6 +156,7 @@ class BugReporter {
     // get state
     auto& state = results[instKey];
 
+    // check type of instruction
     switch (ii->getInstrType()) {
     case InstrInfo::WriteInstr: {
       checkWrite(ii, state);
@@ -187,7 +172,6 @@ class BugReporter {
       auto* ci = dyn_cast<CallInst>(i);
       auto* f = ci->getCalledFunction();
       Context newContext(context, ci);
-      contextList.push_back(newContext);
       checkBugs(f, newContext);
       contextList.pop_back();
       break;
@@ -197,13 +181,18 @@ class BugReporter {
     }
   }
 
-  void checkBugs(Function* f, Context& context) {
-    if (seen.count(context))
-      return;
+  bool seenContext(Context& context) {
+    contextList.push_back(context);
+    bool seenCtx = seen.count(context);
     seen.insert(context);
+    return seenCtx;
+  }
+
+  void checkBugs(Function* f, Context& context) {
+    if (seenContext(context))
+      return;
 
     // get function results
-    assert(allResults.inAllResults(context));
     auto& results = allResults.getFunctionResults(context);
 
     // traverse the dataflow codebase
@@ -214,12 +203,24 @@ class BugReporter {
     }
   }
 
-  void resetStructures() {
-    topFunction = nullptr;
+  void resetStructures(Function* f) {
+    topFunction = f;
     buggedVars.clear();
     seen.clear();
     contextList.clear();
     bugNo = 0;
+  }
+
+  void reportNumBugs() {
+    auto mangledName = topFunction->getName();
+    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
+    errs() << "Number of bugs in " << fncName << ": " << bugNo << "\n\n\n";
+  }
+
+  void reportTitle() {
+    auto mangledName = topFunction->getName();
+    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
+    errs() << "Bugs in " << fncName << "\n";
   }
 
   // data structures
@@ -240,20 +241,16 @@ public:
       : globals(globals_), allResults(allResults_), topFunction(nullptr),
         bugNo(0) {}
 
-  ~BugReporter() { resetStructures(); }
+  ~BugReporter() { resetStructures(nullptr); }
 
   void checkBugs(Function* f) {
-    resetStructures();
-    topFunction = f;
-    auto context = Context();
+    resetStructures(f);
 
-    auto mangledName = f->getName();
-    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
-
-    checkBugs(f, context);
-    auto& finalState = allResults.getFinalState();
-    checkFinalBugs(finalState);
-    errs() << "Number of bugs in " << fncName << ": " << bugNo << "\n\n\n";
+    auto c = Context();
+    reportTitle();
+    checkBugs(f, c);
+    checkFinalBugs();
+    reportNumBugs();
   }
 };
 
