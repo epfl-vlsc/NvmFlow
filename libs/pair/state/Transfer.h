@@ -37,62 +37,50 @@ class Transfer {
     return stateChanged;
   }
 
-  bool doFlush(Variable* var, AbstractState& state, bool useFence) {
-    bool stateChanged = false;
-
+  void doFlush(Variable* var, AbstractState& state, bool useFence) {
     auto& val = state[var];
 
-    if (!val.isDclFlushFlush()) {
-      val = LatVal::getDclFlushFlush(val);
-      stateChanged = true;
-    }
-
+    val = LatVal::getDclFlushFlush(val);
+  
     if (val.isDclCommitWrite()) {
       if (useFence) {
         val = LatVal::getCommitFence(val);
       } else {
         val = LatVal::getCommitFlush(val);
       }
-      stateChanged = true;
     }
-
-    return stateChanged;
   }
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
     auto* var = ii->getVariable();
     assert(var);
 
-    bool stateChanged = doFlush(var, state, useFence);
+    doFlush(var, state, useFence);
 
     for (auto* fvar : var->getFlushSet()) {
-      stateChanged |= doFlush(fvar, state, useFence);
+      doFlush(fvar, state, useFence);
     }
 
-    return stateChanged;
+    return true;
   }
 
-  bool doWrite(Variable* var, AbstractState& state) {
+  void doWrite(Variable* var, AbstractState& state) {
     auto& val = state[var];
 
-    if (val.isWrite())
-      return false;
-
     val = LatVal::getWrite(val);
-    return true;
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
-    bool stateChanged = doWrite(var, state);
+    doWrite(var, state);
 
     for (auto* wvar : var->getWriteSet()) {
-      stateChanged |= doWrite(wvar, state);
+      doWrite(wvar, state);
     }
 
-    return stateChanged;
+    return true;
   }
 
   Globals& globals;

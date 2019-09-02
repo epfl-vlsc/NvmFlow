@@ -215,10 +215,23 @@ public:
            sclCommit == X.sclCommit;
   }
 
-  bool operator!=(const Lattice& X) const {
-    return dclCommit != X.dclCommit && dclFlush != X.dclFlush &&
-           sclCommit != X.sclCommit;
-  }
+  friend bool sameDclCommit(const Lattice& X, const Lattice& Y);
+
+  friend bool sameDclFlush(const Lattice& X, const Lattice& Y);
+
+  friend bool sameSclCommit(const Lattice& X, const Lattice& Y);
 };
+
+bool sameDclCommit(const Lattice& X, const Lattice& Y) {
+  return X.dclCommit == Y.dclCommit;
+}
+
+bool sameDclFlush(const Lattice& X, const Lattice& Y) {
+  return X.dclFlush == Y.dclFlush;
+}
+
+bool sameSclCommit(const Lattice& X, const Lattice& Y) {
+  return X.sclCommit == Y.sclCommit;
+}
 
 } // namespace llvm

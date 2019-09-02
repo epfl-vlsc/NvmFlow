@@ -33,6 +33,7 @@ class BugReporter {
       bool isNotCommitted = (pair->isDcl())
                                 ? pairVal.isDclCommitWriteFlush()
                                 : isNotCommitted = pairVal.isSclCommitWrite();
+      auto eqCommitFn = (pair->isDcl()) ? sameDclCommit : sameSclCommit;
 
       if (!isSentinelFirst && !isNotCommitted)
         return false;
@@ -57,7 +58,7 @@ class BugReporter {
         Backtrace backtrace(topFunction);
         auto* instr = ii->getInstruction();
         auto* prevInstr = backtrace.getValueInstruction(
-            instr, pairVar, allResults, contextList);
+            instr, pairVar, allResults, contextList, eqCommitFn);
         assert(prevInstr);
         auto* prevII = globals.locals.getInstrInfo(prevInstr);
         auto prevLoc = prevII->getSrcLoc();
@@ -90,14 +91,20 @@ class BugReporter {
 
     Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
-    auto* prevInstr =
-        backtrace.getValueInstruction(instr, var, allResults, contextList);
-    if (!prevInstr)
+    auto* prevInstr = backtrace.getValueInstruction(instr, var, allResults,
+                                                    contextList, sameDclFlush);
+    if (prevInstr == instr)
       return false;
 
     auto* prevII = globals.locals.getInstrInfo(prevInstr);
+    auto srcLoc = ii->getSrcLoc();
+    auto prevLoc = prevII->getSrcLoc();
+    bool isDoubleFlush = val.isDclFlushFlush() && prevII->isFlushBasedInstr();
+    errs() << *instr << var->getName() << *prevInstr << srcLoc << prevLoc
+           << "\n";
+    errs() << val.isDclFlushFlush() << prevII->isFlushBasedInstr() << "lol\n";
+    if (isDoubleFlush) {
 
-    if (val.isDclFlushFlush() && prevII->isFlushBasedInstr()) {
       buggedVars.insert(var);
 
       auto varName = ii->getVarName();
@@ -143,7 +150,7 @@ class BugReporter {
   template <typename FunctionResults>
   void checkBugs(Instruction* i, Context& context, FunctionResults& results) {
     // get instruction info
-    
+
     auto* ii = globals.locals.getInstrInfo(i);
     if (!ii)
       return;
@@ -244,6 +251,7 @@ public:
   ~BugReporter() { resetStructures(nullptr); }
 
   void checkBugs(Function* f) {
+    //allResults.print(errs());
     resetStructures(f);
 
     auto c = Context();

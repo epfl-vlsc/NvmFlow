@@ -39,16 +39,24 @@ class Backtrace {
     return topFunction;
   }
 
+  auto* getInstr(Instruction* curInstr) {
+    if (instrs.empty())
+      return curInstr;
+
+    return instrs.back();
+  }
+
   std::queue<Value*> travQueue;
+  std::vector<Instruction*> instrs;
   Function* topFunction;
 
 public:
   Backtrace(Function* f) : topFunction(f) {}
 
-  template <typename Variable, typename AllResults>
+  template <typename Variable, typename AllResults, typename EqualityFn>
   auto* getValueInstruction(Instruction* curInstr, Variable* curVar,
-                            AllResults& allResults, ContextList& contextList) {
-    std::vector<Instruction*> instrs;
+                            AllResults& allResults, ContextList& contextList,
+                            EqualityFn eq) {
 
     // get context
     int contextNo = contextList.size() - 1;
@@ -59,8 +67,11 @@ public:
     auto results = allResults.getFunctionResults(context);
     auto* instKey = Traversal::getInstructionKey(curInstr);
     assert(results.count(instKey));
-    auto& beginState = results[instKey];
-    auto& beginVal = beginState[curVar];
+    auto beginState = results[instKey];
+    auto beginVal = beginState[curVar];
+
+    errs() << "states" << DbgInstr::getSourceLocation(curInstr) << "\n";
+    printState(beginState);
 
     // add the previous instructions in the current BB
     addToQueue(curInstr);
@@ -74,19 +85,21 @@ public:
         travQueue.pop();
         if (auto* i = dyn_cast<Instruction>(v)) {
           // i
-          auto* instKey = Traversal::getInstructionKey(i);
-          if (!results.count(instKey))
+          auto* iKey = Traversal::getInstructionKey(i);
+          if (!results.count(iKey))
             continue;
 
-          auto state = results[instKey];
-          auto val = beginState[curVar];
+          auto state = results[iKey];
+          auto val = state[curVar];
 
-          if (val == beginVal) {
+          errs() << "test " << val.getName() << *i << "\n";
+          if (eq(val, beginVal)) {
             // same lattice val
+            errs() << "add " << val.getName() << *i << "\n";
             instrs.push_back(i);
           } else {
             // return last same state instr
-            return instrs.back();
+            return getInstr(curInstr);
           }
         } else if (auto* bb = dyn_cast<BasicBlock>(v)) {
           // bb
@@ -103,11 +116,8 @@ public:
         results = allResults.getFunctionResults(context);
       }
     }
-    
-    if (instrs.empty())
-      return curInstr;
 
-    return instrs.back();
+    return getInstr(curInstr);
   }
 };
 
