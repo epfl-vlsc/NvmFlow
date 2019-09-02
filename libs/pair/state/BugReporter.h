@@ -2,6 +2,7 @@
 #include "BugData.h"
 #include "Common.h"
 #include "FlowTypes.h"
+#include "analysis_util/Backtrace.h"
 #include "analysis_util/DataflowResults.h"
 #include "analysis_util/DfUtil.h"
 #include "ds/Globals.h"
@@ -10,70 +11,33 @@ namespace llvm {
 
 class BugReporter {
   using AllResults = DataflowResults<AbstractState>;
-  using BugDataList = std::vector<BugData*>;
-  using LastLocationMap = std::map<Variable*, Instruction*>;
   using BuggedVars = std::set<Variable*>;
   using SeenContext = std::set<Context>;
+  using ContextList = std::vector<Context>;
 
-  void resetStructures() {
-    for (auto* bd : bugDataList) {
-      delete bd;
-    }
-    bugDataList.clear();
-    lastLocationMap.clear();
-    buggedVars.clear();
-  }
-
-  void updateLastLocation(Variable* var, InstrInfo* ii) {
-    auto* instr = ii->getInstruction();
-    assert(instr);
-    lastLocationMap[var] = instr;
-  }
-
-  auto* getLastLocation(Variable* var) {
-    assertInDs(lastLocationMap, var);
-    return lastLocationMap[var];
-  }
-
-  void print(raw_ostream& O) const {
-    auto mangledName = topFunction->getName();
-    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
-    O << fncName << " bugs\n";
-    for (auto& bugData : bugDataList) {
-      errs() << bugData->getName();
-    }
-    O << "---------------------------------\n";
-    O << "\n\n\n";
-  }
-
-  void addNotCommittedBug(Variable* var, Variable* pairVar, InstrInfo* ii) {
+  void addNotCommittedBug(Variable* var, Variable* pairVar, InstrInfo* ii,
+                          InstrInfo* prevII) {
     buggedVars.insert(var);
     buggedVars.insert(pairVar);
 
-    auto* pairInst = getLastLocation(pairVar);
-    auto* previi = globals.locals.getInstrInfo(pairInst);
-
-    auto varName = ii->getVarName();
-    auto prevName = previi->getVarName();
+    auto varName = var->getName();
+    auto prevName = pairVar->getName();
     auto srcLoc = ii->getSrcLoc();
-    auto prevLoc = previi->getSrcLoc();
-
-    auto* bugData =
-        BugFactory::getNotCommittedBug(varName, prevName, srcLoc, prevLoc);
-    bugDataList.push_back(bugData);
+    auto prevLoc = prevII->getSrcLoc();
+    NotCommittedBug::report(varName, prevName, srcLoc, prevLoc);
+    bugNo++;
   }
 
-  void addSentinelFirstBug(Variable* var, Variable* pairVar, InstrInfo* ii,
-                           AbstractState& state) {
+  void addSentinelFirstBug(Variable* var, Variable* pairVar, InstrInfo* ii) {
     buggedVars.insert(var);
     buggedVars.insert(pairVar);
 
-    auto varName = ii->getVarName();
+    auto varName = var->getName();
     auto prevName = pairVar->getName();
     auto srcLoc = ii->getSrcLoc();
 
-    auto* bugData = BugFactory::getSentinelFirstBug(varName, prevName, srcLoc);
-    bugDataList.push_back(bugData);
+    SentinelFirstBug::report(varName, prevName, srcLoc);
+    bugNo++;
   }
 
   bool checkWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
@@ -93,13 +57,19 @@ class BugReporter {
                                 : isNotCommitted = pairVal.isSclCommitWrite();
       bool isSentinelFirst = pairVal.isUnseen() && pair->isSentinel(var);
 
+      Backtrace backtrace;
+      auto* instr = ii->getInstruction();
+      auto* prevInstr =
+          backtrace.getValueInstruction(instr, pairVar, allResults, contextList);
+      auto* prevII = globals.locals.getInstrInfo(prevInstr);
+
       if (isSentinelFirst) {
         addSentinelFirstBug(var, pairVar, ii);
         return true;
       }
 
       if (isNotCommitted) {
-        addNotCommittedBug(var, pairVar, ii);
+        addNotCommittedBug(var, pairVar, ii, prevII);
         return true;
       }
     }
@@ -130,27 +100,32 @@ class BugReporter {
 
     auto& val = state[var];
 
-    if (val.isDclFlushFlush()) {
+    Backtrace backtrace;
+    auto* instr = ii->getInstruction();
+    auto* prevInstr =
+        backtrace.getValueInstruction(instr, var, allResults, contextList);
+    if(!prevInstr)
+      return false;
+
+    auto* prevII = globals.locals.getInstrInfo(prevInstr);
+
+    if (val.isDclFlushFlush() && prevII->isFlushBasedInstr()) {
       buggedVars.insert(var);
 
-      auto* prevInstr = getLastLocation(var);
-      auto* previi = globals.locals.getInstrInfo(prevInstr);
+      auto str = std::string("");
 
       auto varName = ii->getVarName();
-      auto prevName = previi->getVarName();
       auto srcLoc = ii->getSrcLoc();
-      auto prevLoc = previi->getSrcLoc();
 
-      auto* bugData =
-          BugFactory::getDoubleFlushBug(varName, prevName, srcLoc, prevLoc);
-      bugDataList.push_back(bugData);
+      DoubleFlushBug::report(varName, str, srcLoc, str);
+      bugNo++;
       return true;
     }
 
     return false;
   }
 
-  void checkDoubleFlushBug(InstrInfo* ii, AbstractState& state) {
+  void checkFlush(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
     assert(var);
 
@@ -169,41 +144,52 @@ class BugReporter {
 
   void checkFinalBugs(AbstractState& state) {
     for (auto& [var, val] : state) {
+      if (buggedVars.count(var))
+        continue;
+
       if (globals.locals.inSentinels(var) && !val.isDclFence()) {
         auto mangledName = topFunction->getName();
         auto fncName = globals.dbgInfo.getFunctionName(mangledName).str();
         auto varName = var->getName();
-        auto* bugData = BugFactory::getSentinelCommitBug(varName, fncName);
-        bugDataList.push_back(bugData);
+        SentinelCommitBug::report(varName, fncName);
+        bugNo++;
       }
     }
   }
 
   template <typename FunctionResults>
-  void checkPairBugs(Instruction* i, Context& context,
-                     FunctionResults& results) {
+  void checkBugs(Instruction* i, Context& context, FunctionResults& results) {
+    // get instruction info
     auto* ii = globals.locals.getInstrInfo(i);
     if (!ii)
       return;
 
+    // check if instruction has changed state
     auto* instKey = Traversal::getInstructionKey(i);
+    if (!results.count(instKey))
+      return;
+
+    // get state
     auto& state = results[instKey];
 
     switch (ii->getInstrType()) {
-    case InstrInfo::WriteInstr:
+    case InstrInfo::WriteInstr: {
       checkWrite(ii, state);
       break;
+    }
     case InstrInfo::FlushInstr:
-      // checkFlush(ii, state, false);
+      checkFlush(ii, state);
       break;
     case InstrInfo::FlushFenceInstr:
-      // checkFlush(ii, state, true);
+      checkFlush(ii, state);
       break;
     case InstrInfo::IpInstr: {
       auto* ci = dyn_cast<CallInst>(i);
       auto* f = ci->getCalledFunction();
       Context newContext(context, ci);
-      checkPairBugs(f, newContext);
+      contextList.push_back(newContext);
+      checkBugs(f, newContext);
+      contextList.pop_back();
       break;
     }
     default:
@@ -211,31 +197,48 @@ class BugReporter {
     }
   }
 
-  void checkPairBugs(Function* f, Context& context) {
+  void checkBugs(Function* f, Context& context) {
     if (seen.count(context))
       return;
     seen.insert(context);
 
+    // get function results
+    assert(allResults.inAllResults(context));
+    auto& results = allResults.getFunctionResults(context);
+
+    // traverse the dataflow codebase
     for (auto& BB : Traversal::getBlocks(f)) {
       for (auto& I : Traversal::getInstructions(&BB)) {
-        auto& results = allResults.getFunctionResults(context);
-        checkPairBugs(&I, context, results);
+        checkBugs(&I, context, results);
       }
     }
   }
 
+  void resetStructures() {
+    topFunction = nullptr;
+    buggedVars.clear();
+    seen.clear();
+    contextList.clear();
+    bugNo = 0;
+  }
+
   // data structures
   Globals& globals;
-  Function* topFunction;
+
+  // per analysis structures
   AllResults& allResults;
-  BugDataList bugDataList;
-  LastLocationMap lastLocationMap;
+
+  // bug report structures
+  Function* topFunction;
   BuggedVars buggedVars;
   SeenContext seen;
+  ContextList contextList;
+  int bugNo;
 
 public:
   BugReporter(Globals& globals_, AllResults& allResults_)
-      : globals(globals_), topFunction(nullptr), allResults(allResults_) {}
+      : globals(globals_), allResults(allResults_), topFunction(nullptr),
+        bugNo(0) {}
 
   ~BugReporter() { resetStructures(); }
 
@@ -243,9 +246,14 @@ public:
     resetStructures();
     topFunction = f;
     auto context = Context();
-    checkPairBugs(f, context);
-    auto& finalState = allResults.getFinalState(f);
+
+    auto mangledName = f->getName();
+    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
+
+    checkBugs(f, context);
+    auto& finalState = allResults.getFinalState();
     checkFinalBugs(finalState);
+    errs() << "Number of bugs in " << fncName << ": " << bugNo << "\n\n\n";
   }
 };
 

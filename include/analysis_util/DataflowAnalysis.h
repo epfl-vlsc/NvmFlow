@@ -239,27 +239,21 @@ template <typename StateMachine> class DataflowAnalysis {
   }
 
   // data structures
-  AllResults& allResults;
   ContextWorklist contextWork;
   FunctionContextMap callers;
   FunctionContextSet active;
 
   // top info
-  Function* topFunction;
+  AllResults& allResults;
   StateMachine& stateMachine;
 
 public:
   DataflowAnalysis(Function* function, AllResults& allResults_,
                    StateMachine& stateMachine_)
-      : topFunction(function), allResults(allResults_),
-        stateMachine(stateMachine_) {
+      : allResults(allResults_), stateMachine(stateMachine_) {
+    allResults.setFunction(function);
     contextWork.insert({function, Context()});
     computeDataflow();
-  }
-
-  auto& getResults() {
-    assert(topFunction);
-    return allResults;
   }
 };
 

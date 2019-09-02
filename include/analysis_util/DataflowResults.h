@@ -5,13 +5,19 @@
 
 namespace llvm {
 
-template <typename State> struct DataflowResults {
-  // df results
+template <typename State> class DataflowResults {
+public:
+  // df types
   using AbstractState = State;
   using FunctionResults = std::map<Value*, AbstractState>;
   using ContextResults = std::map<Context, FunctionResults>;
 
+private:
+  Function* topFunction;
   ContextResults allResults;
+
+public:
+  void setFunction(Function* f) { topFunction = f; }
 
   auto& getDataflowResults() { return allResults; }
 
@@ -19,17 +25,22 @@ template <typename State> struct DataflowResults {
     return allResults[context];
   }
 
-  auto& getFinalState(Function* f) {
-    assert(f);
+  bool inAllResults(const Context& context) {
+    return allResults.count(context);
+  }
+
+  auto& getFinalState() {
+    assert(topFunction);
     auto context = Context();
     auto& functionResults = allResults[context];
-    auto* exitKey = Traversal::getFunctionExitKey(f);
+    auto* exitKey = Traversal::getFunctionExitKey(topFunction);
     auto& state = functionResults[exitKey];
     assert(!state.empty());
     return state;
   }
 
   void clear() {
+    topFunction = nullptr;
     for (auto& [context, functionResults] : allResults) {
       for (auto& [location, state] : functionResults) {
         state.clear();
@@ -37,6 +48,24 @@ template <typename State> struct DataflowResults {
       functionResults.clear();
     }
     allResults.clear();
+  }
+
+  auto* getCurrentFunction(Context& context){
+    assert(topFunction);
+    if(auto* ci = context.getCallee())
+      return ci->getCalledFunction();
+    else
+      return topFunction;
+  }
+
+  auto* getCallerFunction(Context& context){
+    assert(topFunction);
+    if(context.isTop())
+      return (Function*)nullptr;
+    if(auto* ci = context.getCaller())
+      return ci->getCalledFunction();
+    else
+      return topFunction;
   }
 
   void print(raw_ostream& O) const {

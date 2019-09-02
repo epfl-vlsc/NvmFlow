@@ -64,6 +64,12 @@ public:
     return name;
   }
 
+  auto* getCaller() { return caller; }
+
+  auto* getCallee() { return callee; }
+
+  bool isTop() const { return !caller && !callee; }
+
   void print(raw_ostream& O) const { O << getName(); }
 };
 
@@ -106,6 +112,18 @@ public:
   static auto getPredecessorBlocks(BasicBlock* bb) { return predecessors(bb); }
 
   static auto getPredecessorBlocks(PHINode* phi) { return phi->blocks(); }
+
+  static auto getPredecessorInstructions(Instruction* i) {
+    std::vector<Instruction*> instructions;
+    instructions.reserve(20);
+    while (i->getPrevNonDebugInstruction()) {
+      i = i->getPrevNonDebugInstruction();
+      instructions.push_back(i);
+    }
+    return instructions;
+  }
+
+  static auto* getLastBlock(Function* f) { return &f->back(); }
 };
 
 } // namespace llvm

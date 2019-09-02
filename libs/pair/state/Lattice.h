@@ -19,6 +19,8 @@ struct DclCommit {
 
   bool operator==(const DclCommit& X) const { return state == X.state; }
 
+  bool operator!=(const DclCommit& X) const { return state != X.state; }
+
   void meetValue(const DclCommit& X) {
     if (state > X.state) {
       state = X.state;
@@ -49,6 +51,8 @@ struct DclFlush {
 
   bool operator==(const DclFlush& X) const { return state == X.state; }
 
+  bool operator!=(const DclFlush& X) const { return state != X.state; }
+
   void meetValue(const DclFlush& X) {
     if (state > X.state) {
       state = X.state;
@@ -78,6 +82,8 @@ struct SclCommit {
   bool operator<(const SclCommit& X) const { return state < X.state; }
 
   bool operator==(const SclCommit& X) const { return state == X.state; }
+
+  bool operator!=(const SclCommit& X) const { return state != X.state; }
 
   void meetValue(const SclCommit& X) {
     if (state > X.state) {
@@ -200,13 +206,18 @@ public:
   }
 
   bool operator<(const Lattice& X) const {
-    return dclCommit < X.dclCommit || dclFlush < X.dclFlush ||
-           sclCommit < X.sclCommit;
+    return std::tie(dclCommit, dclFlush, sclCommit) <
+           std::tie(X.dclCommit, X.dclFlush, X.sclCommit);
   }
 
   bool operator==(const Lattice& X) const {
     return dclCommit == X.dclCommit && dclFlush == X.dclFlush &&
            sclCommit == X.sclCommit;
+  }
+
+  bool operator!=(const Lattice& X) const {
+    return dclCommit != X.dclCommit && dclFlush != X.dclFlush &&
+           sclCommit != X.sclCommit;
   }
 };
 
