@@ -242,6 +242,14 @@ public:
     return fieldMap[st];
   }
 
+  auto* getDILocalVariable(Value* v) {
+    if (localVarNames.count(v)) {
+      return localVarNames[v];
+    }
+
+    return (DILocalVariable*)nullptr;
+  }
+
   void print(raw_ostream& O) const {
     O << "Global Debug Info\n";
     O << "-----------------\n";

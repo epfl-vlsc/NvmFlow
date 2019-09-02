@@ -15,13 +15,32 @@ class BugReporter {
   using SeenContext = std::set<Context>;
   using ContextList = std::vector<Context>;
 
+  auto getVarName(Variable* var, InstrInfo* ii) {
+    std::string name;
+    name.reserve(100);
+
+    auto pv = ii->getParsedVarInfo();
+    assert(pv.isUsed());
+    auto* lv = pv.getLocalVar();
+    assert(lv);
+
+    if (auto* diVar = globals.dbgInfo.getDILocalVariable(lv)) {
+      name += diVar->getName();
+    }
+
+    if (var->isField()) {
+      name += "->" + var->getName();
+    }
+
+    return name;
+  }
+
   bool reportWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
     if (buggedVars.count(var))
       return false;
 
     // look at each pair
     for (auto* pair : var->getPairs()) {
-
       auto* pairVar = pair->getOther(var);
 
       if (buggedVars.count(pairVar))
@@ -44,12 +63,12 @@ class BugReporter {
       bugNo++;
 
       // bug details
-      auto varName = var->getName();
-      auto pairVarName = pairVar->getName();
+      auto varName = getVarName(var, ii);
       auto srcLoc = ii->getSrcLoc();
 
       // check sentinel bug
       if (isSentinelFirst) {
+        auto pairVarName = getVarName(pairVar, ii);
         SentinelFirstBug::report(varName, pairVarName, srcLoc);
         return true;
       }
@@ -62,6 +81,7 @@ class BugReporter {
         assert(prevInstr);
         auto* prevII = globals.locals.getInstrInfo(prevInstr);
         auto prevLoc = prevII->getSrcLoc();
+        auto pairVarName = getVarName(pairVar, prevII);
         NotCommittedBug::report(varName, pairVarName, srcLoc, prevLoc);
         return true;
       }
@@ -97,17 +117,17 @@ class BugReporter {
       return false;
 
     auto* prevII = globals.locals.getInstrInfo(prevInstr);
-    auto srcLoc = ii->getSrcLoc();
-    auto prevLoc = prevII->getSrcLoc();
     bool isDoubleFlush = val.isDclFlushFlush() && prevII->isFlushBasedInstr();
+
     if (isDoubleFlush) {
       buggedVars.insert(var);
 
-      auto varName = ii->getVarName();
+      auto varName = getVarName(var, ii);
+      auto prevVarName = getVarName(var, prevII);
       auto srcLoc = ii->getSrcLoc();
       auto prevLoc = prevII->getSrcLoc();
 
-      DoubleFlushBug::report(varName, varName, srcLoc, prevLoc);
+      DoubleFlushBug::report(varName, prevVarName, srcLoc, prevLoc);
       bugNo++;
       return true;
     }

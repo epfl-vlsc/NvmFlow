@@ -114,6 +114,11 @@ struct ParsedVariable {
     assert(isAnnotated());
     return annotation;
   }
+
+  auto* getLocalVar() {
+    assert(localVar);
+    return localVar;
+  }
 };
 
 class InstrParser {
