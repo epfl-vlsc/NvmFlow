@@ -192,12 +192,9 @@ void UnitInfo::print(raw_ostream& O) const {
   O << "\n";
 
   O << "inst to vars sample:---\n";
-  int c = 0;
   for (auto& [i, ii] : iiMap) {
-    O << "\t" << ii.getName() << "\n";
-    if (c >= 5)
-      break;
-    c++;
+    if (ii.isFlushBasedInstr())
+      O << "\t" << ii.getName() << "\n";
   }
 }
 

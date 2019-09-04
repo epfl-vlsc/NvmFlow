@@ -29,7 +29,7 @@ struct ParsedVariable {
   // objptr
   ParsedVariable(Value* aliasVar_, Value* localVar_, InsCat ic_, bool isLocRef)
       : aliasVar(aliasVar_), localVar(localVar_), ic(ic_), vc(ObjPtr),
-        rt(isLocRef ? LocRef : VarRef) {
+        rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
     assert(aliasVar && localVar);
   }
 
@@ -103,6 +103,23 @@ struct ParsedVariable {
     auto* objType = ptrType->getPointerElementType();
     assert(type);
     return objType;
+  }
+
+  auto* getObjType() {
+    if (st) {
+      return (Type*)st;
+    } else {
+      Type* objType = nullptr;
+      assert(localVar);
+      auto* type = localVar->getType();
+      assert(type && type->isPointerTy());
+      while (type && type->isPointerTy()) {
+        auto* ptrType = dyn_cast<PointerType>(type);
+        type = ptrType->getPointerElementType();
+      }
+      objType = type;
+      return objType;
+    }
   }
 
   auto getStructInfo() {
@@ -262,19 +279,23 @@ public:
   template <typename StructTypes>
   static auto parseInstruction(Instruction* i, StructTypes& sts) {
     auto pv = parseInstruction(i);
-    if(!pv.isUsed())
+    if (!pv.isUsed())
       return pv;
 
     StructType* st = nullptr;
-    if(pv.isObjPtr()){
+    if (pv.isObjPtr()) {
       auto* type = pv.getObjElementType();
+      while (type && type->isPointerTy()) {
+        auto* ptr = dyn_cast<PointerType>(type);
+        type = ptr->getPointerElementType();
+      }
       st = dyn_cast<StructType>(type);
-    }else if(pv.isField()){
+    } else if (pv.isField()) {
       st = pv.getStructType();
     }
 
-    //check if it is used type
-    if(sts.isUsedStructType(st)){
+    // check if it is used type
+    if (sts.isUsedStructType(st)) {
       return pv;
     }
 

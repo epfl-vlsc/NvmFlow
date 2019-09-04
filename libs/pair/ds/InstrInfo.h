@@ -79,7 +79,7 @@ struct InstrInfo {
 
   bool isUsedInstr() const { return instrType != None; }
 
-  bool isFlushBasedInstr() {
+  bool isFlushBasedInstr() const{
     return instrType == FlushInstr || instrType == FlushFenceInstr;
   }
 
