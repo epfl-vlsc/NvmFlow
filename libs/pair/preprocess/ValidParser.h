@@ -12,6 +12,8 @@ class ValidParser {
 
   void addVar(Instruction* i, InstrType instrType) {
     auto pv = InstrParser::parseInstruction(i);
+    if (!pv.isUsed())
+      return;
 
     if (!pv.isAnnotated())
       return;

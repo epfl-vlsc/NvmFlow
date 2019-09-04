@@ -81,6 +81,22 @@ auto getTypeName(Type* type) {
   return TypeNames[typeNo];
 }
 
+template <typename Map> void assertInDs(Map& map, StringRef& key) {
+  if (!map.count(key)) {
+    errs() << "Assert failed for " << key << "\n";
+  }
+
+  assert(map.count(key));
+}
+
+template <typename Map> void assertInDs(Map& map, std::string& key) {
+  if (!map.count(key)) {
+    errs() << "Assert failed for " << key << "\n";
+  }
+
+  assert(map.count(key));
+}
+
 template <typename Map, typename Key> void assertInDs(Map& map, Key& key) {
   if (!map.count(key)) {
     errs() << "Assert failed for " << key.getName() << "\n";

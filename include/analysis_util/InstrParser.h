@@ -258,6 +258,28 @@ public:
 
     return ParsedVariable();
   }
+
+  template <typename StructTypes>
+  static auto parseInstruction(Instruction* i, StructTypes& sts) {
+    auto pv = parseInstruction(i);
+    if(!pv.isUsed())
+      return pv;
+
+    StructType* st = nullptr;
+    if(pv.isObjPtr()){
+      auto* type = pv.getObjElementType();
+      st = dyn_cast<StructType>(type);
+    }else if(pv.isField()){
+      st = pv.getStructType();
+    }
+
+    //check if it is used type
+    if(sts.isUsedStructType(st)){
+      return pv;
+    }
+
+    return ParsedVariable();
+  }
 };
 
 } // namespace llvm

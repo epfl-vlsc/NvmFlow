@@ -196,7 +196,7 @@ public:
   // function related---------------------------------
 
   StringRef getFunctionName(StringRef mangledName) {
-    assert(functionNames.count(mangledName));
+    assertInDs(functionNames, mangledName);
     return functionNames[mangledName];
   }
 
@@ -215,6 +215,7 @@ public:
   }
 
   // var related--------------------------------------
+  bool isUsedStructType(StructType* st) const { return fieldMap.count(st); }
 
   void addDbgInfoFunctions(FunctionSet& funcSet,
                            std::set<StructType*>& trackTypes) {
@@ -225,14 +226,14 @@ public:
   auto* getStructField(StructType* st, int idx) {
     assert(st && idx >= 0);
     auto fieldIdxStr = StructField::getIdxName(st, idx);
-    assert(fieldIdxStrMap.count(fieldIdxStr));
+    assertInDs(fieldIdxStrMap, fieldIdxStr);
     auto* sf = fieldIdxStrMap[fieldIdxStr];
     return sf;
   }
 
   auto* getStructField(std::string& fieldNameStr) {
     assert(!fieldNameStr.empty());
-    assert(fieldNameStrMap.count(fieldNameStr));
+    assertInDs(fieldNameStrMap, fieldNameStr);
     auto* sf = fieldNameStrMap[fieldNameStr];
     return sf;
   }
@@ -265,9 +266,13 @@ public:
       O << "\n";
     }
 
-    O << "Local Variable names-----------\n";
+    O << "Local Variable names sample-----\n";
+    int c = 0;
     for (auto& [v, lv] : localVarNames) {
       O << *v << ": " << lv->getName() << "\n";
+      if (c >= 5)
+        break;
+      c++;
     }
     O << "\n\n";
   }

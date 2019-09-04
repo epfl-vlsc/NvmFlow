@@ -91,7 +91,7 @@ public:
     return activeUnit->vars;
   }
 
-  bool inVariables(StructField* sf) const{
+  bool inVariables(StructField* sf) const {
     assert(activeUnit);
     auto var = Variable(sf);
     auto& vars = activeUnit->vars;
@@ -191,9 +191,13 @@ void UnitInfo::print(raw_ostream& O) const {
   }
   O << "\n";
 
-  O << "inst to vars:---\n";
+  O << "inst to vars sample:---\n";
+  int c = 0;
   for (auto& [i, ii] : iiMap) {
     O << "\t" << ii.getName() << "\n";
+    if (c >= 5)
+      break;
+    c++;
   }
 }
 

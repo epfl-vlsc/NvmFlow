@@ -11,7 +11,9 @@ class DataParser {
   using InstrType = typename InstrInfo::InstrType;
 
   void addVar(Instruction* i, InstrType instrType) {
-    auto pv = InstrParser::parseInstruction(i);
+    auto pv = InstrParser::parseInstruction(i, globals.dbgInfo);
+    if(!pv.isUsed())
+      return;
 
     auto* data = (Variable*)nullptr;
 
@@ -19,11 +21,12 @@ class DataParser {
       // objptr
       auto* type = pv.getObjElementType();
       auto* st = dyn_cast<StructType>(type);
-      assert(st);
       data = globals.locals.getVariable(st);
+      
     } else if (pv.isField()) {
       // data
       auto [st, idx] = pv.getStructInfo();
+
       auto* dataSf = globals.dbgInfo.getStructField(st, idx);
 
       if (globals.locals.inVariables(dataSf)) {
