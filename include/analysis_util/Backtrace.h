@@ -4,16 +4,27 @@
 namespace llvm {
 
 class Backtrace {
+public:
   using ContextList = std::vector<Context>;
+  enum InstrLoc { Changed, SameFirst, SameLast };
 
+private:
   void addToQueue(Function* f) {
+    if (seenInContext.count(f))
+      return;
+
     assert(f);
+    seenInContext.insert(f);
     auto* bb = Traversal::getLastBlock(f);
     addToQueue(bb);
   }
 
   void addToQueue(Instruction* i) {
+    if (seenInContext.count(i))
+      return;
+
     assert(i);
+    seenInContext.insert(i);
     while (Traversal::getPrevInstruction(i)) {
       i = Traversal::getPrevInstruction(i);
       travQueue.push(i);
@@ -25,7 +36,11 @@ class Backtrace {
   }
 
   void addToQueue(BasicBlock* bb) {
+    if (seenInContext.count(bb))
+      return;
+
     assert(bb);
+    seenInContext.insert(bb);
     auto* lastInstr = Traversal::getLastInstruction(bb);
     addToQueue(lastInstr);
   }
@@ -39,13 +54,28 @@ class Backtrace {
     return topFunction;
   }
 
-  auto* getInstr(Instruction* curInstr) {
-    if (instrs.empty())
+  auto* getInstr(Instruction* i, Instruction* curInstr, InstrLoc loc) {
+    if (loc == Changed)
+      return i;
+    else if (instrs.empty()) {
       return curInstr;
-
-    return instrs.back();
+    } else {
+      assert(loc == SameFirst);
+      return instrs.back();
+    }
   }
 
+  auto* getInstr(Instruction* curInstr, InstrLoc loc) {
+    assert(loc != Changed);
+    if (instrs.empty()) {
+      return curInstr;
+    } else {
+      assert(loc == SameFirst);
+      return instrs.back();
+    }
+  }
+
+  std::set<Value*> seenInContext;
   std::queue<Value*> travQueue;
   std::vector<Instruction*> instrs;
   Function* topFunction;
@@ -56,8 +86,7 @@ public:
   template <typename Variable, typename AllResults, typename EqualityFn>
   auto* getValueInstruction(Instruction* curInstr, Variable* curVar,
                             AllResults& allResults, ContextList& contextList,
-                            EqualityFn eq) {
-
+                            EqualityFn eq, InstrLoc loc) {
     // get context
     int contextNo = contextList.size() - 1;
     auto context = contextList[contextNo];
@@ -89,12 +118,17 @@ public:
           auto state = results[iKey];
           auto val = state[curVar];
 
+          errs() << val.getName() << " " << beginVal.getName() << "\n";
+
           if (eq(val, beginVal)) {
             // same lattice val
+            if (loc == SameLast)
+              return i;
+
             instrs.push_back(i);
           } else {
             // return last same state instr
-            return getInstr(curInstr);
+            return getInstr(i, curInstr, loc);
           }
         } else if (auto* bb = dyn_cast<BasicBlock>(v)) {
           // bb
@@ -112,7 +146,7 @@ public:
       }
     }
 
-    return getInstr(curInstr);
+    return getInstr(curInstr, loc);
   }
 };
 

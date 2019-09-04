@@ -14,12 +14,14 @@ class BugReporter {
   using BuggedVars = std::set<Variable*>;
   using SeenContext = std::set<Context>;
   using ContextList = std::vector<Context>;
+  using InstrLoc = typename Backtrace::InstrLoc;
 
   auto getVarName(Variable* var, InstrInfo* ii) {
     std::string name;
     name.reserve(100);
 
     auto pv = ii->getParsedVarInfo();
+
     assert(pv.isUsed());
     auto* lv = pv.getLocalVar();
     assert(lv);
@@ -77,11 +79,12 @@ class BugReporter {
         Backtrace backtrace(topFunction);
         auto* instr = ii->getInstruction();
         auto* prevInstr = backtrace.getValueInstruction(
-            instr, pairVar, allResults, contextList, eqCommitFn);
+            instr, pairVar, allResults, contextList, eqCommitFn,
+            InstrLoc::SameLast);
         assert(prevInstr);
         auto* prevII = globals.locals.getInstrInfo(prevInstr);
         auto prevLoc = prevII->getSrcLoc();
-        auto pairVarName = getVarName(pairVar, prevII);
+        auto pairVarName = getVarName(pairVar, ii);
         NotCommittedBug::report(varName, pairVarName, srcLoc, prevLoc);
         return true;
       }
@@ -111,8 +114,8 @@ class BugReporter {
 
     Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
-    auto* prevInstr = backtrace.getValueInstruction(instr, var, allResults,
-                                                    contextList, sameDclFlush);
+    auto* prevInstr = backtrace.getValueInstruction(
+        instr, var, allResults, contextList, sameDclFlush, InstrLoc::SameFirst);
     if (prevInstr == instr)
       return false;
 
@@ -123,7 +126,7 @@ class BugReporter {
       buggedVars.insert(var);
 
       auto varName = getVarName(var, ii);
-      auto prevVarName = getVarName(var, prevII);
+      auto prevVarName = getVarName(var, ii);
       auto srcLoc = ii->getSrcLoc();
       auto prevLoc = prevII->getSrcLoc();
 

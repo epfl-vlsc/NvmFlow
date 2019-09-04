@@ -59,7 +59,7 @@ class FunctionParser {
         continue;
 
       auto* lastInstr = Traversal::getFunctionExitKey(&F);
-      if (!lastInstr)
+      if (!isa<ReturnInst>(lastInstr))
         globals.functions.insertSkipFunction(&F);
     }
   }
