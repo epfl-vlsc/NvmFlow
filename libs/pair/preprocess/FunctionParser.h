@@ -1,6 +1,6 @@
 #pragma once
 #include "Common.h"
-
+#include "analysis_util/Traversal.h"
 #include "ds/Globals.h"
 
 namespace llvm {
@@ -53,11 +53,23 @@ class FunctionParser {
     }
   }
 
+  void insertSkipFunctions() {
+    for (auto& F : M) {
+      if (F.isIntrinsic() || F.isDeclaration())
+        continue;
+
+      auto* lastInstr = Traversal::getFunctionExitKey(&F);
+      if (!lastInstr)
+        globals.functions.insertSkipFunction(&F);
+    }
+  }
+
   Module& M;
   Globals& globals;
 
 public:
   FunctionParser(Module& M_, Globals& globals_) : M(M_), globals(globals_) {
+    insertSkipFunctions();
     insertAnnotatedFunctions();
     insertNamedFunctions();
     insertAllAnalyzedFunctions();

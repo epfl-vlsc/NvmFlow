@@ -89,6 +89,8 @@ public:
 
   void insertToAllAnalyzed(Function* f) { allAnalyzedFunctions.insert(f); }
 
+  void insertSkipFunction(Function* f) { skippedFunctions.insert(f); }
+
   void print(raw_ostream& O) const {
     O << "Functions Info\n";
     O << "--------------\n";

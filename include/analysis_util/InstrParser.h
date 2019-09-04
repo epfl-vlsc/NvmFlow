@@ -216,7 +216,7 @@ class InstrParser {
 
 public:
   static auto parseInstruction(Instruction* i) {
-    errs() << *i << "\n";
+    // errs() << *i << "\n";
 
     static const StringRef emptyStr = StringRef("");
     auto instCat = ParsedVariable::getInstCat(i);
