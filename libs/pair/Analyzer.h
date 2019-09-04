@@ -36,14 +36,10 @@ public:
 
   void parse() {
 #ifdef DBGMODE
-    globals.printFunctionNames(errs());
+    //globals.printFunctionNames(errs());
 #endif
 
     Parser parser(M, globals);
-
-#ifdef DBGMODE
-    globals.printFunctions(errs());
-#endif
   }
 };
 

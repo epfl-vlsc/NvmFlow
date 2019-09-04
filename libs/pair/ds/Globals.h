@@ -23,6 +23,9 @@ struct Globals {
 
   void printFunctions(raw_ostream& O) const {
     functions.print(O);
+  }
+
+  void printDbgInfo(raw_ostream& O) const {
     dbgInfo.print(O);
   }
 
