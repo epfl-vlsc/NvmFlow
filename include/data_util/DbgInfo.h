@@ -43,7 +43,10 @@ class DbgInfo {
         if (auto* dvi = dyn_cast<DbgValueInst>(&I)) {
           auto* val = dvi->getValue();
           auto* var = dvi->getVariable();
-          assert(val && var);
+          if(!val)
+            continue;
+
+          assert(var);
 
           auto* type = val->getType();
           if (type->isPointerTy())

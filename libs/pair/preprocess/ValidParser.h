@@ -24,6 +24,7 @@ class ValidParser {
       return;
 
     // valid
+    assert(pv.isField());
     auto [st, idx] = pv.getStructInfo();
     auto* validSf = globals.dbgInfo.getStructField(st, idx);
     auto* valid = globals.locals.addVariable(validSf);

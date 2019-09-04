@@ -148,15 +148,13 @@ class InstrParser {
     assert(gepi);
 
     Type* type = gepi->getSourceElementType();
-    assert(type->isStructTy());
-
     StructType* st = dyn_cast<StructType>(type);
-    assert(st);
 
     ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
-    assert(index);
 
-    int idx = (int)index->getValue().getZExtValue();
+    int idx = -1;
+    if (index)
+      idx = (int)index->getValue().getZExtValue();
 
     return std::pair(st, idx);
   }
@@ -218,6 +216,8 @@ class InstrParser {
 
 public:
   static auto parseInstruction(Instruction* i) {
+    errs() << *i << "\n";
+
     static const StringRef emptyStr = StringRef("");
     auto instCat = ParsedVariable::getInstCat(i);
     if (!ParsedVariable::isUsed(instCat))
@@ -257,10 +257,12 @@ public:
     if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
       // field
       auto* localVar = getLocalVar(gepi);
-      auto [st, idx] = getStructInfo(gepi);
-
-      return ParsedVariable(opnd, localVar, instCat, isPtr, isLocRef, st, idx,
-                            annotation);
+      auto [type, idx] = getStructInfo(gepi);
+      if (type && isa<StructType>(type)) {
+        auto* st = dyn_cast<StructType>(type);
+        return ParsedVariable(opnd, localVar, instCat, isPtr, isLocRef, st, idx,
+                              annotation);
+      }
     } else if (auto* ai = dyn_cast<AllocaInst>(v)) {
       // objptr
       auto* localVar = ai;
