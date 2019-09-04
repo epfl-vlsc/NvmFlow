@@ -1,58 +1,115 @@
-#include "pthread.h"
-#include <iostream>
-#include <string>
+#include "annot.h"
 
-using namespace std;
+extern int x();
 
-#define NUM_THREADS 5
+struct Dcl {
+  int data;
+  sentinel(Dcl::data) int valid;
 
-#define BLACK "\033[0m"
-#define RED "\033[1;31m"
-#define GREEN "\033[1;32m"
-#define YELLOW "\033[1;33m"
-#define BLUE "\033[1;34m"
-#define CYAN "\033[1;36m"
-
-void* PrintAsciiText(void* id) {
-  string colour;
-
-  switch ((long)id) {
-  case 0:
-    colour = RED;
-    break;
-  case 1:
-    colour = GREEN;
-    break;
-  case 2:
-    colour = YELLOW;
-    break;
-  case 3:
-    colour = BLUE;
-    break;
-  case 4:
-    colour = CYAN;
-    break;
-  default:
-    colour = BLACK;
-    break;
+  void nvm_fnc correct() {
+    data = 1;
+    pm_clflushopt(&data);
+    pfence();
+    valid = 1;
+    pm_clflushopt(&valid);
+    pfence();
   }
 
-  cout << colour << "I'm a new thread, I'm number " << (long)id << BLACK
-       << endl;
+  void nvm_fnc notFinalizeValid() {
+    data = 1;
+    pm_clflushopt(&data);
+    pfence();
+    valid = 1;
+    pm_clflushopt(&valid);
+  }
 
-  pthread_exit(NULL);
-}
+  void nvm_fnc writeValidFirst() {
+    valid = 1;
+    pm_clflushopt(&valid);
+    pfence();
+    data = 1;
+    pm_clflushopt(&data);
+    pfence();
+  }
 
-int main() {
-  pthread_t threads[NUM_THREADS];
+  void nvm_fnc fenceNotFlushedData() {
+    data = 1;
+    pfence();
+    valid = 1;
+  }
 
-  for (long int i = 0; i < NUM_THREADS; ++i) {
-    int t = pthread_create(&threads[i], NULL, PrintAsciiText, (void*)i);
+  void nvm_fnc doubleFlush() {
+    data = 1;
+    pm_clflush(&data);
+    valid = 1;
+    pm_clflush(&data);
+  }
 
-    if (t != 0) {
-      cout << "Error in thread creation: " << t << endl;
+  void nvm_fnc doubleLoopFlush() {
+    while (valid == 1) {
+      data = 1;
+      pm_clflush(&data);
+    }
+    pm_clflush(&data);
+    valid = 1;
+  }
+
+  void nvm_fnc writeUncommittedData() {
+    data = 1;
+    pm_clflushopt(&data);
+    data = 1;
+    pfence();
+    valid = 1;
+  }
+
+  void nvm_fnc correctBranch(bool useNvm) {
+    data = 1;
+    if (useNvm) {
+      pm_clflushopt(&data);
+      pfence();
+      valid = 1;
     }
   }
 
-  return 0;
+  void nvm_fnc validNotCommitted(bool useNvm) {
+    data = 1;
+    pm_clflush(&data);
+    valid = 1;
+    pm_clflushopt(&valid);
+  }
+
+  void nvm_fnc branchNoFence(bool useNvm) {
+    data = 1;
+    if (useNvm) {
+      pm_clflushopt(&data);
+    }
+    valid = 1;
+  }
+
+  void correctWriteData() { data = 1; }
+
+  void nvm_fnc wrongIp(bool useNvm) {
+    correctWriteData();
+    if (useNvm) {
+      pm_clflushopt(&data);
+    }
+    valid = 1;
+  }
+
+  void skip_fnc skip() {
+    data = 1;
+    pm_clflushopt(&data);
+    valid = 1;
+    pfence();
+    valid = 1;
+  }
+};
+
+void nvm_fnc recursion(Dcl* dcl) {
+  if (dcl->data == 1) {
+    dcl->data--;
+    recursion(dcl);
+  } else {
+    dcl->valid = 1;
+  }
 }

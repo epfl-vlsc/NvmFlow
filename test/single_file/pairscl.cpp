@@ -39,7 +39,7 @@ struct Scl {
     }
   }
 
-  void nvm_fnc correctWriteData() { data = 1; }
+  void correctWriteData() { data = 1; }
 
   void nvm_fnc wrongIp(bool useNvm) {
     if (useNvm) {

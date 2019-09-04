@@ -3,23 +3,16 @@
 
 //__attribute__((noinline))
 
+extern int x();
+
 struct A {
-  A* a;
+  int a;
   A* b;
-};
 
-void m1(A* a, A* b) {
-  b = new A;
-  a = b;
-}
-
-struct Dur {
-  dur_field int* next;
-
-  void nvm_fnc correct() {
-    auto* ptr = new int(5);
-    pm_clflushopt(ptr);
-    pfence();
-    next = ptr;
+  void nvm_fnc m1(A* ptr) {
+    while (ptr) {
+      ptr->a = 3;
+      ptr = ptr->b;
+    }
   }
 };
