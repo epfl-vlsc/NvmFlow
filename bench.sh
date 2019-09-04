@@ -8,7 +8,7 @@ TEST_NAME=$2 #under single file
 BASE_DIR=$(dirname $(realpath "$0"))
 BUILD_DIR="${BASE_DIR}/dfbuild"
 TEST_DIR="${BASE_DIR}/test"
-SINGLE_FILE_REPO=${TEST_DIR}/units
+SINGLE_FILE_REPO=${TEST_DIR}/benchmarks
 
 LLVM_BASE_DIR=~/llvm_compiler8
 COMPILER_DIR=${LLVM_BASE_DIR}/bin
@@ -46,23 +46,35 @@ run_fullbuild(){
 
 #--debug-pass=Structure
 run_tool(){
-		opt -analyze \
+		opt \
 -load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
-${SINGLE_FILE_REPO}/${TEST_NAME}.bc
+${SINGLE_FILE_REPO}/${TEST_NAME}.bc > /dev/null
+}
+
+checkers=("pair" "dur" "log" "exp" "cons" "simp" "alias")
+
+function contains() {
+    local n=$#
+    local value=${!n}
+    for ((i=1;i < $#;i++)) {
+        if [ "${!i}" == "${value}" ]; then
+            echo "y"
+            return 0
+        fi
+    }
+    echo "n"
+    return 1
 }
 
 #commands----------------------------------------------------
-if [ "$MODE" == "pair" ] || [ "$MODE" == "dur" ] || [ "$MODE" == "log" ] || [ "$MODE" == "exp" ];then
+if [ $(contains "${checkers[@]}" "$MODE") == "y" ] ;then
+	create_ir
 	run_make
 	run_tool
 elif [ "$MODE" == "make" ] ;then
 	run_make
 elif [ "$MODE" == "build" ] ;then
   run_fullbuild
-elif [ "$MODE" == "ir" ] ;then
-	create_ll
-elif [ "$MODE" == "rem_ir" ] ;then
-	clean_ir
 else
 	echo "pair, log, dur, make, build, ir, rem_ir"
 fi
