@@ -118,8 +118,6 @@ public:
           auto state = results[iKey];
           auto val = state[curVar];
 
-          errs() << val.getName() << " " << beginVal.getName() << "\n";
-
           if (eq(val, beginVal)) {
             // same lattice val
             if (loc == SameLast)
