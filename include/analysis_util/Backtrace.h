@@ -8,14 +8,14 @@ class Backtrace {
 
   void addToQueue(Function* f) {
     assert(f);
-    auto* bb = &f->back();
+    auto* bb = Traversal::getLastBlock(f);
     addToQueue(bb);
   }
 
   void addToQueue(Instruction* i) {
     assert(i);
-    while (i->getPrevNonDebugInstruction()) {
-      i = i->getPrevNonDebugInstruction();
+    while (Traversal::getPrevInstruction(i)) {
+      i = Traversal::getPrevInstruction(i);
       travQueue.push(i);
     }
     auto* bb = i->getParent();
@@ -26,7 +26,7 @@ class Backtrace {
 
   void addToQueue(BasicBlock* bb) {
     assert(bb);
-    auto* lastInstr = &bb->back();
+    auto* lastInstr = Traversal::getLastInstruction(bb);
     addToQueue(lastInstr);
   }
 
