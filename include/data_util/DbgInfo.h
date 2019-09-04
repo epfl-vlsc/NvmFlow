@@ -44,7 +44,10 @@ class DbgInfo {
           auto* val = dvi->getValue();
           auto* var = dvi->getVariable();
           assert(val && var);
-          localVarNames[val] = var;
+
+          auto* type = val->getType();
+          if (type->isPointerTy())
+            localVarNames[val] = var;
         }
       }
     }
