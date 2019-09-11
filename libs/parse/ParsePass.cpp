@@ -14,10 +14,21 @@
 using namespace std;
 namespace llvm {
 
-void ParsePass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
+void ParsePass::print(raw_ostream& OS, const Module* m) const {
+  OS << "pass\n";
+}
 
 bool ParsePass::runOnModule(Module& M) {
+  for (auto& F : M) {
+    if (F.isIntrinsic() || F.isDeclaration())
+      continue;
 
+    errs() << F.getName() << "\n";
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      pv.print(errs());
+    }
+  }
 
   return false;
 }
