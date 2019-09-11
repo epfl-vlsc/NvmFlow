@@ -69,7 +69,7 @@ run_tool(){
 ${SINGLE_FILE_REPO}/${TEST_NAME}.bc > /dev/null
 }
 
-checkers=("pair" "dur" "log" "exp" "cons" "simp" "alias")
+checkers=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse")
 
 function contains() {
     local n=$#
@@ -100,6 +100,6 @@ elif [ "$MODE" == "ll" ] ;then
 elif [ "$MODE" == "rem_ir" ] ;then
 	clean_ir
 else
-	echo "pair, log, dur, make, build, ir, rem_ir"
+	echo "pair, dur, log, exp, cons, simp, alias, parse, make, build, ir, rem_ir"
 fi
 #commands----------------------------------------------------

@@ -6,5 +6,6 @@ add_subdirectory(cons)
 add_subdirectory(alias)
 add_subdirectory(simp)
 add_subdirectory(dbg)
+add_subdirectory(parse)
 
 
