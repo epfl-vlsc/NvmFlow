@@ -68,7 +68,6 @@ function contains() {
 
 #commands----------------------------------------------------
 if [ $(contains "${checkers[@]}" "$MODE") == "y" ] ;then
-	create_ir
 	run_make
 	run_tool
 elif [ "$MODE" == "make" ] ;then
