@@ -33,31 +33,29 @@ struct B {
   log_field A c;
   log_field A* d;
 
-  void up() {
+  void up(A* z) {
+    z = new A;
+    pm_clflush(&z);
+    *z = *d;
+    pm_clflush(z);
+
     a = c;
     pm_clflush(&a);
-
-    b = new A;
-    pm_clflush(&b);
 
     c = *d;
     pm_clflush(&c);
 
-    d = new A;
-    pm_clflush(&d);
-
+    b = new A;
+    pm_clflush(&b);
     *b = *d;
     pm_clflush(b);
 
-    *d = *b;
+    d = new A;
+    pm_clflush(&d);
+    *b = *d;
     pm_clflush(d);
 
-    a.up();
-
-    b->up();
-
-    c.up();
-
-    d->up();
+    a.b = new int;
+    b->b = new int;
   }
 };
