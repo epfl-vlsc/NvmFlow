@@ -20,7 +20,6 @@ $(BC_DIR)/%.bc: $(SRC_DIR)/%.cpp
 	clang++ $(INITOPT) $(LLVM_FLAGS) $(INC_FLAGS) -o $@ $<
 	opt $(CONS_FLAGS) -o $@ $@ > /dev/null 2>&1
 	opt -mem2reg $(SIMP_FLAGS) -o $@ $@ > /dev/null 2>&1
-	#opt $(CONS_FLAGS) -o $@ $@ > /dev/null 2>&1
 	
 $(LL_DIR)/%.ll: $(SRC_DIR)/%.bc
 	llvm-dis -o $@ $<

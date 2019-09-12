@@ -1,5 +1,6 @@
 #pragma once
 #include "Common.h"
+#include "data_util/NameFilter.h"
 #include "llvm/Transforms/Utils/Local.h"
 
 namespace llvm {
@@ -14,11 +15,14 @@ struct ParsedVariable {
                                           "NoneVar"};
   static constexpr const char* RCStr[] = {"VarRef", "LocRef"};
 
-  Value* aliasVar;
-  Value* localVar;
+  // use opndVar for alias as well
+
   InsCat ic;
+  Value* opndVar;
+  Value* localVar;
   VarCat vc;
   RefCat rt;
+  Type* type;
   StructType* st;
   int idx;
   StringRef annotation;
@@ -27,20 +31,20 @@ struct ParsedVariable {
   ParsedVariable() : ic(NoneIns), vc(NonePtr) {}
 
   // objptr
-  ParsedVariable(Value* aliasVar_, Value* localVar_, InsCat ic_, bool isLocRef)
-      : aliasVar(aliasVar_), localVar(localVar_), ic(ic_), vc(ObjPtr),
+  ParsedVariable(Value* opndVar_, Value* localVar_, InsCat ic_, bool isLocRef)
+      : opndVar(opndVar_), localVar(localVar_), ic(ic_), vc(ObjPtr),
         rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
-    assert(aliasVar && localVar);
+    assert(opndVar && localVar);
   }
 
   // field
-  ParsedVariable(Value* aliasVar_, Value* localVar_, InsCat ic_, bool isPtr,
+  ParsedVariable(Value* opndVar_, Value* localVar_, InsCat ic_, bool isPtr,
                  bool isLocRef, StructType* st_, int idx_,
                  StringRef annotation_)
-      : aliasVar(aliasVar_), localVar(localVar_), ic(ic_),
+      : opndVar(opndVar_), localVar(localVar_), ic(ic_),
         vc(isPtr ? FieldPtr : FieldData), rt(isLocRef ? LocRef : VarRef),
         st(st_), idx(idx_), annotation(annotation_) {
-    assert(aliasVar && localVar);
+    assert(opndVar && localVar);
     assert(st && idx >= 0);
   }
 
@@ -54,7 +58,7 @@ struct ParsedVariable {
 
     O << " " << RCStr[(int)rt];
 
-    O << " alias:" << *aliasVar;
+    O << " opnd:" << *opndVar;
     O << " local:" << *localVar;
 
     if (isField())
@@ -65,8 +69,6 @@ struct ParsedVariable {
 
     O << "|";
   }
-
-  static bool isUsed(InsCat ic_) { return ic_ != NoneIns; }
 
   static auto getInstCat(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
@@ -139,59 +141,62 @@ struct ParsedVariable {
 };
 
 class InstrParser {
-  static auto getLocalVar(GetElementPtrInst* gepi) {
-    assert(gepi);
-    return gepi->getPointerOperand();
-  }
+  static constexpr const StringRef EmptyRef;
+  /*
+    static auto getLocalVar(GetElementPtrInst* gepi) {
+      assert(gepi);
+      return gepi->getPointerOperand();
+    }
 
-  static auto getStructInfo(GetElementPtrInst* gepi) {
-    assert(gepi);
+    static auto getStructInfo(GetElementPtrInst* gepi) {
+      assert(gepi);
 
-    Type* type = gepi->getSourceElementType();
-    StructType* st = dyn_cast<StructType>(type);
+      Type* type = gepi->getSourceElementType();
+      StructType* st = dyn_cast<StructType>(type);
 
-    ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
+      ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
 
-    int idx = -1;
-    if (index)
-      idx = (int)index->getValue().getZExtValue();
+      int idx = -1;
+      if (index)
+        idx = (int)index->getValue().getZExtValue();
 
-    return std::pair(st, idx);
-  }
+      return std::pair(st, idx);
+    }
 
-  static auto getAnnotation(IntrinsicInst* ii) {
-    static const StringRef emptyStr = StringRef("");
-    static const unsigned llvm_ptr_annotation = 186;
+    static auto getAnnotation(IntrinsicInst* ii) {
+      static const StringRef emptyStr = StringRef("");
+      static const unsigned llvm_ptr_annotation = 186;
 
-    assert(ii);
+      assert(ii);
 
-    if (ii->getIntrinsicID() == llvm_ptr_annotation) {
-      if (ConstantExpr* gepi = dyn_cast<ConstantExpr>(ii->getArgOperand(1))) {
-        GlobalVariable* AnnotationGL =
-            dyn_cast<GlobalVariable>(gepi->getOperand(0));
-        StringRef fieldAnnotation =
-            dyn_cast<ConstantDataArray>(AnnotationGL->getInitializer())
-                ->getAsCString();
-        return fieldAnnotation;
+      if (ii->getIntrinsicID() == llvm_ptr_annotation) {
+        if (ConstantExpr* gepi = dyn_cast<ConstantExpr>(ii->getArgOperand(1))) {
+          GlobalVariable* AnnotationGL =
+              dyn_cast<GlobalVariable>(gepi->getOperand(0));
+          StringRef fieldAnnotation =
+              dyn_cast<ConstantDataArray>(AnnotationGL->getInitializer())
+                  ->getAsCString();
+          return fieldAnnotation;
+        }
       }
-    }
-    return emptyStr;
-  }
-
-  static auto* getOpnd(Instruction* i) {
-    if (auto* si = dyn_cast<StoreInst>(i)) {
-      auto* opnd = si->getPointerOperand();
-      return opnd;
-    } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      auto* opnd = ci->getArgOperand(0);
-      return opnd;
+      return emptyStr;
     }
 
-    report_fatal_error("opnd has to have value");
-    return (Value*)nullptr;
-  }
 
-  static auto* skipBackwards(Value* v) {
+
+
+
+    static bool usesPtr(Value* opnd) {
+      // assume islocref is false
+      auto* type = opnd->getType();
+      auto* ptrType = dyn_cast<PointerType>(type);
+      assert(ptrType);
+      auto* eType = ptrType->getPointerElementType();
+      return eType->isPointerTy();
+    }
+  */
+
+  static auto* stripCast(Value* v) {
     assert(v);
     while (true) {
       if (auto* ci = dyn_cast<CastInst>(v)) {
@@ -205,31 +210,76 @@ class InstrParser {
     return (Value*)nullptr;
   }
 
-  static bool usesPtr(Value* opnd) {
-    // assume islocref is false
-    auto* type = opnd->getType();
-    auto* ptrType = dyn_cast<PointerType>(type);
-    assert(ptrType);
-    auto* eType = ptrType->getPointerElementType();
-    return eType->isPointerTy();
+  static Value* getLocalVar(Value* v) {
+    assert(v);
+    while (true) {
+      if (auto* ci = dyn_cast<CastInst>(v)) {
+        v = ci->getOperand(0);
+      } else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
+        v = gepi->getPointerOperand();
+      } else if (auto* li = dyn_cast<LoadInst>(v)) {
+        v = li->getPointerOperand();
+      } else if (auto* si = dyn_cast<StoreInst>(v)) {
+        v = si->getPointerOperand();
+      } else if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
+        return ii->getOperand(0);
+      } else if (auto* cai = dyn_cast<CallInst>(v)) {
+        if (NameFilter::isFlush(cai)) {
+          v = cai->getOperand(0);
+        } else {
+          return cai;
+        }
+      } else if (auto* ai = dyn_cast<AllocaInst>(v)) {
+        return ai;
+      } else if (auto* a = dyn_cast<Argument>(v)) {
+        return a;
+      } else {
+        errs() << *v << "\n";
+        break;
+      }
+    }
+
+    report_fatal_error("could not find local variable value");
+    return nullptr;
+  }
+
+  static bool isUsed(Instruction* i) {
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      return true;
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      return NameFilter::isFlush(ci);
+    }
+
+    return false;
   }
 
 public:
-  static auto parseInstruction(Instruction* i) {
-    // errs() << *i << "\n";
+  static Value* getOpndVar(Instruction* i, bool lhs = true) {
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      auto* opnd = (lhs) ? si->getPointerOperand() : si->getValueOperand();
+      return opnd;
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      auto* opnd = ci->getArgOperand(0);
+      return opnd;
+    }
 
-    static const StringRef emptyStr = StringRef("");
-    auto instCat = ParsedVariable::getInstCat(i);
-    if (!ParsedVariable::isUsed(instCat))
+    report_fatal_error("opnd has to have value");
+    return nullptr;
+  }
+
+  static auto parseInstruction(Instruction* i) {
+    errs() << *i << "\n";
+    if (!isUsed(i))
       return ParsedVariable();
 
-    // get opnd of interest
-    Value* opnd = getOpnd(i);
+    auto instCat = ParsedVariable::getInstCat(i);
+    auto* opndVar = getOpndVar(i);
+    auto* localVar = getLocalVar(i);
 
     // fill parsed variable
     bool isPtr = false;    ////////
     bool isLocRef = false; //////
-    StringRef annotation = emptyStr;
+    StringRef annotation = EmptyRef;
 
     // get rid of pointers
     auto* v = skipBackwards(opnd);
@@ -274,8 +324,7 @@ public:
 
       return ParsedVariable(opnd, localVar, instCat, isLocRef);
     }
-
-    return ParsedVariable();
+    * / return ParsedVariable();
   }
 
   template <typename StructTypes>
