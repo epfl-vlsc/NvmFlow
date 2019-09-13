@@ -47,5 +47,23 @@ struct B {
 
   void local(A** b, A** c) {
     *b = *c;
+    pm_clflush(*b);
+    pm_clflush(b);
   }
 };
+
+extern bool x();
+
+void checkPhi(A* a, A* b) {
+  A* c = nullptr;
+  if (x()) {
+    int z = x();
+    a->a = z;
+    c = a;
+  } else {
+    c = b;
+    c->a = x();
+  }
+
+  c->b = new int;
+}

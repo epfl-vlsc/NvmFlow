@@ -26,7 +26,12 @@ bool ParsePass::runOnModule(Module& M) {
     errs() << F.getName() << "\n";
     for (auto& I : instructions(F)) {
       auto pv = InstrParser::parseInstruction(&I);
-      pv.print(errs());
+
+      if (pv.isUsed()) {
+        //pv.print(errs());
+        //errs() << "\n";
+        //errs() << I << "\n";
+      }
     }
   }
 

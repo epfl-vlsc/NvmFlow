@@ -12,7 +12,13 @@ class NameFilter {
 public:
   static bool isFlush(CallInst* ci) {
     auto* f = ci->getCalledFunction();
+    if (!f)
+      return false;
+
     auto n = f->getName();
+    if (n.empty())
+      return false;
+
     for (auto name : flushNames) {
       if (n.equals(name)) {
         return true;

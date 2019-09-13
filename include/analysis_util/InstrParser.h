@@ -1,6 +1,7 @@
 #pragma once
 #include "Common.h"
 #include "data_util/NameFilter.h"
+#include "llvm/IR/InstVisitor.h"
 #include "llvm/Transforms/Utils/Local.h"
 
 namespace llvm {
@@ -141,6 +142,82 @@ struct ParsedVariable {
   }
 };
 
+struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
+  using BaseVisitor = InstVisitor<LocalVarVisitor, Value*>;
+
+  Value* visitInstruction(Instruction& I) {
+    errs() << "instr:" << I.getOpcodeName() << I << "\n";
+    report_fatal_error("parse fail - not supported");
+    return nullptr;
+  }
+
+  Value* visitStore(StoreInst& I) {
+    auto* v = I.getPointerOperand();
+    return visit(*v);
+  }
+
+  Value* visitCastInst(CastInst& I) {
+    auto* v = I.getOperand(0);
+    return visit(*v);
+  }
+
+  Value* visitGetElementPtrInst(GetElementPtrInst& I) {
+    auto* v = I.getPointerOperand();
+    return visit(*v);
+  }
+
+  Value* visitLoadInst(LoadInst& I) {
+    auto* v = I.getPointerOperand();
+    return visit(*v);
+  }
+
+  Value* visitIntrinsicInst(IntrinsicInst& I) {
+    auto* v = I.getOperand(0);
+    return visit(*v);
+  }
+
+  Value* visitCallInst(CallInst& I) {
+    if (NameFilter::isFlush(&I)) {
+      auto* v = I.getOperand(0);
+      return visit(*v);
+    } else {
+      return &I;
+    }
+  }
+
+  Value* visitPHINode(PHINode& I) { return &I; }
+
+  Value* visitAllocaInst(AllocaInst& I) { return &I; }
+
+  Value* visitBinaryOperator(BinaryOperator& I) {
+    auto* v = I.getOperand(0);
+    return visit(*v);
+  }
+
+  Value* visitPtrToIntInst(PtrToIntInst& I) {
+    auto* v = I.getPointerOperand();
+    return visit(*v);
+  }
+
+  Value* visitInvokeInst(InvokeInst& I) {
+    return &I;
+  }
+
+  Value* visit(Value& V) {
+    if (auto* a = dyn_cast<Argument>(&V)) {
+      return a;
+    } else if (auto* c = dyn_cast<Constant>(&V)) {
+      return c;
+    } else if (auto* i = dyn_cast<Instruction>(&V)) {
+      return BaseVisitor::visit(*i);
+    }
+
+    errs() << "value:" << V << "\n";
+    report_fatal_error("parse fail - not supported");
+    return nullptr;
+  }
+};
+
 class InstrParser {
   static constexpr const StringRef EmptyRef;
 
@@ -187,43 +264,13 @@ class InstrParser {
     return eType->isPointerTy();
   }
 
-  static Value* getLocalVar(Value* i) {
-    auto* v = i;
+  static Value* getLocalVar(Instruction* i) {
+    assert(i);
+    LocalVarVisitor lvv;
+    auto* localVar = lvv.visit(*i);
 
-    assert(v);
-    while (true) {
-      if (auto* ci = dyn_cast<CastInst>(v)) {
-        v = ci->getOperand(0);
-      } else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
-        v = gepi->getPointerOperand();
-      } else if (auto* li = dyn_cast<LoadInst>(v)) {
-        v = li->getPointerOperand();
-      } else if (auto* si = dyn_cast<StoreInst>(v)) {
-        v = si->getPointerOperand();
-      } else if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
-        return ii->getOperand(0);
-      } else if (auto* cai = dyn_cast<CallInst>(v)) {
-        if (NameFilter::isFlush(cai)) {
-          v = cai->getOperand(0);
-        } else {
-          return cai;
-        }
-      } else if (auto* ai = dyn_cast<AllocaInst>(v)) {
-        return ai;
-      } else if (auto* a = dyn_cast<Argument>(v)) {
-        return a;
-      } else if (auto* c = dyn_cast<Constant>(v)) {
-        return c;
-      } else if (auto* phi = dyn_cast<PHINode>(v)) {
-        return phi;
-      } else {
-        break;
-      }
-    }
-
-    errs() << "v:" << *v << " i:" << *i << "\n";
-    report_fatal_error("could not find local variable value");
-    return nullptr;
+    assert(localVar);
+    return localVar;
   }
 
   static bool isUsed(Instruction* i) {
