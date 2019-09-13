@@ -23,6 +23,8 @@ struct ParsedVariable {
   VarCat vc;
   RefCat rt;
   Type* type;
+
+  // field information
   StructType* st;
   int idx;
   StringRef annotation;
@@ -32,7 +34,7 @@ struct ParsedVariable {
 
   // objptr
   ParsedVariable(Value* opndVar_, Value* localVar_, InsCat ic_, bool isLocRef)
-      : opndVar(opndVar_), localVar(localVar_), ic(ic_), vc(ObjPtr),
+      : ic(ic_), opndVar(opndVar_), localVar(localVar_), vc(ObjPtr),
         rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
     assert(opndVar && localVar);
   }
@@ -41,33 +43,11 @@ struct ParsedVariable {
   ParsedVariable(Value* opndVar_, Value* localVar_, InsCat ic_, bool isPtr,
                  bool isLocRef, StructType* st_, int idx_,
                  StringRef annotation_)
-      : opndVar(opndVar_), localVar(localVar_), ic(ic_),
+      : ic(ic_), opndVar(opndVar_), localVar(localVar_),
         vc(isPtr ? FieldPtr : FieldData), rt(isLocRef ? LocRef : VarRef),
         st(st_), idx(idx_), annotation(annotation_) {
     assert(opndVar && localVar);
     assert(st && idx >= 0);
-  }
-
-  void print(raw_ostream& O) const {
-    O << "|" << ICStr[(int)ic];
-    O << " " << VCStr[(int)vc];
-    if (!isUsed()) {
-      O << "|";
-      return;
-    }
-
-    O << " " << RCStr[(int)rt];
-
-    O << " opnd:" << *opndVar;
-    O << " local:" << *localVar;
-
-    if (isField())
-      O << " " << st->getStructName() << " " << std::to_string(idx);
-
-    if (isAnnotated())
-      O << " " << annotation;
-
-    O << "|";
   }
 
   static auto getInstCat(Instruction* i) {
@@ -107,24 +87,19 @@ struct ParsedVariable {
     return objType;
   }
 
-  auto* getObjType() {
-    if (st) {
-      return (Type*)st;
+  Type* getObjType() const {
+    if (isField()) {
+      assert(st);
+      return st;
     } else {
-      Type* objType = nullptr;
       assert(localVar);
       auto* type = localVar->getType();
-      assert(type && type->isPointerTy());
-      while (type && type->isPointerTy()) {
-        auto* ptrType = dyn_cast<PointerType>(type);
-        type = ptrType->getPointerElementType();
-      }
-      objType = type;
-      return objType;
+      type = stripPointers(type);
+      return type;
     }
   }
 
-  auto getStructInfo() {
+  auto getStructInfo() const {
     assert(st && idx >= 0);
     return std::pair(st, idx);
   }
@@ -138,79 +113,83 @@ struct ParsedVariable {
     assert(localVar);
     return localVar;
   }
+
+  void print(raw_ostream& O) const {
+    O << "|" << ICStr[(int)ic];
+    O << " " << VCStr[(int)vc];
+    if (!isUsed()) {
+      O << "|";
+      return;
+    }
+
+    O << " " << RCStr[(int)rt];
+
+    auto* type = getObjType();
+    O << " ";
+    type->print(O);
+
+    O << " opnd:" << *opndVar;
+    O << " local:" << *localVar;
+
+    if (isField())
+      O << " " << st->getStructName() << " " << std::to_string(idx);
+
+    if (isAnnotated())
+      O << " " << annotation;
+
+    O << "|";
+  }
 };
 
 class InstrParser {
   static constexpr const StringRef EmptyRef;
-  /*
-    static auto getLocalVar(GetElementPtrInst* gepi) {
-      assert(gepi);
-      return gepi->getPointerOperand();
-    }
 
-    static auto getStructInfo(GetElementPtrInst* gepi) {
-      assert(gepi);
+  static auto getStructInfo(GetElementPtrInst* gepi) {
+    assert(gepi);
 
-      Type* type = gepi->getSourceElementType();
-      StructType* st = dyn_cast<StructType>(type);
+    Type* type = gepi->getSourceElementType();
+    StructType* st = dyn_cast<StructType>(type);
 
-      ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
+    ConstantInt* index = dyn_cast<ConstantInt>((gepi->idx_end() - 1)->get());
 
-      int idx = -1;
-      if (index)
-        idx = (int)index->getValue().getZExtValue();
+    int idx = -1;
+    if (index)
+      idx = (int)index->getValue().getZExtValue();
 
-      return std::pair(st, idx);
-    }
-
-    static auto getAnnotation(IntrinsicInst* ii) {
-      static const StringRef emptyStr = StringRef("");
-      static const unsigned llvm_ptr_annotation = 186;
-
-      assert(ii);
-
-      if (ii->getIntrinsicID() == llvm_ptr_annotation) {
-        if (ConstantExpr* gepi = dyn_cast<ConstantExpr>(ii->getArgOperand(1))) {
-          GlobalVariable* AnnotationGL =
-              dyn_cast<GlobalVariable>(gepi->getOperand(0));
-          StringRef fieldAnnotation =
-              dyn_cast<ConstantDataArray>(AnnotationGL->getInitializer())
-                  ->getAsCString();
-          return fieldAnnotation;
-        }
-      }
-      return emptyStr;
-    }
-
-
-
-
-
-    static bool usesPtr(Value* opnd) {
-      // assume islocref is false
-      auto* type = opnd->getType();
-      auto* ptrType = dyn_cast<PointerType>(type);
-      assert(ptrType);
-      auto* eType = ptrType->getPointerElementType();
-      return eType->isPointerTy();
-    }
-  */
-
-  static auto* stripCast(Value* v) {
-    assert(v);
-    while (true) {
-      if (auto* ci = dyn_cast<CastInst>(v)) {
-        v = ci->getOperand(0);
-      } else {
-        return v;
-      }
-    }
-
-    report_fatal_error("went back too much");
-    return (Value*)nullptr;
+    return std::pair(st, idx);
   }
 
-  static Value* getLocalVar(Value* v) {
+  static auto getAnnotation(IntrinsicInst* ii) {
+    static const StringRef emptyStr = StringRef("");
+    static const unsigned llvm_ptr_annotation = 186;
+
+    assert(ii);
+
+    if (ii->getIntrinsicID() == llvm_ptr_annotation) {
+      if (ConstantExpr* gepi = dyn_cast<ConstantExpr>(ii->getArgOperand(1))) {
+        GlobalVariable* AnnotationGL =
+            dyn_cast<GlobalVariable>(gepi->getOperand(0));
+        StringRef fieldAnnotation =
+            dyn_cast<ConstantDataArray>(AnnotationGL->getInitializer())
+                ->getAsCString();
+        return fieldAnnotation;
+      }
+    }
+    return emptyStr;
+  }
+
+  static bool usesPtr(Value* opnd) {
+    // assume islocref is false
+    auto* type = opnd->getType();
+    auto* ptrType = dyn_cast<PointerType>(type);
+    assert(ptrType);
+    auto* eType = ptrType->getPointerElementType();
+    return eType->isPointerTy();
+  }
+
+  static Value* getLocalVar(Value* i) {
+    auto* v = i;
+
     assert(v);
     while (true) {
       if (auto* ci = dyn_cast<CastInst>(v)) {
@@ -233,12 +212,16 @@ class InstrParser {
         return ai;
       } else if (auto* a = dyn_cast<Argument>(v)) {
         return a;
+      } else if (auto* c = dyn_cast<Constant>(v)) {
+        return c;
+      } else if (auto* phi = dyn_cast<PHINode>(v)) {
+        return phi;
       } else {
-        errs() << *v << "\n";
         break;
       }
     }
 
+    errs() << "v:" << *v << " i:" << *i << "\n";
     report_fatal_error("could not find local variable value");
     return nullptr;
   }
@@ -268,7 +251,6 @@ public:
   }
 
   static auto parseInstruction(Instruction* i) {
-    errs() << *i << "\n";
     if (!isUsed(i))
       return ParsedVariable();
 
@@ -281,50 +263,51 @@ public:
     bool isLocRef = false; //////
     StringRef annotation = EmptyRef;
 
-    // get rid of pointers
-    auto* v = skipBackwards(opnd);
+    // skip cast
+    auto* v = stripCasts(opndVar);
 
     // ref
     if (auto* li = dyn_cast<LoadInst>(v)) {
       // use location
       v = li->getPointerOperand();
-      v = skipBackwards(v);
       isLocRef = true;
       isPtr = true;
     } else {
       // use variable
-      isPtr = usesPtr(opnd);
+      isPtr = usesPtr(opndVar);
     }
+
+    // skip cast
+    v = stripCasts(v);
 
     // check annotation
     if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
       annotation = getAnnotation(ii);
       v = ii->getOperand(0);
-      v = skipBackwards(v);
     }
+
+    // skip cast
+    v = stripCasts(v);
 
     // check field/objptr
     if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
       // field
-      auto* localVar = getLocalVar(gepi);
       auto [type, idx] = getStructInfo(gepi);
       if (type && isa<StructType>(type)) {
         auto* st = dyn_cast<StructType>(type);
-        return ParsedVariable(opnd, localVar, instCat, isPtr, isLocRef, st, idx,
-                              annotation);
+        return ParsedVariable(opndVar, localVar, instCat, isPtr, isLocRef, st,
+                              idx, annotation);
       }
     } else if (auto* ai = dyn_cast<AllocaInst>(v)) {
       // objptr
-      auto* localVar = ai;
-
-      return ParsedVariable(opnd, localVar, instCat, isLocRef);
+      return ParsedVariable(opndVar, localVar, instCat, isLocRef);
     } else if (auto* a = dyn_cast<Argument>(v)) {
       // objptr
-      auto* localVar = a;
-
-      return ParsedVariable(opnd, localVar, instCat, isLocRef);
+      return ParsedVariable(opndVar, localVar, instCat, isLocRef);
     }
-    * / return ParsedVariable();
+
+    // not essential
+    return ParsedVariable();
   }
 
   template <typename StructTypes>

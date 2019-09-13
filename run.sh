@@ -100,6 +100,6 @@ elif [ "$MODE" == "ll" ] ;then
 elif [ "$MODE" == "rem_ir" ] ;then
 	clean_ir
 else
-	echo "pair, dur, log, exp, cons, simp, alias, parse, make, build, ir, rem_ir"
+	echo "pair, dur, log, make, build, ir, rem_ir"
 fi
 #commands----------------------------------------------------
