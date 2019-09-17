@@ -20,19 +20,16 @@ struct InstrInfo {
       "write", "flush", "flushfence", "vfence", "pfence", "ip", "none"};
   Instruction* instr;
   InstrType instrType;
-
-  Variable* varLhs;
-  ParsedVariable pvLhs;
-
-  Variable* varRhs;
-  ParsedVariable pvRhs;
+  Variable* var;
+  ParsedVariable pv;
+  Value* rhsAlias;
 
   InstrInfo() : instrType(None) {}
 
-  InstrInfo(Instruction* instr_, InstrType instrType_, Variable* varLhs_,
-            ParsedVariable pvLhs_, Variable* varRhs_, ParsedVariable pvRhs_)
-      : instr(instr_), instrType(instrType_), varLhs(varLhs_), pvLhs(pvLhs),
-        varRhs(varRhs_), pvRhs(pvRhs_) {
+  InstrInfo(Instruction* instr_, InstrType instrType_, Variable* var_,
+            ParsedVariable pv_, Value* rhsAlias_)
+      : instr(instr_), instrType(instrType_), var(var_), pv(pv_),
+        rhsAlias(rhsAlias_) {
     assert(instr);
     assert(instrType != None);
   }
@@ -47,24 +44,19 @@ struct InstrInfo {
     return instrType == IpInstr;
   }
 
-  auto* getVariable(bool lhs = true) {
-    if (lhs) {
-      assert(varLhs);
-      return varLhs;
-    } else {
-      assert(varRhs);
-      return varRhs;
-    }
+  auto* getVariable() {
+    assert(var);
+    return var;
   }
 
-  auto getParsedVarInfo(bool lhs = true) const {
-    if (lhs) {
-      assert(pvLhs);
-      return pvLhs;
-    } else {
-      assert(pvRhs);
-      return pvRhs;
-    }
+  auto* getRhsAlias() {
+    assert(rhsAlias);
+    return rhsAlias;
+  }
+
+  auto getParsedVarInfo() const {
+    assert(pv.isUsed());
+    return pv;
   }
 
   auto* getInstruction() {
@@ -87,17 +79,14 @@ struct InstrInfo {
     if (!sl.empty())
       name += " " + sl;
 
-    if (varLhs)
-      name += " " + varLhs->getName();
-
-    if (varRhs)
-      name += " " + varRhs->getName();
+    if (var)
+      name += " " + var->getName();
     return name;
   }
 
   bool isUsedInstr() const { return instrType != None; }
 
-  bool isFlushBasedInstr() {
+  bool isFlushBasedInstr() const {
     return instrType == FlushInstr || instrType == FlushFenceInstr;
   }
 

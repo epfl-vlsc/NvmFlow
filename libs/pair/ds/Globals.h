@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Functions.h"
-#include "data_util/DbgInfo.h"
 #include "Locals.h"
+#include "data_util/DbgInfo.h"
 
 namespace llvm {
 
@@ -21,19 +21,13 @@ struct Globals {
 
   auto& getAnalyzedFunctions() { return functions.getAnalyzedFunctions(); }
 
-  void printFunctions(raw_ostream& O) const {
-    functions.print(O);
-  }
+  void printFunctions(raw_ostream& O) const { functions.print(O); }
 
-  void printDbgInfo(raw_ostream& O) const {
-    dbgInfo.print(O);
-  }
+  void printDbgInfo(raw_ostream& O) const { dbgInfo.print(O); }
 
   // locals methods----------------------------------
 
-  void setActiveFunction(Function* f) {
-    locals.setFunction(f);
-  }
+  void setActiveFunction(Function* f) { locals.setFunction(f); }
 
   auto& getVariables() { return locals.getVariables(); }
 
@@ -41,7 +35,7 @@ struct Globals {
     return locals.isIpInstruction(i);
   }
 
-  void printLocals(raw_ostream& O) const { locals.print(O);}
+  void printLocals(raw_ostream& O) const { locals.print(O); }
 };
 
 } // namespace llvm

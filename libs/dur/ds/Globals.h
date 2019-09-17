@@ -10,9 +10,8 @@ struct Globals {
   DbgInfo dbgInfo;
   Functions functions;
   Locals locals;
-  AAResults& AAR;
 
-  Globals(Module& M, AAResults& AAR_) : dbgInfo(M), AAR(AAR_) {}
+  Globals(Module& M, AAResults& AAR) : dbgInfo(M), locals(AAR) {}
 
   // globals methods----------------------------------
 
@@ -22,14 +21,9 @@ struct Globals {
 
   auto& getAnalyzedFunctions() { return functions.getAnalyzedFunctions(); }
 
-  auto& getAliasAnalysisResults() { return AAR; }
+  void printFunctions(raw_ostream& O) const { functions.print(O); }
 
-  void printFunctions(raw_ostream& O) const {
-    functions.print(O);
-    dbgInfo.print(O);
-  }
-
-  void createAliasGroups() { locals.createAliasGroups(&AAR); }
+  void printDbgInfo(raw_ostream& O) const { dbgInfo.print(O); }
 
   // locals methods----------------------------------
 

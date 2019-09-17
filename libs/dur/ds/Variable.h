@@ -5,44 +5,22 @@
 
 namespace llvm {
 
-
-class Variable{
-
-};
-
-
-
-class SingleVariable {
-  using VarSet = std::set<Variable*>;
+class Variable {
+  Value* localVar;
+  Value* aliasVal;
+  Type* type;
 
   StructField* sf;
-  Type* type;
-  AliasGroup* ag;
-  bool isLoc;
-  VarSet writeSet;
-  VarSet flushSet;
 
 public:
-  Variable(StructField* sf_, AliasGroup* ag_, bool isLoc_)
-      : sf(sf_), type(nullptr), ag(ag_), isLoc(isLoc_) {
-    assert(sf && ag_);
-  }
-  Variable(Type* type_, AliasGroup* ag_, bool isLoc_)
-      : sf(nullptr), type(type_), ag(ag_), isLoc(isLoc_) {
-    assert(type_ && ag_);
+  Variable(Value* localVar_, Value* aliasVal_, Type* type_, StructField* sf_)
+      : localVar(localVar_), aliasVal(aliasVal_), type(type_), sf(sf_) {
+    assert(sf);
   }
 
   bool isField() const { return sf != nullptr; }
 
-  bool isObj() const { return type != nullptr; }
-
-  void addToWriteSet(Variable* var) { writeSet.insert(var); }
-
-  void addToFlushSet(Variable* var) { flushSet.insert(var); }
-
-  auto& getWriteSet() { return writeSet; }
-
-  auto& getFlushSet() { return flushSet; }
+  bool isObj() const { return sf == nullptr; }
 
   void print(raw_ostream& O) const;
 
@@ -55,10 +33,14 @@ public:
   }
 
   bool operator<(const Variable& X) const {
-    return std::tie(sf, st) < std::tie(X.sf, X.st);
+    return std::tie(localVar, aliasVal, type, sf) <
+           std::tie(X.localVar, X.aliasVal, X.type, X.sf);
   }
 
-  bool operator==(const Variable& X) const { return sf == X.sf && st == X.st; }
+  bool operator==(const Variable& X) const {
+    return localVar == X.localVar && aliasVal == X.aliasVal && type == X.type &&
+           sf == X.sf;
+  }
 };
 
 } // namespace llvm
