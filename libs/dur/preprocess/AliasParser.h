@@ -12,6 +12,13 @@ template <typename Globals> class AliasParser {
 
   static constexpr const char* DurableField = "DurableField";
 
+  struct LocRefData {
+    Instruction* instr;
+    InstrType instrType;
+    Variable var;
+    Value* rhsAlias;
+  };
+
   auto getCallInstrType(CallInst* ci) const {
     auto* callee = ci->getCalledFunction();
 
@@ -43,7 +50,7 @@ template <typename Globals> class AliasParser {
   void addVarReferences(Function* func) {
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
-        //get instruction type
+        // get instruction type
         auto instrType = getInstrType(&I);
         if (!InstrInfo::isUsedInstr(instrType))
           continue;
@@ -59,23 +66,10 @@ template <typename Globals> class AliasParser {
         if (!pv.isUsed())
           continue;
 
-        pv.print(errs());
-        errs() << "\n";
-
-        // skip calls
-
         // check tracked types
         auto* type = pv.getType();
         if (!globals.dbgInfo.isTrackedType(type))
           continue;
-
-        // deal with local references after alias information
-        if (pv.isLocRef()) {
-          locReferences[&I] = pv;
-          continue;
-        }
-
-        // only var references in this loop
 
         // variable info
         StructField* sf = nullptr;
@@ -95,13 +89,20 @@ template <typename Globals> class AliasParser {
         auto* lv = pv.getLocalVar();
         // todo need to handle phi
         auto* diVar = globals.dbgInfo.getDILocalVariable(lv);
-        auto localName = diVar->getName();
+        std::string localName = (diVar) ? diVar->getName().str() : "";
 
         auto var = Variable::getVariable(pv, sf, annotated, localName);
-        auto* varPtr = globals.locals.addVariable(var);
-
         auto* rhs = pv.getRhs();
-        globals.locals.addInstrInfo(&I, instrType, varPtr, nullptr);
+
+        // only var references in this loop
+        if (pv.isLocRef()) {
+          // location references
+          locReferences.push_back({&I, instrType, var, rhs});
+        } else {
+          // var references
+          auto* varPtr = globals.locals.addVariable(var);
+          globals.locals.addInstrInfo(&I, instrType, varPtr, rhs);
+        }
       }
     }
   }
@@ -117,7 +118,7 @@ template <typename Globals> class AliasParser {
   }
 
   Globals& globals;
-  std::map<Instruction*, ParsedVariable> locReferences;
+  std::vector<LocRefData> locReferences;
 
 public:
   AliasParser(Globals& globals_) : globals(globals_) { addLocals(); }

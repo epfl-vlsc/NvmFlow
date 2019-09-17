@@ -13,10 +13,10 @@ class Variable {
   bool locRef;
 
   bool annotated;
-  StringRef localName;
+  std::string localName;
 
   Variable(Value* localVar_, Type* type_, StructField* sf_, bool locRef_,
-           bool annotated_, StringRef localName_)
+           bool annotated_, std::string localName_)
       : localVar(localVar_), type(type_), sf(sf_), locRef(locRef_),
         annotated(annotated_), localName(localName_) {
     assert(localVar && type);
@@ -24,7 +24,7 @@ class Variable {
 
 public:
   static Variable getVariable(ParsedVariable pv, StructField* sf,
-                              bool annotated, StringRef localName) {
+                              bool annotated, std::string localName) {
     auto* localVar = pv.getLocalVar();
     auto* type = pv.getType();
     bool locRef = pv.isLocRef();
