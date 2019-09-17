@@ -4,13 +4,13 @@
 
 namespace llvm {
 
-template<typename Functions, typename Locals>
-struct ProgramStore {
+template <typename Functions, typename Locals> struct ProgramStore {
   DbgInfo dbgInfo;
   Functions functions;
   Locals locals;
+  AAResults& AAR;
 
-  ProgramStore(Module& M, AAResults& AAR) : dbgInfo(M), locals(AAR) {}
+  ProgramStore(Module& M, AAResults& AAR_) : dbgInfo(M), AAR(AAR_) {}
 
   // globals methods----------------------------------
 
@@ -19,6 +19,8 @@ struct ProgramStore {
   void printFunctions(raw_ostream& O) const { functions.print(O); }
 
   void printDbgInfo(raw_ostream& O) const { dbgInfo.print(O); }
+
+  auto& getAliasAnalysis() { return AAR; }
 
   // locals methods----------------------------------
 

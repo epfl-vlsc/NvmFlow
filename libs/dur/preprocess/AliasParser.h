@@ -1,9 +1,9 @@
 #pragma once
 #include "Common.h"
 
+#include "analysis_util/AliasGroups.h"
 #include "ds/InstrInfo.h"
 #include "parser_util/InstrParser.h"
-#include "llvm/ADT/EquivalenceClasses.h"
 
 namespace llvm {
 
@@ -47,7 +47,7 @@ template <typename Globals> class AliasParser {
     return InstrType::None;
   }
 
-  void addVarReferences(Function* func) {
+  void addVarReferences(Function* func, AliasGroups& ag) {
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
         // get instruction type
@@ -94,6 +94,13 @@ template <typename Globals> class AliasParser {
         auto var = Variable::getVariable(pv, sf, annotated, localName);
         auto* rhs = pv.getRhs();
 
+        // create alias sets
+        auto* lhs = pv.getOpndVar();
+        ag.insert(lhs);
+        if (rhs) {
+          ag.insert(rhs);
+        }
+
         // only var references in this loop
         if (pv.isLocRef()) {
           // location references
@@ -107,13 +114,25 @@ template <typename Globals> class AliasParser {
     }
   }
 
-  void addLocReferences() {}
+  void addLocReferences(AliasGroups& ag) {
+    // create alias sets
+    std::map<int, Variable>;
+
+    for (auto [instr, instrType, var, rhsAlias] : locReferences) {
+      int 
+    }
+  }
 
   void addLocals() {
     for (auto* f : globals.functions.getAnalyzedFunctions()) {
       globals.setActiveFunction(f);
-      addVarReferences(f);
-      addLocReferences();
+
+      auto& AAR = globals.getAliasAnalysis();
+      AliasGroups ag(AAR);
+      addVarReferences(f, ag);
+
+      ag.print(errs());
+      addLocReferences(ag);
     }
   }
 

@@ -122,6 +122,11 @@ struct ParsedVariable {
     return localVar;
   }
 
+  auto* getOpndVar() {
+    assert(opndVar);
+    return opndVar;
+  }
+
   auto* getRhs() { return opndRhs; }
 
   void print(raw_ostream& O) const {

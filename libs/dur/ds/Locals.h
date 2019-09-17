@@ -28,10 +28,9 @@ class Locals {
 
   std::map<Function*, UnitInfo> unitMap;
   UnitInfo* activeUnit;
-  AAResults& AAR;
 
 public:
-  Locals(AAResults& AAR_) : activeUnit(nullptr), AAR(AAR_) {}
+  Locals() : activeUnit(nullptr) {}
 
   void print(raw_ostream& O) const {
     assert(activeUnit);
@@ -131,7 +130,7 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
-      O << "\t" << ii.getName() << "\n";
+    O << "\t" << ii.getName() << "\n";
   }
 
   O << "alias samples:---\n";
