@@ -6,40 +6,37 @@
 #include "Lattice.h"
 #include "Transfer.h"
 #include "analysis_util/DataflowAnalysis.h"
-#include "ds/Units.h"
+#include "analysis_util/DataflowResults.h"
+#include "ds/Globals.h"
 
 namespace llvm {
 
 class StateMachine {
 public:
   using AbstractState = AbstractState;
+  using AllResults = DataflowResults<AbstractState>;
 
 private:
-  Units& units;
+  Globals& globals;
   BugReporter breporter;
   Transfer transfer;
+  AllResults allResults;
 
 public:
-  StateMachine(Module& M_, Units& units_)
-      : units(units_), breporter(units_), transfer(M_, units_, breporter) {}
+  StateMachine(Module& M_, Globals& globals_)
+      : globals(globals_), breporter(globals_, allResults),
+        transfer(M_, globals_) {}
 
   void analyze(Function* function) {
-    units.setActiveFunction(function);
+    DataflowAnalysis dataflow(function, allResults, *this);
 
 #ifdef DBGMODE
-    errs() << "\n\n";
-    units.printVariables(errs());
+    allResults.print(errs());
 #endif
 
-    breporter.initUnit(function);
+    // breporter.checkBugs(function);
 
-    DataflowAnalysis dataflow(function, *this);
-
-#ifdef DBGMODE
-    dataflow.print(errs());
-#endif
-
-    breporter.print(errs());
+    allResults.clear();
   }
 
   void initLatticeValues(AbstractState& state) {
@@ -51,10 +48,10 @@ public:
   }
 
   bool isIpInstruction(Instruction* i) const {
-    return units.isIpInstruction(i);
+    return globals.isIpInstruction(i);
   }
 
-  auto& getAnalyzedFunctions() { return units.getAnalyzedFunctions(); }
+  auto& getAnalyzedFunctions() { return globals.getAnalyzedFunctions(); }
 };
 
 } // namespace llvm

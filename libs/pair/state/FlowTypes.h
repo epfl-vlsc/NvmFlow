@@ -1,8 +1,8 @@
 #pragma once
 #include "Common.h"
 
-#include "../ds/Variable.h"
 #include "Lattice.h"
+#include "ds/Variable.h"
 
 namespace llvm {
 

@@ -41,7 +41,7 @@ class Transfer {
     auto& val = state[var];
 
     val = LatVal::getDclFlushFlush(val);
-  
+
     if (val.isDclCommitWrite()) {
       if (useFence) {
         val = LatVal::getCommitFence(val);
@@ -53,8 +53,6 @@ class Transfer {
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
     auto* var = ii->getVariable();
-    assert(var);
-
     doFlush(var, state, useFence);
 
     for (auto* fvar : var->getFlushSet()) {
@@ -66,14 +64,11 @@ class Transfer {
 
   void doWrite(Variable* var, AbstractState& state) {
     auto& val = state[var];
-
     val = LatVal::getWrite(val);
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    assert(var);
-
     doWrite(var, state);
 
     for (auto* wvar : var->getWriteSet()) {
@@ -86,8 +81,7 @@ class Transfer {
   Globals& globals;
 
 public:
-  Transfer(Module& M_, Globals& globals_)
-      : globals(globals_){}
+  Transfer(Module& M_, Globals& globals_) : globals(globals_) {}
 
   ~Transfer() {}
 
