@@ -1,4 +1,17 @@
 #include "DurPass.h"
+#include "analysis_util/Analyzer.h"
+#include "ds/Functions.h"
+#include "ds/Locals.h"
+#include "ds/Variable.h"
+#include "preprocess/VariableParser.h"
+
+#include "state/Lattice.h"
+
+/*
+#include "state/BugReporter.h"
+#include "state/Transfer.h"
+
+*/
 
 namespace llvm {
 
@@ -11,11 +24,17 @@ bool DurPass::runOnModule(Module& M) {
   auto& TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   AAResults AAR(TLI);
 
-  //boost analysis with andersen analysis
+  // boost analysis with andersen analysis
   auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(aaResults);
 
-  Analyzer analyzer(M, AAR);
+  using Globals = ProgramStore<Functions, Locals>;
+  using VarParser = VariableParser<Globals>;
+
+  using State = std::map<Variable*, Lattice>;
+
+  using DurAnalyzer = Analyzer<Globals, VarParser, State>;
+  DurAnalyzer analyzer(M, AAR);
   return false;
 }
 

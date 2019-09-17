@@ -1,16 +1,18 @@
 #pragma once
 #include "BugData.h"
 #include "Common.h"
-#include "FlowTypes.h"
 #include "analysis_util/Backtrace.h"
 #include "analysis_util/DataflowResults.h"
 #include "analysis_util/DfUtil.h"
-#include "ds/Globals.h"
 
 namespace llvm {
 
+template<typename Globals, typename State>
 class BugReporter {
+  using FunctionResults = std::map<Value*, AbstractState>;
+  using ContextResults = std::map<Context, FunctionResults>;
   using AllResults = DataflowResults<AbstractState>;
+  
   using BuggedVars = std::set<Variable*>;
   using SeenContext = std::set<Context>;
   using ContextList = std::vector<Context>;
@@ -38,72 +40,11 @@ class BugReporter {
   }
 
   bool reportWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
-    if (buggedVars.count(var))
-      return false;
-
-    // look at each pair
-    for (auto* pair : var->getPairs()) {
-      auto* pairVar = pair->getOther(var);
-
-      if (buggedVars.count(pairVar))
-        continue;
-
-      auto& pairVal = state[pairVar];
-
-      bool isSentinelFirst = pairVal.isUnseen() && pair->isSentinel(var);
-      bool isNotCommitted = (pair->isDcl())
-                                ? pairVal.isDclCommitWriteFlush()
-                                : isNotCommitted = pairVal.isSclCommitWrite();
-      auto eqCommitFn = (pair->isDcl()) ? sameDclCommit : sameSclCommit;
-
-      if (!isSentinelFirst && !isNotCommitted)
-        return false;
-
-      // ensure same bug is not reported
-      buggedVars.insert(var);
-      buggedVars.insert(pairVar);
-      bugNo++;
-
-      // bug details
-      auto varName = getVarName(var, ii);
-      auto srcLoc = ii->getSrcLoc();
-
-      // check sentinel bug
-      if (isSentinelFirst) {
-        auto pairVarName = getVarName(pairVar, ii);
-        SentinelFirstBug::report(varName, pairVarName, srcLoc);
-        return true;
-      }
-
-      if (isNotCommitted) {
-        Backtrace backtrace(topFunction);
-        auto* instr = ii->getInstruction();
-        auto* prevInstr = backtrace.getValueInstruction(
-            instr, pairVar, allResults, contextList, eqCommitFn,
-            InstrLoc::SameLast);
-        assert(prevInstr);
-        auto* prevII = globals.locals.getInstrInfo(prevInstr);
-        auto prevLoc = prevII->getSrcLoc();
-        auto pairVarName = getVarName(pairVar, ii);
-        NotCommittedBug::report(varName, pairVarName, srcLoc, prevLoc);
-        return true;
-      }
-    }
 
     return false;
   }
 
-  void checkWrite(InstrInfo* ii, AbstractState& state) {
-    auto* var = ii->getVariable();
-
-    if (reportWriteBug(var, ii, state))
-      return;
-
-    for (auto* wvar : var->getWriteSet()) {
-      if (reportWriteBug(wvar, ii, state))
-        return;
-    }
-  }
+  void checkWrite(InstrInfo* ii, AbstractState& state) {}
 
   void checkFlush(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();

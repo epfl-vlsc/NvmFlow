@@ -1,31 +1,28 @@
 #pragma once
 #include "Common.h"
 
-#include "BugReporter.h"
-#include "FlowTypes.h"
-#include "Lattice.h"
-#include "Transfer.h"
-#include "analysis_util/DataflowAnalysis.h"
-#include "analysis_util/DataflowResults.h"
-#include "ds/Globals.h"
+#include "DataflowAnalysis.h"
+#include "DataflowResults.h"
 
 namespace llvm {
 
+template <typename Globals, typename Variable, typename Lattice,
+          typename Transition, typename BReporter>
 class StateMachine {
 public:
-  using AbstractState = AbstractState;
+  
   using AllResults = DataflowResults<AbstractState>;
 
 private:
   Globals& globals;
-  BugReporter breporter;
-  Transfer transfer;
+  Transition transition;
+  BReporter breporter;
   AllResults allResults;
 
 public:
   StateMachine(Module& M_, Globals& globals_)
-      : globals(globals_), breporter(globals_, allResults),
-        transfer(M_, globals_) {}
+      : globals(globals_), transition(M_, globals_),
+        breporter(globals_, allResults) {}
 
   void analyze(Function* function) {
     DataflowAnalysis dataflow(function, allResults, *this);
@@ -40,11 +37,11 @@ public:
   }
 
   void initLatticeValues(AbstractState& state) {
-    transfer.initLatticeValues(state);
+    transition.initLatticeValues(state);
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
-    return transfer.handleInstruction(i, state);
+    return transition.handleInstruction(i, state);
   }
 
   bool isIpInstruction(Instruction* i) const {

@@ -1,23 +1,18 @@
 #pragma once
 
-#include "Functions.h"
-#include "Locals.h"
 #include "data_util/DbgInfo.h"
 
 namespace llvm {
 
-struct Globals {
+template<typename Functions, typename Locals>
+struct ProgramStore {
   DbgInfo dbgInfo;
   Functions functions;
   Locals locals;
 
-  Globals(Module& M, AAResults& AAR) : dbgInfo(M), locals(AAR) {}
+  ProgramStore(Module& M, AAResults& AAR) : dbgInfo(M), locals(AAR) {}
 
   // globals methods----------------------------------
-
-  void printFunctionNames(raw_ostream& O) const {
-    dbgInfo.printFunctionNames(O);
-  }
 
   auto& getAnalyzedFunctions() { return functions.getAnalyzedFunctions(); }
 

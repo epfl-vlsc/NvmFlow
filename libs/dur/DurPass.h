@@ -1,6 +1,5 @@
 #pragma once
 #include "Common.h"
-#include "Analyzer.h"
 
 namespace llvm {
 
@@ -11,9 +10,9 @@ struct DurPass : public ModulePass {
 
   bool runOnModule(Module& M) override;
 
-  void print(raw_ostream &OS, const Module *m) const override;
+  void print(raw_ostream& OS, const Module* m) const override;
 
-  void getAnalysisUsage(AnalysisUsage &AU) const override;
+  void getAnalysisUsage(AnalysisUsage& AU) const override;
 };
 
 } // namespace llvm

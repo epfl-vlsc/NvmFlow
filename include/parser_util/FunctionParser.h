@@ -1,11 +1,10 @@
 #pragma once
 #include "Common.h"
 #include "analysis_util/Traversal.h"
-#include "ds/Globals.h"
 
 namespace llvm {
 
-class FunctionParser {
+template <typename Globals> class FunctionParser {
   static constexpr const char* GLOBAL_ANNOT = "llvm.global.annotations";
 
   void insertAnnotatedFunctions() {
@@ -33,15 +32,8 @@ class FunctionParser {
 
   void insertNamedFunctions() {
     for (auto& F : M) {
-      auto* f = &F;
-      auto mangledName = f->getName();
-
-      if (!globals.dbgInfo.functionExists(mangledName)) {
-        continue;
-      }
-
-      auto realName = globals.dbgInfo.getFunctionName(mangledName);
-      globals.functions.insertNamedFunction(f, realName);
+      auto mangledName = F.getName();
+      globals.functions.insertNamedFunction(&F, mangledName);
     }
   }
 
