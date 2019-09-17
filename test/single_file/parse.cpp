@@ -78,3 +78,15 @@ struct C {
     pm_clflush(a);
   }
 };
+
+void ptrs(int* a) {
+  a = new int(2);
+  *a = 5;
+  pm_clflush(&a);
+  pm_clflush(a);
+
+  int* b = new int(2);
+  *b = 5;
+  pm_clflush(&b);
+  pm_clflush(b);
+}

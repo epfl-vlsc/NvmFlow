@@ -321,9 +321,8 @@ public:
     auto* opndVar = getOpndVar(i);
     auto* localVar = getLocalVar(i);
     auto* type = getOpndType(i);
-    errs() << "f:" << *type << "\n";
 
-    // fill parsed variable
+    // fill parsed variable----------------------------------
     bool isPtr = false;    ////////
     bool isLocRef = false; //////
     StringRef annotation = EmptyRef;
@@ -331,7 +330,7 @@ public:
     // skip cast
     auto* v = stripCasts(opndVar);
 
-    // ref
+    // ref-------------------------------------------------
     if (auto* li = dyn_cast<LoadInst>(v)) {
       // use location
       v = li->getPointerOperand();
@@ -339,25 +338,37 @@ public:
       isPtr = true;
     } else {
       // use variable
-      type = getPtrElementType(type);
-      errs() << "s:" << *type << "\n";
       isPtr = usesPtr(opndVar);
     }
 
-    // skip cast
+    // skip cast------------------------------------------
     v = stripCasts(v);
 
-    // check annotation
+    // check annotation----------------------------------
     if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
       annotation = getAnnotation(ii);
       v = ii->getOperand(0);
     }
 
-    // skip cast
+    // skip cast------------------------------------------
     v = stripCasts(v);
 
+    // fix type and locref---------------------------------
+    if (isa<CallInst>(v) || isa<Argument>(v)) {
+      isLocRef = true;
+      isPtr = true;
+    }
+
+    if (!isLocRef)
+      type = getPtrElementType(type);
+
+    // fix type for varRef---------------------------------------------
+    if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v)) {
+      // objptr
+      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef);
+    }
     // check field/objptr
-    if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
+    else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
       // field
       auto [st, idx] = getStructInfo(gepi);
       if (st && isa<StructType>(st)) {
@@ -365,12 +376,6 @@ public:
         return ParsedVariable(opndVar, localVar, type, instCat, isPtr, isLocRef,
                               structType, idx, annotation);
       }
-    } else if (auto* ai = dyn_cast<AllocaInst>(v)) {
-      // objptr
-      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef);
-    } else if (auto* a = dyn_cast<Argument>(v)) {
-      // objptr
-      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef);
     }
 
     // not essential
