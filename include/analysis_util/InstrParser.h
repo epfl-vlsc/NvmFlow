@@ -30,24 +30,28 @@ struct ParsedVariable {
   int idx;
   StringRef annotation;
 
+  // store info
+  Value* opndRhs;
+
   // none
   ParsedVariable() : ic(NoneIns), vc(NonePtr) {}
 
   // objptr
   ParsedVariable(Value* opndVar_, Value* localVar_, Type* type_, InsCat ic_,
-                 bool isLocRef)
+                 bool isLocRef, Value* opndRhs_)
       : ic(ic_), opndVar(opndVar_), localVar(localVar_), type(type_),
-        vc(ObjPtr), rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
+        vc(ObjPtr), rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1),
+        opndRhs(opndRhs_) {
     assert(opndVar && localVar && type);
   }
 
   // field
   ParsedVariable(Value* opndVar_, Value* localVar_, Type* type_, InsCat ic_,
                  bool isPtr, bool isLocRef, StructType* st_, int idx_,
-                 StringRef annotation_)
+                 StringRef annotation_, Value* opndRhs_)
       : ic(ic_), opndVar(opndVar_), localVar(localVar_), type(type_),
         vc(isPtr ? FieldPtr : FieldData), rt(isLocRef ? LocRef : VarRef),
-        st(st_), idx(idx_), annotation(annotation_) {
+        st(st_), idx(idx_), annotation(annotation_), opndRhs(opndRhs_) {
     assert(opndVar && localVar && type);
     assert(st && idx >= 0);
   }
@@ -131,7 +135,6 @@ struct ParsedVariable {
 
     O << " (type:" << *type << ")";
 
-    // O << " opnd:" << *opndVar;
     O << " (local:" << *localVar << ")";
 
     if (isField())
@@ -299,18 +302,19 @@ class InstrParser {
   }
 
 public:
-  static Value* getOpndVar(Instruction* i, bool lhs = true) {
+  static auto getOpndVar(Instruction* i) {
     assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      auto* opnd = (lhs) ? si->getPointerOperand() : si->getValueOperand();
-      return opnd;
+      auto* opndLhs = si->getPointerOperand();
+      auto* opndRhs = si->getValueOperand();
+      return std::pair(opndLhs, opndRhs);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       auto* opnd = ci->getArgOperand(0);
-      return opnd;
+      return std::pair(opnd, (Value*)nullptr);
     }
 
     report_fatal_error("wrong inst - opnd");
-    return nullptr;
+    return std::pair((Value*)nullptr, (Value*)nullptr);
   }
 
   static auto parseInstruction(Instruction* i) {
@@ -318,7 +322,7 @@ public:
       return ParsedVariable();
 
     auto instCat = ParsedVariable::getInstCat(i);
-    auto* opndVar = getOpndVar(i);
+    auto [opndVar, opndRhs] = getOpndVar(i);
     auto* localVar = getLocalVar(i);
     auto* type = getOpndType(i);
 
@@ -365,7 +369,8 @@ public:
     // fix type for varRef---------------------------------------------
     if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v)) {
       // objptr
-      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef);
+      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef,
+                            opndRhs);
     }
     // check field/objptr
     else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
@@ -374,7 +379,7 @@ public:
       if (st && isa<StructType>(st)) {
         auto* structType = dyn_cast<StructType>(st);
         return ParsedVariable(opndVar, localVar, type, instCat, isPtr, isLocRef,
-                              structType, idx, annotation);
+                              structType, idx, annotation, opndRhs);
       }
     }
 
