@@ -28,9 +28,9 @@ bool ParsePass::runOnModule(Module& M) {
       auto pv = InstrParser::parseInstruction(&I);
 
       if (pv.isUsed()) {
-        //pv.print(errs());
-        //errs() << "\n";
-        //errs() << I << "\n";
+        pv.print(errs());
+        errs() << "\n";
+        errs() << I << "\n";
       }
     }
   }

@@ -40,4 +40,14 @@ struct Dur {
       pm_clflush(ptr);
     next = ptr;
   }
+
+  void writeIpa(int* ptr) {
+    next = ptr;
+  }
+
+  void nvm_fnc ipa() {
+    auto* data = new int(5);
+    pm_clflushopt(data);
+    writeIpa(data);
+  }
 };

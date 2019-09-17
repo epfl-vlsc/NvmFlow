@@ -32,6 +32,12 @@ Type* stripPointers(Type* t) {
   return t;
 }
 
+Type* getPtrElementType(Type* t) {
+  assert(t && t->isPointerTy());
+  auto* pt = dyn_cast<PointerType>(t);
+  return pt->getPointerElementType();
+}
+
 struct DbgInstr {
   static auto getSourceLocation(Instruction* instruction,
                                 bool fullPath = false) {

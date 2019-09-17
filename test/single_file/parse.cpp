@@ -67,3 +67,14 @@ void checkPhi(A* a, A* b) {
 
   c->b = new int;
 }
+
+struct C {
+  int a[2];
+
+  void array() {
+    a[1] = 5;
+    pm_clflush(&a);
+    pm_clflush(&a[1]);
+    pm_clflush(a);
+  }
+};

@@ -21,9 +21,9 @@ struct ParsedVariable {
   InsCat ic;
   Value* opndVar;
   Value* localVar;
+  Type* type;
   VarCat vc;
   RefCat rt;
-  Type* type;
 
   // field information
   StructType* st;
@@ -34,20 +34,21 @@ struct ParsedVariable {
   ParsedVariable() : ic(NoneIns), vc(NonePtr) {}
 
   // objptr
-  ParsedVariable(Value* opndVar_, Value* localVar_, InsCat ic_, bool isLocRef)
-      : ic(ic_), opndVar(opndVar_), localVar(localVar_), vc(ObjPtr),
-        rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
-    assert(opndVar && localVar);
+  ParsedVariable(Value* opndVar_, Value* localVar_, Type* type_, InsCat ic_,
+                 bool isLocRef)
+      : ic(ic_), opndVar(opndVar_), localVar(localVar_), type(type_),
+        vc(ObjPtr), rt(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
+    assert(opndVar && localVar && type);
   }
 
   // field
-  ParsedVariable(Value* opndVar_, Value* localVar_, InsCat ic_, bool isPtr,
-                 bool isLocRef, StructType* st_, int idx_,
+  ParsedVariable(Value* opndVar_, Value* localVar_, Type* type_, InsCat ic_,
+                 bool isPtr, bool isLocRef, StructType* st_, int idx_,
                  StringRef annotation_)
-      : ic(ic_), opndVar(opndVar_), localVar(localVar_),
+      : ic(ic_), opndVar(opndVar_), localVar(localVar_), type(type_),
         vc(isPtr ? FieldPtr : FieldData), rt(isLocRef ? LocRef : VarRef),
         st(st_), idx(idx_), annotation(annotation_) {
-    assert(opndVar && localVar);
+    assert(opndVar && localVar && type);
     assert(st && idx >= 0);
   }
 
@@ -80,11 +81,11 @@ struct ParsedVariable {
 
   auto* getObjElementType() {
     assert(localVar);
-    auto* type = localVar->getType();
+    auto* oType = localVar->getType();
     assert(type->isPointerTy());
-    auto* ptrType = dyn_cast<PointerType>(type);
+    auto* ptrType = dyn_cast<PointerType>(oType);
     auto* objType = ptrType->getPointerElementType();
-    assert(type);
+    assert(objType);
     return objType;
   }
 
@@ -93,11 +94,14 @@ struct ParsedVariable {
       assert(st);
       return st;
     } else {
-      assert(localVar);
-      auto* type = localVar->getType();
-      type = stripPointers(type);
+      assert(type);
       return type;
     }
+  }
+
+  auto* getType() const {
+    assert(type);
+    return type;
   }
 
   auto getStructInfo() const {
@@ -116,27 +120,25 @@ struct ParsedVariable {
   }
 
   void print(raw_ostream& O) const {
-    O << "|" << ICStr[(int)ic];
-    O << " " << VCStr[(int)vc];
+    O << "|(" << ICStr[(int)ic];
+    O << "," << VCStr[(int)vc];
     if (!isUsed()) {
-      O << "|";
+      O << ")|";
       return;
     }
 
-    O << " " << RCStr[(int)rt];
+    O << "," << RCStr[(int)rt] << ")";
 
-    auto* type = getObjType();
-    O << " ";
-    type->print(O);
+    O << " (type:" << *type << ")";
 
-    O << " opnd:" << *opndVar;
-    O << " local:" << *localVar;
+    // O << " opnd:" << *opndVar;
+    O << " (local:" << *localVar << ")";
 
     if (isField())
-      O << " " << st->getStructName() << " " << std::to_string(idx);
+      O << " (" << st->getStructName() << "," << std::to_string(idx) << ")";
 
     if (isAnnotated())
-      O << " " << annotation;
+      O << " (" << annotation << ")";
 
     O << "|";
   }
@@ -199,9 +201,7 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
     return visit(*v);
   }
 
-  Value* visitInvokeInst(InvokeInst& I) {
-    return &I;
-  }
+  Value* visitInvokeInst(InvokeInst& I) { return &I; }
 
   Value* visit(Value& V) {
     if (auto* a = dyn_cast<Argument>(&V)) {
@@ -283,8 +283,24 @@ class InstrParser {
     return false;
   }
 
+  static Type* getOpndType(Instruction* i) {
+    assert(i);
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      return si->getPointerOperandType();
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      auto* opnd = ci->getArgOperand(0);
+      auto* castInst = dyn_cast<CastInst>(opnd);
+      assert(castInst);
+      return castInst->getSrcTy();
+    }
+
+    report_fatal_error("wrong inst - type");
+    return nullptr;
+  }
+
 public:
   static Value* getOpndVar(Instruction* i, bool lhs = true) {
+    assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
       auto* opnd = (lhs) ? si->getPointerOperand() : si->getValueOperand();
       return opnd;
@@ -293,7 +309,7 @@ public:
       return opnd;
     }
 
-    report_fatal_error("opnd has to have value");
+    report_fatal_error("wrong inst - opnd");
     return nullptr;
   }
 
@@ -304,6 +320,8 @@ public:
     auto instCat = ParsedVariable::getInstCat(i);
     auto* opndVar = getOpndVar(i);
     auto* localVar = getLocalVar(i);
+    auto* type = getOpndType(i);
+    errs() << "f:" << *type << "\n";
 
     // fill parsed variable
     bool isPtr = false;    ////////
@@ -321,6 +339,8 @@ public:
       isPtr = true;
     } else {
       // use variable
+      type = getPtrElementType(type);
+      errs() << "s:" << *type << "\n";
       isPtr = usesPtr(opndVar);
     }
 
@@ -339,18 +359,18 @@ public:
     // check field/objptr
     if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
       // field
-      auto [type, idx] = getStructInfo(gepi);
-      if (type && isa<StructType>(type)) {
-        auto* st = dyn_cast<StructType>(type);
-        return ParsedVariable(opndVar, localVar, instCat, isPtr, isLocRef, st,
-                              idx, annotation);
+      auto [st, idx] = getStructInfo(gepi);
+      if (st && isa<StructType>(st)) {
+        auto* structType = dyn_cast<StructType>(st);
+        return ParsedVariable(opndVar, localVar, type, instCat, isPtr, isLocRef,
+                              structType, idx, annotation);
       }
     } else if (auto* ai = dyn_cast<AllocaInst>(v)) {
       // objptr
-      return ParsedVariable(opndVar, localVar, instCat, isLocRef);
+      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef);
     } else if (auto* a = dyn_cast<Argument>(v)) {
       // objptr
-      return ParsedVariable(opndVar, localVar, instCat, isLocRef);
+      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef);
     }
 
     // not essential
