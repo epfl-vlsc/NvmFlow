@@ -9,7 +9,7 @@
 
 #include "analysis_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
-#include "analysis_util/MemoryUtil.h"
+#include "parser_util/InstrParser.h"
 
 #include <cassert>
 #include <set>
