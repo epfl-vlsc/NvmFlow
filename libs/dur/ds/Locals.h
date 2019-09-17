@@ -126,13 +126,11 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "variables:---\n";
   for (auto& var : vars) {
-    var.print(O);
-    O << "\n";
+    O << var.getName() << "\n";
   }
 
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
-    if (ii.isFlushBasedInstr())
       O << "\t" << ii.getName() << "\n";
   }
 

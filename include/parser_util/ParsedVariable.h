@@ -122,6 +122,8 @@ struct ParsedVariable {
     return localVar;
   }
 
+  auto* getRhs() { return opndRhs; }
+
   void print(raw_ostream& O) const {
     O << "|(" << ICStr[(int)ic];
     O << "," << VCStr[(int)vc];

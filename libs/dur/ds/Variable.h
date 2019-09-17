@@ -24,12 +24,10 @@ class Variable {
 
 public:
   static Variable getVariable(ParsedVariable pv, StructField* sf,
-                              StringRef localName) {
-    // use after passing durability conditions
+                              bool annotated, StringRef localName) {
     auto* localVar = pv.getLocalVar();
     auto* type = pv.getType();
     bool locRef = pv.isLocRef();
-    bool annotated = pv.isAnnotated();
     return Variable(localVar, type, sf, locRef, annotated, localName);
   }
 

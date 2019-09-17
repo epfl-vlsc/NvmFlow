@@ -43,11 +43,11 @@ class DbgInfo {
         Value* val = nullptr;
         DILocalVariable* var = nullptr;
 
-        //get debug information
+        // get debug information
         if (auto* dvi = dyn_cast<DbgValueInst>(&I)) {
           val = dvi->getValue();
           var = dvi->getVariable();
-        }else if(auto* ddi = dyn_cast<DbgDeclareInst>(&I)){
+        } else if (auto* ddi = dyn_cast<DbgDeclareInst>(&I)) {
           val = ddi->getAddress();
           var = ddi->getVariable();
         }
@@ -237,6 +237,8 @@ public:
   // var related--------------------------------------
   bool isUsedStructType(StructType* st) const { return fieldMap.count(st); }
 
+  bool isTrackedType(Type* type) const { return trackedTypes.count(type); }
+
   void addDbgInfoFunctions(FunctionSet& funcSet, std::set<Type*>& trackTypes,
                            std::set<StructType*>& structTypes) {
     addFunctionNames(funcSet);
@@ -283,7 +285,7 @@ public:
     for (auto& [mangledName, realName] : functionNames) {
       O << "\"" << mangledName << "\"=\"" << realName << "\", ";
     }
-    O << "\n";
+    O << "\n\n";
 
     O << "Tracked Types\n";
     O << "-------------\n";
@@ -292,7 +294,7 @@ public:
       O << c << "(" << *trackedType << "),";
       c++;
     }
-    O << "\n";
+    O << "\n\n";
 
     O << "Struct types and their fields\n";
     O << "-----------------------------\n";
@@ -303,7 +305,7 @@ public:
         O << c << ")" << field->getName() << " ";
         c++;
       }
-      O << "\n";
+      O << "\n\n";
     }
 
     O << "Local Variable names sample\n";

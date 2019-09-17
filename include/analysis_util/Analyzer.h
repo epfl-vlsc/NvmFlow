@@ -26,25 +26,24 @@ public:
   Analyzer(Module& M_, AAResults& AAR_) : M(M_), globals(M_, AAR_) {
     parse();
 
-    // dataflow();
+    dataflow();
   }
 
-  /*
-    void dataflow() {
-      errs() << "Dataflow Analysis\n";
-      errs() << "-----------------\n";
+  void dataflow() {
+    errs() << "Dataflow Analysis\n";
+    errs() << "-----------------\n";
 
-      for (auto* f : globals.getAnalyzedFunctions()) {
-        globals.setActiveFunction(f);
+    for (auto* f : globals.getAnalyzedFunctions()) {
+      globals.setActiveFunction(f);
 
-  #ifdef DBGMODE
-        globals.printLocals(errs());
-  #endif
+#ifdef DBGMODE
+      globals.printLocals(errs());
+#endif
 
-        StateMachine(M, globals).analyze(f);
-      }
+      // StateMachine(M, globals).analyze(f);
     }
-*/
+  }
+
   void parse() {
     FullParser parser(M, globals);
 

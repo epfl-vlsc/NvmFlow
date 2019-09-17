@@ -72,8 +72,6 @@ struct InstrInfo {
     if (!sl.empty())
       name += " " + sl;
 
-    if (var)
-      name += " " + var->getName();
     return name;
   }
 
@@ -88,6 +86,14 @@ struct InstrInfo {
   }
 
   static bool isUsedInstr(InstrType it) { return it != None; }
+
+  static bool isNonVarInstr(InstrType it) {
+    return it == PfenceInstr || it == IpInstr;
+  }
+
+  static bool isWriteInstr(InstrType it) {
+    return it == WriteInstr;
+  }
 };
 
 } // namespace llvm
