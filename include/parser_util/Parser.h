@@ -13,12 +13,7 @@ public:
     globals.printFunctions(errs());
 #endif
 
-    // DebugParser dParser(globals);
-#ifdef DBGMODE
-    //globals.printDbgInfo(errs());
-#endif
-
-    // VariableParser vParser(globals);
+    VariableParser vParser(globals);
   }
 };
 

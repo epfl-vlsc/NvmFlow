@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
 
-#include "analysis_util/InstrParser.h"
+#include "parser_util/InstrParser.h"
 #include "ds/Globals.h"
 #include "ds/InstrInfo.h"
 

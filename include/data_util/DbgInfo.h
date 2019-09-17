@@ -57,12 +57,32 @@ class DbgInfo {
   }
 
   void addFunctionNames(FunctionSet& funcSet) {
+    std::set<std::string> funcSetNames;
+    for (auto& F : M) {
+      if (!funcSet.count(&F))
+        continue;
+
+      auto funcName = F.getName().str();
+      funcSetNames.insert(funcName);
+
+      if (F.isDeclaration() && !F.isIntrinsic()) {
+        auto mangledName = funcName;
+        auto realNameStr = demangleFunctionName(&F);
+        auto [sit, _] = demangledFunctions.insert(realNameStr);
+        StringRef realName(*sit);
+        functionNames[mangledName] = realName;
+      }
+    }
+
     for (auto* f : finder.subprograms()) {
       auto realName = f->getName();
       auto mangledName = f->getLinkageName();
 
       if (mangledName.empty())
         mangledName = realName;
+
+      if (!funcSetNames.count(mangledName))
+        continue;
 
       // check skip
       auto fileNameRef = f->getFilename();
@@ -76,16 +96,6 @@ class DbgInfo {
       }
 
       functionNames[mangledName] = realName;
-    }
-
-    for (auto& F : M) {
-      if (F.isDeclaration() && !F.isIntrinsic()) {
-        auto mangledName = F.getName();
-        auto realNameStr = demangleFunctionName(&F);
-        auto [sit, _] = demangledFunctions.insert(realNameStr);
-        StringRef realName(*sit);
-        functionNames[mangledName] = realName;
-      }
     }
   }
 
@@ -153,10 +163,10 @@ class DbgInfo {
     fieldIdxStrMap[idxName] = field;
   }
 
-  void addFieldTypeInfo(std::set<StructType*>& trackTypes) {
+  void addFieldTypeInfo(std::set<StructType*>& structTypes) {
     for (auto* st : M.getIdentifiedStructTypes()) {
       // only gather data about used types
-      if (!trackTypes.count(st))
+      if (!structTypes.count(st))
         continue;
 
       // add fields
@@ -168,10 +178,14 @@ class DbgInfo {
     }
   }
 
-  void addTypeFields(std::set<StructType*>& trackTypes) {
+  void addTypeFields(std::set<StructType*>& structTypes) {
     // string are used temporarily to map dbg info to struct type
-    addFieldTypeInfo(trackTypes);
+    addFieldTypeInfo(structTypes);
     addFieldDbgInfo();
+  }
+
+  void addTrackedTypes(std::set<Type*>& trackTypes) {
+    trackedTypes = std::move(trackTypes);
   }
 
   Module& M;
@@ -188,6 +202,9 @@ class DbgInfo {
   std::map<StructType*, std::vector<StructField*>> fieldMap;
   std::map<std::string, StructField*> fieldIdxStrMap;
   std::map<std::string, StructField*> fieldNameStrMap;
+
+  // type infos
+  std::set<Type*> trackedTypes;
 
   // variable names
   std::map<Value*, DILocalVariable*> localVarNames;
@@ -212,9 +229,11 @@ public:
   // var related--------------------------------------
   bool isUsedStructType(StructType* st) const { return fieldMap.count(st); }
 
-  void addDbgInfoFunctions(FunctionSet& funcSet,
-                           std::set<StructType*>& trackTypes) {
-    addTypeFields(trackTypes);
+  void addDbgInfoFunctions(FunctionSet& funcSet, std::set<Type*>& trackTypes,
+                           std::set<StructType*>& structTypes) {
+    addFunctionNames(funcSet);
+    addTrackedTypes(trackTypes);
+    addTypeFields(structTypes);
     addLocalVariables(funcSet);
   }
 
@@ -249,11 +268,21 @@ public:
   void print(raw_ostream& O) const {
     O << "Global Debug Info\n";
     O << "-----------------\n";
+    int c = 0;
 
     O << "Function Names\n";
     O << "---------------\n";
     for (auto& [mangledName, realName] : functionNames) {
       O << "\"" << mangledName << "\"=\"" << realName << "\", ";
+    }
+    O << "\n";
+
+    O << "Tracked Types\n";
+    O << "-------------\n";
+    c = 0;
+    for (auto* trackedType : trackedTypes) {
+      O << c << "(" << *trackedType << "),";
+      c++;
     }
     O << "\n";
 
@@ -271,7 +300,7 @@ public:
 
     O << "Local Variable names sample\n";
     O << "---------------------------\n";
-    int c = 0;
+    c = 0;
     for (auto& [v, lv] : localVarNames) {
       O << *v << ": " << lv->getName() << "\n";
       if (c >= 5)

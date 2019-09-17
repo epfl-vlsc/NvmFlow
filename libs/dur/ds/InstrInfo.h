@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
 #include "Variable.h"
-#include "analysis_util/InstrParser.h"
+#include "parser_util/InstrParser.h"
 
 namespace llvm {
 
@@ -21,15 +21,13 @@ struct InstrInfo {
   Instruction* instr;
   InstrType instrType;
   Variable* var;
-  ParsedVariable pv;
   Value* rhsAlias;
 
   InstrInfo() : instrType(None) {}
 
   InstrInfo(Instruction* instr_, InstrType instrType_, Variable* var_,
-            ParsedVariable pv_, Value* rhsAlias_)
-      : instr(instr_), instrType(instrType_), var(var_), pv(pv_),
-        rhsAlias(rhsAlias_) {
+            Value* rhsAlias_)
+      : instr(instr_), instrType(instrType_), rhsAlias(rhsAlias_) {
     assert(instr);
     assert(instrType != None);
   }
@@ -52,11 +50,6 @@ struct InstrInfo {
   auto* getRhsAlias() {
     assert(rhsAlias);
     return rhsAlias;
-  }
-
-  auto getParsedVarInfo() const {
-    assert(pv.isUsed());
-    return pv;
   }
 
   auto* getInstruction() {

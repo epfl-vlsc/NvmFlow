@@ -8,6 +8,11 @@ protected:
   std::set<Function*> fs;
 
 public:
+  FunctionSet(){}
+  FunctionSet(std::set<Function*>& fs_){
+    fs = std::move(fs_);
+  }
+
   void insert(Function* f) { fs.insert(f); }
 
   auto begin() { return fs.begin(); }

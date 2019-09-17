@@ -38,21 +38,20 @@ public:
     activeUnit->print(O);
   }
 
-  Variable* addVariable(Value* localVar, Value* aliasVal, Type* type,
-                        StructField* sf) {
+  Variable* addVariable(Variable& var) {
     assert(activeUnit);
     auto& vars = activeUnit->vars;
-    auto [varsIt, _] = vars.emplace(localVar, aliasVal, type, sf);
+    auto [varsIt, _] = vars.insert(var);
     assert(varsIt != vars.end());
     auto* varPtr = (Variable*)&(*varsIt);
     return varPtr;
   }
 
   void addInstrInfo(Instruction* i, InstrType instrType, Variable* var,
-                    ParsedVariable pv, Value* rhs) {
+                    Value* rhs) {
     assert(activeUnit);
     auto& iiMap = activeUnit->iiMap;
-    auto ii = InstrInfo(i, instrType, var, pv, rhs);
+    auto ii = InstrInfo(i, instrType, var, rhs);
 
     iiMap[i] = ii;
   }
@@ -60,6 +59,22 @@ public:
   auto& getVariables() {
     assert(activeUnit);
     return activeUnit->vars;
+  }
+
+  Variable* getVariable(Variable& var) {
+    assert(activeUnit);
+    auto& vars = activeUnit->vars;
+    assert(vars.count(var));
+    auto varIt = vars.find(var);
+    assert(varIt != vars.end());
+    auto varPtr = (Variable*)&(*varIt);
+    return varPtr;
+  }
+
+  auto* getVariable(Value* localVar, Type* type, StructField* sf, bool locRef) {
+    assert(activeUnit);
+    auto var = Variable::getSearchVariable(localVar, type, sf, locRef);
+    return getVariable(var);
   }
 
   void setFunction(Function* function) {
@@ -123,7 +138,7 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "alias samples:---\n";
   for (auto& [val, aliasSet] : aliases) {
-    for (auto& var: aliasSet) {
+    for (auto& var : aliasSet) {
       O << "\t" << var->getName() << "\n";
     }
   }

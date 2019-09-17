@@ -2,7 +2,7 @@
 #include "Common.h"
 
 #include "AnnotParser.h"
-#include "analysis_util/InstrParser.h"
+#include "parser_util/InstrParser.h"
 #include "ds/Globals.h"
 
 namespace llvm {

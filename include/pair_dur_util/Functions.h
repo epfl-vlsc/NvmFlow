@@ -48,6 +48,14 @@ public:
     return visited;
   }
 
+  auto getUnitFunctionSet(Function* f) {
+    std::set<Function*> visited;
+    getUnitFunctions(f, visited);
+
+    FunctionSet funcSet(visited);
+    return funcSet;
+  }
+
   bool skipFunction(Function* f) const {
     return isPfenceFunction(f) || isVfenceFunction(f) || isFlushFunction(f) ||
            isFlushFenceFunction(f) || isSkippedFunction(f);

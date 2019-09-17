@@ -1,5 +1,6 @@
 #pragma once
 #include "Common.h"
+#include "DbgParser.h"
 
 namespace llvm {
 
@@ -8,8 +9,11 @@ class VariableParser {
 
 public:
   VariableParser(Globals& globals) {
-    // ordering matters!
+    DbgParser dParser(globals);
+
   }
 };
+
+
 
 } // namespace llvm
