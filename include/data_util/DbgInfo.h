@@ -43,7 +43,7 @@ class DbgInfo {
         if (auto* dvi = dyn_cast<DbgValueInst>(&I)) {
           auto* val = dvi->getValue();
           auto* var = dvi->getVariable();
-          if(!val)
+          if (!val)
             continue;
 
           assert(var);
@@ -56,7 +56,7 @@ class DbgInfo {
     }
   }
 
-  void addFunctionNames() {
+  void addFunctionNames(FunctionSet& funcSet) {
     for (auto* f : finder.subprograms()) {
       auto realName = f->getName();
       auto mangledName = f->getLinkageName();
@@ -196,7 +196,6 @@ public:
   DbgInfo(Module& M_) : M(M_) {
     // function names
     finder.processModule(M);
-    addFunctionNames();
   }
 
   // function related---------------------------------
@@ -208,16 +207,6 @@ public:
 
   bool functionExists(StringRef mangledName) const {
     return functionNames.count(mangledName) > 0;
-  }
-
-  void printFunctionNames(raw_ostream& O) const {
-    O << "Unmangled Names\n";
-    O << "---------------\n";
-
-    for (auto& [mangledName, realName] : functionNames) {
-      O << "\"" << mangledName << "\"=\"" << realName << "\", ";
-    }
-    O << "\n\n";
   }
 
   // var related--------------------------------------
@@ -261,7 +250,15 @@ public:
     O << "Global Debug Info\n";
     O << "-----------------\n";
 
-    O << "Struct types and their fields---\n";
+    O << "Function Names\n";
+    O << "---------------\n";
+    for (auto& [mangledName, realName] : functionNames) {
+      O << "\"" << mangledName << "\"=\"" << realName << "\", ";
+    }
+    O << "\n";
+
+    O << "Struct types and their fields\n";
+    O << "-----------------------------\n";
     for (auto& [st, fields] : fieldMap) {
       O << st->getName() << ": ";
       int c = 0;
@@ -272,7 +269,8 @@ public:
       O << "\n";
     }
 
-    O << "Local Variable names sample-----\n";
+    O << "Local Variable names sample\n";
+    O << "---------------------------\n";
     int c = 0;
     for (auto& [v, lv] : localVarNames) {
       O << *v << ": " << lv->getName() << "\n";

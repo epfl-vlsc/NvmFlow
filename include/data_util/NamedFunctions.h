@@ -32,7 +32,7 @@ public:
   PfenceFunctions(const char* annot_) : NamedFunctions(annot_) {}
   PfenceFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("pfence"); }
+  bool sameName(StringRef name) const { return name.equals("_Z6pfencev"); }
 
   const char* getName() const { return "pfence"; }
 };
@@ -42,7 +42,7 @@ public:
   VfenceFunctions(const char* annot_) : NamedFunctions(annot_) {}
   VfenceFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("vfence"); }
+  bool sameName(StringRef name) const { return name.equals("_Z6vfencev"); }
 
   const char* getName() const { return "vfence"; }
 };
@@ -53,8 +53,7 @@ public:
   FlushFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("clflushopt") || name.equals("clwb") ||
-           name.equals("pm_clflushopt");
+    return name.equals("_Z13pm_clflushoptPKv");
   }
 
   const char* getName() const { return "clflushopt"; }
@@ -66,8 +65,7 @@ public:
   FlushFenceFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("clflush") || name.equals("flush_range") ||
-           name.equals("pm_clflush");
+    return name.equals("_Z10pm_clflushPKv") || name.equals("flush_range");
   }
 
   const char* getName() const { return "flush fence"; }
@@ -78,9 +76,9 @@ public:
   TxBeginFunctions(const char* annot_) : NamedFunctions(annot_) {}
   TxBeginFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("tx_begin"); }
+  bool sameName(StringRef name) const { return name.equals("_Z8tx_beginv"); }
 
-  const char* getName() const { return "txbegin"; }
+  const char* getName() const { return "tx_begin"; }
 };
 
 class TxEndFunctions : public NamedFunctions {
@@ -88,9 +86,9 @@ public:
   TxEndFunctions(const char* annot_) : NamedFunctions(annot_) {}
   TxEndFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("tx_end"); }
+  bool sameName(StringRef name) const { return name.equals("_Z6tx_endv"); }
 
-  const char* getName() const { return "txend"; }
+  const char* getName() const { return "tx_end"; }
 };
 
 class LoggingFunctions : public NamedFunctions {
@@ -98,9 +96,9 @@ public:
   LoggingFunctions(const char* annot_) : NamedFunctions(annot_) {}
   LoggingFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("tx_log"); }
+  bool sameName(StringRef name) const { return name.equals("_Z6tx_logPv"); }
 
-  const char* getName() const { return "logging"; }
+  const char* getName() const { return "tx_log"; }
 };
 
 } // namespace llvm
