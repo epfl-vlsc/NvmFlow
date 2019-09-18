@@ -1,88 +1,39 @@
 #include "annot.h"
+#include "nvml/include/libpmemobj.h"
 
-struct Log {
-  int data;
-  log_field int valid;
+#define BTREE_MAP_TYPE_OFFSET 1012
+struct btree_map;
+TOID_DECLARE(struct btree_map, BTREE_MAP_TYPE_OFFSET + 0);
+TOID_DECLARE(struct tree_map_node, BTREE_MAP_TYPE_OFFSET + 1);
+#define BTREE_ORDER 8
+#define BTREE_MIN ((BTREE_ORDER / 2) - 1)
 
-  void log_fnc outsideTx() {
-    tx_log(&valid);
-    valid = 5;
-  }
-
-  void log_fnc correct() {
-    tx_begin();
-    tx_log(&valid);
-    valid = 6;
-    tx_end();
-  }
-
-  void log_fnc correct2() {
-    tx_begin();
-    tx_log(&valid);
-    if (valid == 5)
-      valid = 6;
-    tx_end();
-  }
-
-  void log_fnc notLogged() {
-    tx_begin();
-    valid = 5;
-    tx_end();
-  }
-
-  void logValid() { tx_log(&valid); }
-
-  void log_fnc doubleLogged() {
-    data = 5;
-    tx_begin();
-    tx_log(&valid);
-    logValid();
-    valid = 5;
-    tx_end();
-  }
-
-  void log_fnc correctObj() {
-    tx_begin();
-    tx_log(this);
-    valid = 5;
-    tx_end();
-  }
-
-  void log_fnc missLog() {
-    tx_begin();
-    if (valid == 6) {
-      tx_log(&valid);
-    }
-    valid = 1;
-    tx_end();
-  }
-
-  void log_fnc loopLog() {
-    tx_begin();
-    while (true) {
-      tx_log(this);
-      valid = 1;
-    }
-    tx_end();
-  }
-
-  void condLog() {
-    if (valid == 6) {
-      tx_log(this);
-    }
-  }
-
-  void log_fnc ipaMissLog() {
-    tx_begin();
-    condLog();
-    valid = 1;
-    tx_end();
-  }
-
-  void log_fnc recurse() {
-    tx_begin();
-    tx_log(&valid);
-    recurse();
-    tx_end();
-  }
+struct tree_map_node_item {
+  uint64_t key;
+  PMEMoid value;
 };
+
+#define EMPTY_ITEM ((struct tree_map_node_item){0, OID_NULL})
+
+struct tree_map_node {
+  int n; /* number of occupied slots */
+  struct tree_map_node_item items[BTREE_ORDER - 1];
+  TOID(struct tree_map_node) slots[BTREE_ORDER];
+};
+
+struct btree_map {
+  TOID(struct tree_map_node) root;
+};
+
+int btree_map_new(PMEMobjpool* pop, TOID(struct btree_map) * map, void* arg) {
+  int ret = 0;
+
+  TX_BEGIN(pop) {
+    pmemobj_tx_add_range_direct(map, sizeof(*map));
+    *map = TX_ZNEW(struct btree_map);
+  }
+  TX_ONABORT { ret = 1; }
+  TX_END
+
+  return ret;
+}
