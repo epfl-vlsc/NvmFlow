@@ -66,6 +66,17 @@ struct DbgInstr {
     return name;
   }
 
+  static auto getSourceLocation(Value* v, bool fullPath = false) {
+    if (auto* i = dyn_cast<Instruction>(v)) {
+      return getSourceLocation(i, fullPath);
+    } else if (auto* bb = dyn_cast<BasicBlock>(v)) {
+      auto* i = bb->getFirstNonPHIOrDbgOrLifetime();
+      return getSourceLocation(i, fullPath);
+    }
+    report_fatal_error("inst or bb");
+    return std::string("");
+  }
+
   static void printLocation(Value* v, raw_ostream& O) {
     if (auto* i = dyn_cast<Instruction>(v)) {
       O << getSourceLocation(i) << " " << *i;

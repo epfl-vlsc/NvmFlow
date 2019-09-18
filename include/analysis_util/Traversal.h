@@ -20,6 +20,17 @@ public:
     return bb == entryBlock;
   }
 
+  static Value* getInstOrBlockKey(Value* v) { 
+    if (auto* i = dyn_cast<Instruction>(v)) {
+      return getInstructionKey(i);
+    }else if(auto* bb = dyn_cast<BasicBlock>(v)) {
+      return getBlockEntryKey(bb);
+    }
+
+    report_fatal_error("bb or i");
+    return nullptr; 
+  }
+
   static Value* getBlockEntryKey(BasicBlock* bb) { return bb; }
 
   static Value* getBlockExitKey(BasicBlock* bb) { return bb->getTerminator(); }

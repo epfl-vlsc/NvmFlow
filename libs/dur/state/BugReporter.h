@@ -37,16 +37,17 @@ class BugReporter {
 
     Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
-    auto* prevInstr = backtrace.getValueInstruction(
+    auto* instKey = Traversal::getInstructionKey(instr);
+    auto* prevKey = backtrace.getKey(
         instr, var, allResults, contextList, sameDclFlush, InstrLoc::Changed);
 
-    if (prevInstr == instr)
+    if (prevKey == instKey)
       return;
 
-    auto* instKey = Traversal::getInstructionKey(prevInstr);
-    auto& prevState = results[instKey];
+    auto& prevState = results[prevKey];
 
     auto& val = prevState[var];
+    errs() << val.getName() << *prevKey << "\n";
     if (!val.isDclFence()) {
       auto* instr = ii->getInstruction();
       auto* varInfo = ii->getVarInfo();
@@ -64,16 +65,17 @@ class BugReporter {
 
     Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
-    auto* prevInstr = backtrace.getValueInstruction(
+    auto* instKey = Traversal::getInstructionKey(instr);
+    auto* prevKey = backtrace.getKey(
         instr, var, allResults, contextList, sameDclFlush, InstrLoc::SameFirst);
 
-    if (prevInstr == instr)
+    if (prevKey == instKey)
       return;
 
     auto* varInfo = ii->getVarInfo();
     auto varName = varInfo->getName();
     auto srcLoc = DbgInstr::getSourceLocation(instr);
-    auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
+    auto prevLoc = DbgInstr::getSourceLocation(prevKey);
     DoubleFlushBug::report(varName, srcLoc, prevLoc);
     bugNo++;
   }

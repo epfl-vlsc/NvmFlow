@@ -54,38 +54,37 @@ private:
     return topFunction;
   }
 
-  auto* getInstr(Instruction* i, Instruction* curInstr, InstrLoc loc) {
+  Value* getKey(Value* v, Instruction* curInstr, InstrLoc loc) {
     if (loc == Changed)
-      return i;
-    else if (instrs.empty()) {
+      return v;
+    else if (values.empty()) {
       return curInstr;
     } else {
       assert(loc == SameFirst);
-      return instrs.back();
+      return values.back();
     }
   }
 
-  auto* getInstr(Instruction* curInstr, InstrLoc loc) {
-    if (instrs.empty()) {
+  Value* getKey(Value* curInstr, InstrLoc loc) {
+    if (values.empty()) {
       return curInstr;
     } else {
       assert(loc == SameFirst);
-      return instrs.back();
+      return values.back();
     }
   }
 
   std::set<Value*> seenInContext;
   std::queue<Value*> travQueue;
-  std::vector<Instruction*> instrs;
+  std::vector<Value*> values;
   Function* topFunction;
 
 public:
   Backtrace(Function* f) : topFunction(f) {}
 
   template <typename Variable, typename AllResults, typename EqualityFn>
-  auto* getValueInstruction(Instruction* curInstr, Variable* curVar,
-                            AllResults& allResults, ContextList& contextList,
-                            EqualityFn eq, InstrLoc loc) {
+  Value* getKey(Instruction* curInstr, Variable* curVar, AllResults& allResults,
+                ContextList& contextList, EqualityFn eq, InstrLoc loc) {
     // get context
     int contextNo = contextList.size() - 1;
     auto context = contextList[contextNo];
@@ -103,33 +102,34 @@ public:
 
     while (isValidContext(contextNo)) {
       // context traversal
-
       while (!travQueue.empty()) {
         // bb instr traversal
         auto* v = travQueue.front();
         travQueue.pop();
-        if (auto* i = dyn_cast<Instruction>(v)) {
-          // i
-          auto* iKey = Traversal::getInstructionKey(i);
-          if (!results.count(iKey))
-            continue;
 
-          auto state = results[iKey];
-          auto val = state[curVar];
-
-          if (eq(val, beginVal)) {
-            // same lattice val
-            if (loc == SameLast)
-              return i;
-
-            instrs.push_back(i);
-          } else {
-            // return last same state instr
-            return getInstr(i, curInstr, loc);
-          }
-        } else if (auto* bb = dyn_cast<BasicBlock>(v)) {
-          // bb
+        // add bb instructions
+        if (auto* bb = dyn_cast<BasicBlock>(v)) {
           addToQueue(bb);
+          continue;
+        }
+
+        // get key
+        auto* key = Traversal::getInstOrBlockKey(v);
+        if (!results.count(key))
+          continue;
+
+        auto state = results[key];
+        auto val = state[curVar];
+
+        if (eq(val, beginVal)) {
+          // same lattice val
+          if (loc == SameLast)
+            return v;
+
+          values.push_back(v);
+        } else {
+          // return last same state instr
+          return getKey(v, curInstr, loc);
         }
       }
 
@@ -143,8 +143,8 @@ public:
       }
     }
 
-    return getInstr(curInstr, loc);
+    return getKey(curInstr, loc);
   }
-};
+}; // namespace llvm
 
 } // namespace llvm
