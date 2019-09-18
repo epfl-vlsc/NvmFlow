@@ -7,7 +7,25 @@
 namespace llvm {
 
 class Variable {
+  int aliasSetNo;
+
+public:
+  Variable(int aliasSetNo_) : aliasSetNo(aliasSetNo_) {
+    assert(aliasSetNo >= 0);
+  }
+
+  auto getName() const { return std::to_string(aliasSetNo); }
+
+  bool operator<(const Variable& X) const { return aliasSetNo < X.aliasSetNo; }
+
+  bool operator==(const Variable& X) const {
+    return aliasSetNo == X.aliasSetNo;
+  }
+};
+
+class VarInfo {
   Value* localVar;
+  Value* aliasVal;
   Type* type;
   StructField* sf;
   bool locRef;
@@ -15,27 +33,24 @@ class Variable {
   bool annotated;
   std::string localName;
 
-  Variable(Value* localVar_, Type* type_, StructField* sf_, bool locRef_,
-           bool annotated_, std::string localName_)
-      : localVar(localVar_), type(type_), sf(sf_), locRef(locRef_),
-        annotated(annotated_), localName(localName_) {
+  VarInfo(Value* localVar_, Value* aliasVal_, Type* type_, StructField* sf_,
+          bool locRef_, bool annotated_, std::string localName_)
+      : localVar(localVar_), aliasVal(aliasVal_), type(type_), sf(sf_),
+        locRef(locRef_), annotated(annotated_), localName(localName_) {
     assert(localVar && type);
   }
 
 public:
-  static Variable getVariable(ParsedVariable pv, StructField* sf,
-                              bool annotated, std::string localName) {
+  static VarInfo getVarInfo(ParsedVariable pv, StructField* sf, bool annotated,
+                            std::string localName) {
     auto* localVar = pv.getLocalVar();
+    auto* aliasVal = pv.getOpndVar();
     auto* type = pv.getType();
     bool locRef = pv.isLocRef();
-    return Variable(localVar, type, sf, locRef, annotated, localName);
+    return VarInfo(localVar, aliasVal, type, sf, locRef, annotated, localName);
   }
 
-  static Variable getSearchVariable(Value* localVar, Type* type,
-                                    StructField* sf, bool locRef) {
-    // use after passing durability conditions
-    return Variable(localVar, type, sf, locRef, false, "");
-  }
+  auto* getAliasValue() { return aliasVal; }
 
   bool isField() const { return sf != nullptr; }
 
@@ -44,8 +59,6 @@ public:
   bool isAnnotated() const { return isField() && annotated; }
 
   bool isLocRef() const { return locRef; }
-
-  void print(raw_ostream& O) const;
 
   auto getName() const {
     std::string name;
@@ -60,14 +73,14 @@ public:
     return typedName.str();
   }
 
-  bool operator<(const Variable& X) const {
-    return std::tie(localVar, type, sf, locRef) <
-           std::tie(X.localVar, X.type, X.sf, X.locRef);
+  bool operator<(const VarInfo& X) const {
+    return std::tie(localVar, aliasVal, type, sf, locRef) <
+           std::tie(X.localVar, X.aliasVal, X.type, X.sf, X.locRef);
   }
 
-  bool operator==(const Variable& X) const {
-    return localVar == X.localVar && type == X.type && sf == X.sf &&
-           locRef == X.locRef;
+  bool operator==(const VarInfo& X) const {
+    return localVar == X.localVar && aliasVal == X.aliasVal && type == X.type &&
+           sf == X.sf && locRef == X.locRef;
   }
 };
 

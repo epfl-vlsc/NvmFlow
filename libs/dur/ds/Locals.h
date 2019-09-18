@@ -14,8 +14,11 @@ struct UnitInfo {
   // lattice variables
   std::set<Variable> vars;
 
+  // var infos
+  std::set<VarInfo> varInfos;
+
   // aliases
-  std::map<Value*, VarSet> aliases;
+  std::map<Value*, Variable*> aliases;
 
   // info gathered for instruction
   std::map<Instruction*, InstrInfo> iiMap;
@@ -37,8 +40,9 @@ public:
     activeUnit->print(O);
   }
 
-  Variable* addVariable(Variable& var) {
+  Variable* addVariable(int i) {
     assert(activeUnit);
+    auto var = Variable(i);
     auto& vars = activeUnit->vars;
     auto [varsIt, _] = vars.insert(var);
     assert(varsIt != vars.end());
@@ -46,7 +50,33 @@ public:
     return varPtr;
   }
 
-  void addInstrInfo(Instruction* i, InstrType instrType, Variable* var,
+  Variable* getVariable(int i) {
+    assert(activeUnit);
+    auto var = Variable(i);
+    auto& vars = activeUnit->vars;
+    assert(vars.count(var));
+    auto varIt = vars.find(var);
+    assert(varIt != vars.end());
+    auto varPtr = (Variable*)&(*varIt);
+    return varPtr;
+  }
+
+  VarInfo* addVarInfo(VarInfo& var) {
+    assert(activeUnit);
+    auto& vars = activeUnit->varInfos;
+    auto [varsIt, _] = vars.insert(var);
+    assert(varsIt != vars.end());
+    auto* varPtr = (VarInfo*)&(*varsIt);
+    return varPtr;
+  }
+
+  void addAlias(Value* alias, Variable* var) {
+    assert(activeUnit);
+    auto& aliases = activeUnit->aliases;
+    aliases[alias] = var;
+  }
+
+  void addInstrInfo(Instruction* i, InstrType instrType, VarInfo* var,
                     Value* rhs) {
     assert(activeUnit);
     auto& iiMap = activeUnit->iiMap;
@@ -58,22 +88,6 @@ public:
   auto& getVariables() {
     assert(activeUnit);
     return activeUnit->vars;
-  }
-
-  Variable* getVariable(Variable& var) {
-    assert(activeUnit);
-    auto& vars = activeUnit->vars;
-    assert(vars.count(var));
-    auto varIt = vars.find(var);
-    assert(varIt != vars.end());
-    auto varPtr = (Variable*)&(*varIt);
-    return varPtr;
-  }
-
-  auto* getVariable(Value* localVar, Type* type, StructField* sf, bool locRef) {
-    assert(activeUnit);
-    auto var = Variable::getSearchVariable(localVar, type, sf, locRef);
-    return getVariable(var);
   }
 
   void setFunction(Function* function) {
@@ -135,9 +149,7 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "alias samples:---\n";
   for (auto& [val, aliasSet] : aliases) {
-    for (auto& var : aliasSet) {
-      O << "\t" << var->getName() << "\n";
-    }
+    O << "(" << *val << "," << aliasSet->getName() << ")\n";
   }
 }
 

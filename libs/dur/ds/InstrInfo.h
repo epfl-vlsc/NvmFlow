@@ -20,12 +20,12 @@ struct InstrInfo {
       "write", "flush", "flushfence", "vfence", "pfence", "ip", "none"};
   Instruction* instr;
   InstrType instrType;
-  Variable* var;
+  VarInfo* var;
   Value* rhsAlias;
 
   InstrInfo() : instrType(None) {}
 
-  InstrInfo(Instruction* instr_, InstrType instrType_, Variable* var_,
+  InstrInfo(Instruction* instr_, InstrType instrType_, VarInfo* var_,
             Value* rhsAlias_)
       : instr(instr_), instrType(instrType_), rhsAlias(rhsAlias_) {
     assert(instr);

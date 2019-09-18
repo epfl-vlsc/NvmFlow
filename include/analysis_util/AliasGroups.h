@@ -12,10 +12,12 @@ struct AliasGroups {
   ValueCat valueCat;
   AAResults& AAR;
 
+  size_t size() const { return aliasSets.size(); }
+  
   void insert(Value* v) {
-    //todo check
+    // todo check
     auto* type = v->getType();
-    if(!type->isPointerTy())
+    if (!type->isPointerTy())
       return;
 
     int c = 0;

@@ -47,8 +47,8 @@ template <typename Globals> class AliasParser {
     return InstrType::None;
   }
 
-  void addVarReferences(Function* func, AliasGroups& ag) {
-    for (auto* f : globals.functions.getUnitFunctions(func)) {
+  void addInstrInfo(FunctionSet& funcSet, AliasGroups& ag) {
+    for (auto* f : funcSet) {
       for (auto& I : instructions(*f)) {
         // get instruction type
         auto instrType = getInstrType(&I);
@@ -91,7 +91,7 @@ template <typename Globals> class AliasParser {
         auto* diVar = globals.dbgInfo.getDILocalVariable(lv);
         std::string localName = (diVar) ? diVar->getName().str() : "";
 
-        auto var = Variable::getVariable(pv, sf, annotated, localName);
+        auto var = VarInfo::getVarInfo(pv, sf, annotated, localName);
         auto* rhs = pv.getRhs();
 
         // create alias sets
@@ -114,25 +114,63 @@ template <typename Globals> class AliasParser {
     }
   }
 
-  void addLocReferences(AliasGroups& ag) {
-    // create alias sets
-    std::map<int, Variable>;
+  void createAliasSets(FunctionSet& funcSet, AliasGroups& ag) {
+    for (auto* f : funcSet) {
+      for (auto& I : instructions(*f)) {
+        // get instruction type
+        auto instrType = getInstrType(&I);
+        if (!InstrInfo::isUsedInstr(instrType))
+          continue;
 
-    for (auto [instr, instrType, var, rhsAlias] : locReferences) {
-      int 
+        // check non variable based parsing
+        if (InstrInfo::isNonVarInstr(instrType)) {
+          continue;
+        }
+
+        // parse variable based
+        auto pv = InstrParser::parseInstruction(&I);
+        if (!pv.isUsed())
+          continue;
+
+        // check tracked types
+        auto* type = pv.getType();
+        if (!globals.dbgInfo.isTrackedType(type))
+          continue;
+
+        if (pv.isField()) {
+          auto [st, idx] = pv.getStructInfo();
+
+          if (!globals.dbgInfo.isUsedStructType(st))
+            continue;
+        }
+
+        // create alias sets
+        auto* lhsAlias = pv.getOpndVar();
+        auto* rhsAlias = pv.getRhs();
+        ag.insert(lhsAlias);
+        if (rhsAlias) {
+          ag.insert(rhsAlias);
+        }
+      }
+    }
+
+    // create lattice variables
+    for (int i = 0; i < ag.size(); ++i) {
+      globals.locals.addVariable(i);
     }
   }
 
   void addLocals() {
     for (auto* f : globals.functions.getAnalyzedFunctions()) {
       globals.setActiveFunction(f);
-
+      auto funcSet = globals.functions.getUnitFunctionSet(f);
       auto& AAR = globals.getAliasAnalysis();
-      AliasGroups ag(AAR);
-      addVarReferences(f, ag);
 
+      AliasGroups ag(AAR);
+      createAliasSets(funcSet, ag);
       ag.print(errs());
-      addLocReferences(ag);
+
+      //addInstrInfo(funcSet, ag);
     }
   }
 
