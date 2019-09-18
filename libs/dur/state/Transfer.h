@@ -33,10 +33,6 @@ class Transfer {
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
-    auto* varInfo = ii->getVarInfo();
-    if(varInfo->isAnnotated())
-      return true;
-
     auto* var = ii->getVariable();
     auto& val = state[var];
     val = LatVal::getWrite(val);

@@ -66,7 +66,6 @@ private:
   }
 
   auto* getInstr(Instruction* curInstr, InstrLoc loc) {
-    assert(loc != Changed);
     if (instrs.empty()) {
       return curInstr;
     } else {

@@ -26,17 +26,27 @@ class BugReporter {
     return name;
   }
 
-  void checkWrite(InstrInfo* ii, AbstractState& state) {
+  void checkWrite(InstrInfo* ii, AbstractState& state, FunctionResults& results) {
     auto* varInfo = ii->getVarInfo();
     if (!varInfo->isAnnotated() || !ii->hasVariableRhs())
       return;
 
     auto* var = ii->getVariableRhs();
-
     if (buggedVars.count(var))
       return;
 
-    auto& val = state[var];
+    Backtrace backtrace(topFunction);
+    auto* instr = ii->getInstruction();
+    auto* prevInstr = backtrace.getValueInstruction(
+        instr, var, allResults, contextList, sameDclFlush, InstrLoc::Changed);
+
+    if (prevInstr == instr)
+      return;
+
+    auto* instKey = Traversal::getInstructionKey(prevInstr);
+    auto& prevState = results[instKey];
+
+    auto& val = prevState[var];
     if (!val.isDclFence()) {
       auto* instr = ii->getInstruction();
       auto* varInfo = ii->getVarInfo();
@@ -89,7 +99,7 @@ class BugReporter {
     // check type of instruction
     switch (ii->getInstrType()) {
     case InstrInfo::WriteInstr: {
-      checkWrite(ii, state);
+      checkWrite(ii, state, results);
       break;
     }
     case InstrInfo::FlushInstr:
