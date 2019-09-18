@@ -1,10 +1,10 @@
 #pragma once
 #include "BugData.h"
 #include "Common.h"
+#include "Lattice.h"
 #include "analysis_util/Backtrace.h"
 #include "analysis_util/DataflowResults.h"
 #include "analysis_util/DfUtil.h"
-#include "Lattice.h"
 
 namespace llvm {
 
@@ -38,7 +38,12 @@ class BugReporter {
 
     auto& val = state[var];
     if (!val.isDclFence()) {
-      errs() << "report bug";
+      auto* instr = ii->getInstruction();
+      auto* varInfo = ii->getVarInfo();
+      auto varName = varInfo->getName();
+      auto srcLoc = DbgInstr::getSourceLocation(instr);
+      NotCommittedBug::report(varName, srcLoc);
+      bugNo++;
     }
   }
 
@@ -55,7 +60,12 @@ class BugReporter {
     if (prevInstr == instr)
       return;
 
-    errs() << "report flush bug";
+    auto* varInfo = ii->getVarInfo();
+    auto varName = varInfo->getName();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+    auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
+    DoubleFlushBug::report(varName, srcLoc, prevLoc);
+    bugNo++;
   }
 
   void checkFinalBugs() {}
@@ -132,15 +142,12 @@ class BugReporter {
   }
 
   void reportNumBugs() {
-    auto mangledName = topFunction->getName();
-    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
+    auto fncName = globals.dbgInfo.getFunctionName(topFunction);
     errs() << "Number of bugs in " << fncName << ": " << bugNo << "\n\n\n";
-    errs().flush();
   }
 
   void reportTitle() {
-    auto mangledName = topFunction->getName();
-    auto fncName = globals.dbgInfo.getFunctionName(mangledName);
+    auto fncName = globals.dbgInfo.getFunctionName(topFunction);
     errs() << "Bugs in " << fncName << "\n";
   }
 

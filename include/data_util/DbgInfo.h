@@ -78,7 +78,7 @@ class DbgInfo {
         auto realNameStr = demangleFunctionName(&F);
         auto [sit, _] = demangledFunctions.insert(realNameStr);
         StringRef realName(*sit);
-        functionNames[mangledName] = realName;
+        functionNames[mangledName] = realName.str();
       }
     }
 
@@ -103,7 +103,7 @@ class DbgInfo {
         continue;
       }
 
-      functionNames[mangledName] = realName;
+      functionNames[mangledName.str()] = realName.str();
     }
   }
 
@@ -203,7 +203,7 @@ class DbgInfo {
 
   // function names: mangled->real
   std::set<std::string> demangledFunctions;
-  std::map<StringRef, StringRef> functionNames;
+  std::map<std::string, std::string> functionNames;
 
   // variable infos
   std::set<StructField> fields;
@@ -225,13 +225,10 @@ public:
 
   // function related---------------------------------
 
-  StringRef getFunctionName(StringRef mangledName) {
+  auto getFunctionName(Function* f) {
+    auto mangledName = f->getName().str();
     assertInDs(functionNames, mangledName);
     return functionNames[mangledName];
-  }
-
-  bool functionExists(StringRef mangledName) const {
-    return functionNames.count(mangledName) > 0;
   }
 
   // var related--------------------------------------

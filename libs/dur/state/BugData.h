@@ -4,21 +4,18 @@
 namespace llvm {
 
 struct NotCommittedBug {
-  static void report(std::string& varName, std::string& prevName,
-                     std::string& srcLoc) {
-    errs() << "*) For " + varName;
+  static void report(std::string& varName, std::string& srcLoc) {
+    errs() << "*) Commit assigned value to " + varName;
     errs() << " at " + srcLoc + "\n";
-    errs() << "\tCommit " + prevName + "\n";
   }
 };
 
 struct DoubleFlushBug {
-  static void report(std::string& varName, std::string& prevName,
-                     std::string& srcLoc, std::string& prevLoc) {
+  static void report(std::string& varName, std::string& srcLoc,
+                     std::string& prevLoc) {
     errs() << "*) Double flush " + varName;
     errs() << " at " + srcLoc + "\n";
-    errs() << "\tFlushed before " + prevName;
-    errs() << " at " + prevLoc + "\n";
+    errs() << "\tFlushed before at " + prevLoc + "\n";
   }
 };
 
