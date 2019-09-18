@@ -11,7 +11,6 @@ class Transfer {
   using AbstractState = std::map<LatVar, LatVal>;
 
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
-    errs() << "handle fence\n";
     bool stateChanged = false;
 
     for (auto& [var, val] : state) {
@@ -25,7 +24,6 @@ class Transfer {
   }
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
-    errs() << "handle flush\n";
     auto* var = ii->getVariable();
     auto& val = state[var];
 
@@ -35,7 +33,6 @@ class Transfer {
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
-    errs() << "handle write\n";
     auto* varInfo = ii->getVarInfo();
     if(varInfo->isAnnotated())
       return false;

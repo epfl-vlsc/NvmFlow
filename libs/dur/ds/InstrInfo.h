@@ -55,7 +55,11 @@ struct InstrInfo {
     return lhsAlias;
   }
 
-  auto* getRhsAlias() {
+  bool hasVariableRhs() const{
+    return rhsAlias != nullptr;
+  }
+
+  auto* getVariableRhs() {
     assert(rhsAlias);
     return rhsAlias;
   }

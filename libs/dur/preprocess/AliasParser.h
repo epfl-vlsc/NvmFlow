@@ -110,11 +110,10 @@ template <typename Globals> class AliasParser {
 
         if (rhsAlias) {
           int rhsNo = ag.getAliasSetNo(rhsAlias);
-          if (AliasGroups::isInvalidNo(rhsNo))
-            continue;
-
-          rhsVar = globals.locals.getAliasSet(rhsNo);
-          globals.locals.addAlias(rhsAlias, rhsVar);
+          if (!AliasGroups::isInvalidNo(rhsNo)){
+            rhsVar = globals.locals.getAliasSet(rhsNo);
+            globals.locals.addAlias(rhsAlias, rhsVar);
+          }
         }
 
         // add var based instruction

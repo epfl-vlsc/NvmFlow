@@ -30,7 +30,7 @@ public:
     allResults.print(errs());
 #endif
 
-    // breporter.checkBugs(function);
+    breporter.checkBugs(function);
 
     allResults.clear();
   }

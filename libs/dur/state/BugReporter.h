@@ -4,17 +4,18 @@
 #include "analysis_util/Backtrace.h"
 #include "analysis_util/DataflowResults.h"
 #include "analysis_util/DfUtil.h"
+#include "Lattice.h"
 
 namespace llvm {
 
-template<typename Globals, typename LatVar, typename LatVal>
+template <typename Globals, typename LatVar, typename LatVal>
 class BugReporter {
   using AbstractState = std::map<LatVar, LatVal>;
-  
+
   using FunctionResults = std::map<Value*, AbstractState>;
   using ContextResults = std::map<Context, FunctionResults>;
   using AllResults = DataflowResults<AbstractState>;
-  
+
   using BuggedVars = std::set<Variable*>;
   using SeenContext = std::set<Context>;
   using ContextList = std::vector<Context>;
@@ -25,32 +26,39 @@ class BugReporter {
     return name;
   }
 
-  bool reportWriteBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void checkWrite(InstrInfo* ii, AbstractState& state) {
+    auto* varInfo = ii->getVarInfo();
+    if (!varInfo->isAnnotated() || !ii->hasVariableRhs())
+      return;
 
-    return false;
-  }
+    auto* var = ii->getVariableRhs();
 
-  void checkWrite(InstrInfo* ii, AbstractState& state) {}
+    if (buggedVars.count(var))
+      return;
 
-  void checkFlush(InstrInfo* ii, AbstractState& state) {
-    
-  }
-
-  void checkFinalBugs() {
-    auto& state = allResults.getFinalState();
-    for (auto& [var, val] : state) {
-      if (buggedVars.count(var))
-        continue;
-
-      if (!val.isDclFence()) {
-        auto mangledName = topFunction->getName();
-        auto fncName = globals.dbgInfo.getFunctionName(mangledName).str();
-        auto varName = var->getName();
-        FinalCommitBug::report(varName, fncName);
-        bugNo++;
-      }
+    auto& val = state[var];
+    if (!val.isDclFence()) {
+      errs() << "report bug";
     }
   }
+
+  void checkFlush(InstrInfo* ii, AbstractState& state) {
+    auto* var = ii->getVariable();
+    if (buggedVars.count(var))
+      return;
+
+    Backtrace backtrace(topFunction);
+    auto* instr = ii->getInstruction();
+    auto* prevInstr = backtrace.getValueInstruction(
+        instr, var, allResults, contextList, sameDclFlush, InstrLoc::SameFirst);
+
+    if (prevInstr == instr)
+      return;
+
+    errs() << "report flush bug";
+  }
+
+  void checkFinalBugs() {}
 
   template <typename FunctionResults>
   void checkBugs(Instruction* i, Context& context, FunctionResults& results) {
@@ -127,6 +135,7 @@ class BugReporter {
     auto mangledName = topFunction->getName();
     auto fncName = globals.dbgInfo.getFunctionName(mangledName);
     errs() << "Number of bugs in " << fncName << ": " << bugNo << "\n\n\n";
+    errs().flush();
   }
 
   void reportTitle() {
