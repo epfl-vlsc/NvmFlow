@@ -14,7 +14,7 @@
 
 #include "analysis_util/DfUtil.h"
 
-#include "analysis_util/MemoryUtil.h"
+#include "parser_util/InstrParser.h"
 
 #include "analysis_util/AliasGroups.h"
 //#include "llvm/Analysis/AliasSetTracker.h"
@@ -59,7 +59,7 @@ bool ExpPass::runOnModule(Module& M) {
             continue;
         }
 
-        auto pv = InstructionParser::parseInstruction(&I);
+        auto pv = InstrParser::parseInstruction(&I);
         errs() << I << "\n";
         pv.print(errs());
         errs() << "\n";

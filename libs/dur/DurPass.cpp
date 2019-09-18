@@ -5,13 +5,9 @@
 #include "ds/Variable.h"
 #include "preprocess/VariableParser.h"
 
-#include "state/Lattice.h"
-
-/*
 #include "state/BugReporter.h"
+#include "state/Lattice.h"
 #include "state/Transfer.h"
-
-*/
 
 namespace llvm {
 
@@ -31,9 +27,14 @@ bool DurPass::runOnModule(Module& M) {
   using Globals = ProgramStore<Functions, Locals>;
   using VarParser = VariableParser<Globals>;
 
-  using State = std::map<Variable*, Lattice>;
+  using LatVar = Variable*;
+  using LatVal = Lattice;
+  using State = std::map<LatVar, LatVal>;
+  using Transition = Transfer<Globals, LatVar, LatVal>;
+  using BReporter = BugReporter<Globals, LatVar, LatVal>;
 
-  using DurAnalyzer = Analyzer<Globals, VarParser, State>;
+  using DurAnalyzer =
+      Analyzer<Globals, VarParser, State, Transition, BReporter>;
   DurAnalyzer analyzer(M, AAR);
   return false;
 }

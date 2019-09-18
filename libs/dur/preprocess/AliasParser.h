@@ -176,8 +176,6 @@ template <typename Globals> class AliasParser {
 
       AliasGroups ag(AAR);
       createAliasSets(funcSet, ag);
-      ag.print(errs());
-
       addInstrInfo(funcSet, ag);
     }
   }

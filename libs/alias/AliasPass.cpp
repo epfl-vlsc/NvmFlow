@@ -9,45 +9,96 @@
 
 #include "analysis_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
-#include "analysis_util/MemoryUtil.h"
+#include "parser_util/InstrParser.h"
 
 #include <cassert>
 #include <set>
 using namespace std;
 namespace llvm {
 
-void AliasPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
+void AliasPass::print(raw_ostream& OS, const Module* m) const {
+  OS << "pass\n";
+}
 
-void addToAgs(Function& F, AliasGroups& ags) {
-  for (Instruction& I : instructions(F)) {
+
+/*
+std::set<Value*> vals;
+  for (auto& I : instructions(F)) {
     if (auto* si = dyn_cast<StoreInst>(&I)) {
-      errs() << "sol\n";
-      ags.add(si);
+      auto* ptrOpnd = si->getPointerOperand();
+      auto* valOpnd = si->getValueOperand();
+
+      auto* ptrType = ptrOpnd->getType();
+      auto* valType = valOpnd->getType();
+
+      errs() << *si << "\n";
+      errs() << "\t" << *ptrOpnd << " ";
+      ptrType->print(errs());
+      errs() << "\n";
+
+      errs() << "\t" << *valOpnd << " ";
+      valType->print(errs());
+      errs() << "\n";
+
+      if (ptrType->isPointerTy())
+        vals.insert(ptrOpnd);
+
+      if (valType->isPointerTy())
+        vals.insert(valOpnd);
+
+      valType->print(errs());
     } else if (auto* ci = dyn_cast<CallInst>(&I)) {
-      errs() << "yol\n";
-      ags.add(ci);
-      auto* f = ci->getCalledFunction();
-      addToAgs(*f, ags);
+      if (isa<DbgValueInst>(ci))
+        continue;
+
+      auto* ptrOpnd = ci->getArgOperand(0);
+
+      auto* ptrType = ptrOpnd->getType();
+
+      errs() << *ci << "\n";
+      errs() << "\t" << *ptrOpnd << " ";
+      ptrType->print(errs());
+      errs() << "\n";
+
+      if (ptrType->isPointerTy())
+        vals.insert(ptrOpnd);
+
+      ptrType->print(errs());
+    } else if (auto* li = dyn_cast<LoadInst>(&I)) {
+      auto* ptrOpnd = li->getPointerOperand();
+
+      auto* ptrType = ptrOpnd->getType();
+
+      errs() << *li << "\n";
+      errs() << "\t" << *ptrOpnd << " ";
+      ptrType->print(errs());
+      errs() << "\n";
+
+      if (ptrType->isPointerTy())
+        vals.insert(ptrOpnd);
     }
   }
-}
+  for (auto& v1 : vals) {
+    for (auto& v2 : vals) {
+      auto res = AAR.alias(v1, v2);
+      errs() << res << " " << *v1 << " " << *v2 << "\n";
+    }
+  }
+*/
 
 void runOnFunction(Function& F, AAResults& AAR) {
   AliasGroups ags;
-  addToAgs(F, ags);
+  //addToAgs(F, ags);
   ags.createGroups(&AAR);
-  ags.print(errs());
-  errs() << "lol\n";
+  ags.print(errs());  
 }
 
 bool AliasPass::runOnModule(Module& M) {
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
   auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(cflResult);
-  
 
   for (auto& F : M) {
-    errs() << "lol\n";
     runOnFunction(F, AAR);
   }
 
