@@ -20,14 +20,17 @@ struct InstrInfo {
       "write", "flush", "flushfence", "vfence", "pfence", "ip", "none"};
   Instruction* instr;
   InstrType instrType;
-  VarInfo* var;
-  Value* rhsAlias;
+  VarInfo* varInfo;
+
+  Variable* lhsAlias;
+  Variable* rhsAlias;
 
   InstrInfo() : instrType(None) {}
 
-  InstrInfo(Instruction* instr_, InstrType instrType_, VarInfo* var_,
-            Value* rhsAlias_)
-      : instr(instr_), instrType(instrType_), rhsAlias(rhsAlias_) {
+  InstrInfo(Instruction* instr_, InstrType instrType_, VarInfo* varInfo_,
+            Variable* lhsAlias_, Variable* rhsAlias_)
+      : instr(instr_), instrType(instrType_), varInfo(varInfo_),
+        lhsAlias(lhsAlias_), rhsAlias(rhsAlias_) {
     assert(instr);
     assert(instrType != None);
   }
@@ -42,9 +45,14 @@ struct InstrInfo {
     return instrType == IpInstr;
   }
 
+  auto* getVarInfo() {
+    assert(varInfo);
+    return varInfo;
+  }
+
   auto* getVariable() {
-    assert(var);
-    return var;
+    assert(lhsAlias);
+    return lhsAlias;
   }
 
   auto* getRhsAlias() {

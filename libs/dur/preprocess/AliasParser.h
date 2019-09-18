@@ -57,7 +57,7 @@ template <typename Globals> class AliasParser {
 
         // check non variable based parsing
         if (InstrInfo::isNonVarInstr(instrType)) {
-          globals.locals.addInstrInfo(&I, instrType, nullptr, nullptr);
+          globals.locals.addInstrInfo(&I, instrType, nullptr, nullptr, nullptr);
           continue;
         }
 
@@ -98,23 +98,27 @@ template <typename Globals> class AliasParser {
 
         auto var = VarInfo::getVarInfo(pv, sf, annotated, localName);
 
-        // only var references in this loop
+        // create var info
         auto* varInfo = globals.locals.addVarInfo(var);
-        globals.locals.addInstrInfo(&I, instrType, varInfo, rhsAlias);
 
         // add aliases
+        Variable* rhsVar = nullptr;
+
         int lhsNo = ag.getAliasSetNo(lhsAlias);
-        auto* lhsAliasSet = globals.locals.getAliasSet(lhsNo);
-        globals.locals.addAlias(lhsAlias, lhsAliasSet);
+        auto* lhsVar = globals.locals.getAliasSet(lhsNo);
+        globals.locals.addAlias(lhsAlias, lhsVar);
 
         if (rhsAlias) {
           int rhsNo = ag.getAliasSetNo(rhsAlias);
           if (AliasGroups::isInvalidNo(rhsNo))
             continue;
 
-          auto* rhsAliasSet = globals.locals.getAliasSet(rhsNo);
-          globals.locals.addAlias(rhsAlias, rhsAliasSet);
+          rhsVar = globals.locals.getAliasSet(rhsNo);
+          globals.locals.addAlias(rhsAlias, rhsVar);
         }
+
+        // add var based instruction
+        globals.locals.addInstrInfo(&I, instrType, varInfo, lhsVar, rhsVar);
       }
     }
   }

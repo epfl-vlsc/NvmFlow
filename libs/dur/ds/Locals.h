@@ -81,10 +81,10 @@ public:
   }
 
   void addInstrInfo(Instruction* i, InstrType instrType, VarInfo* var,
-                    Value* rhs) {
+                    Variable* lhs, Variable* rhs) {
     assert(activeUnit);
     auto& iiMap = activeUnit->iiMap;
-    auto ii = InstrInfo(i, instrType, var, rhs);
+    auto ii = InstrInfo(i, instrType, var, lhs, rhs);
 
     iiMap[i] = ii;
   }
