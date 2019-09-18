@@ -34,7 +34,7 @@ public:
       globals.printLocals(errs());
 #endif
 
-      // FlowAnalyzer(M, globals).analyze(f);
+      FlowAnalyzer(M, globals).analyze(f);
     }
   }
 

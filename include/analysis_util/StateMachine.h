@@ -24,7 +24,7 @@ public:
         breporter(globals_, allResults) {}
 
   void analyze(Function* function) {
-    // DataflowAnalysis dataflow(function, allResults, *this);
+    DataflowAnalysis dataflow(function, allResults, *this);
 
 #ifdef DBGMODE
     allResults.print(errs());

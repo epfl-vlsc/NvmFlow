@@ -90,6 +90,12 @@ public:
     return lattice;
   }
 
+  static Lattice getFlush(Lattice lattice, bool useFence) {
+    lattice.dclCommit.state = (useFence) ? DclCommit::Fence : DclCommit::Flush;
+    lattice.dclFlush.state = DclFlush::Flush;
+    return lattice;
+  }
+
   static Lattice getDclFlushFlush(Lattice lattice) {
     lattice.dclFlush.state = DclFlush::Flush;
     return lattice;
