@@ -9,10 +9,22 @@ struct Dur {
     pm_clflushopt(ptr);
     pfence();
     next = ptr;
-    next2 = new int(6);
   }
 
-  void nvm_fnc fenceNotFlushedData(int* ptr) { next = ptr; }
+  void nvm_fnc doubleFlush() {
+    auto* ptr = new int(5);
+    pm_clflushopt(ptr);
+    pfence();
+    pm_clflushopt(ptr);
+    next = ptr;
+  }
+
+  void nvm_fnc doubleFlushParam(int* ptr) {
+    pm_clflushopt(ptr);
+    pfence();
+    pm_clflushopt(ptr);
+    next = ptr;
+  }
 
   void nvm_fnc correctParam(int* ptr) {
     pm_clflush(ptr);
@@ -41,9 +53,7 @@ struct Dur {
     next = ptr;
   }
 
-  void writeIpa(int* ptr) {
-    next = ptr;
-  }
+  void writeIpa(int* ptr) { next = ptr; }
 
   void nvm_fnc ipa() {
     auto* data = new int(5);
