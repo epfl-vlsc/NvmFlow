@@ -8,12 +8,23 @@ struct AliasGroups {
   using AliasSets = std::vector<AliasSet>;
   using ValueCat = std::map<Value*, int>;
 
+  static constexpr const int InvalidSetNo = -1;
+
   AliasSets aliasSets;
   ValueCat valueCat;
   AAResults& AAR;
 
   size_t size() const { return aliasSets.size(); }
-  
+
+  int getAliasSetNo(Value* v) {
+    if (valueCat.count(v)) {
+      return valueCat[v];
+    }
+    return InvalidSetNo;
+  }
+
+  static bool isInvalidNo(int no) { return no == InvalidSetNo; }
+
   void insert(Value* v) {
     // todo check
     auto* type = v->getType();

@@ -6,9 +6,9 @@
 
 namespace llvm {
 
-template<typename Globals, typename State>
+template<typename Globals, typename LatVar, typename LatVal>
 class Transfer {
-  using AbstractState = State;
+  using AbstractState = std::map<LatVar, LatVal>;
 
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
     bool stateChanged = false;

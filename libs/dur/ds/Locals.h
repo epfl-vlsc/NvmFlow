@@ -61,6 +61,10 @@ public:
     return varPtr;
   }
 
+  Variable* getAliasSet(int i) {
+    return getVariable(i);
+  }
+
   VarInfo* addVarInfo(VarInfo& var) {
     assert(activeUnit);
     auto& vars = activeUnit->varInfos;

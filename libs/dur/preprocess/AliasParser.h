@@ -73,8 +73,6 @@ template <typename Globals> class AliasParser {
 
         // variable info
         StructField* sf = nullptr;
-        bool annotated =
-            pv.isAnnotated() && pv.getAnnotation().equals(DurableField);
 
         if (pv.isField()) {
           auto [st, idx] = pv.getStructInfo();
@@ -85,30 +83,37 @@ template <typename Globals> class AliasParser {
           sf = globals.dbgInfo.getStructField(st, idx);
         }
 
+        // annotated
+        bool annotated =
+            pv.isAnnotated() && pv.getAnnotation().equals(DurableField);
+
         // find local name
         auto* lv = pv.getLocalVar();
         // todo need to handle phi
         auto* diVar = globals.dbgInfo.getDILocalVariable(lv);
         std::string localName = (diVar) ? diVar->getName().str() : "";
 
-        auto var = VarInfo::getVarInfo(pv, sf, annotated, localName);
-        auto* rhs = pv.getRhs();
+        auto* lhsAlias = pv.getOpndVar();
+        auto* rhsAlias = pv.getRhs();
 
-        // create alias sets
-        auto* lhs = pv.getOpndVar();
-        ag.insert(lhs);
-        if (rhs) {
-          ag.insert(rhs);
-        }
+        auto var = VarInfo::getVarInfo(pv, sf, annotated, localName);
 
         // only var references in this loop
-        if (pv.isLocRef()) {
-          // location references
-          locReferences.push_back({&I, instrType, var, rhs});
-        } else {
-          // var references
-          auto* varPtr = globals.locals.addVariable(var);
-          globals.locals.addInstrInfo(&I, instrType, varPtr, rhs);
+        auto* varInfo = globals.locals.addVarInfo(var);
+        globals.locals.addInstrInfo(&I, instrType, varInfo, rhsAlias);
+
+        // add aliases
+        int lhsNo = ag.getAliasSetNo(lhsAlias);
+        auto* lhsAliasSet = globals.locals.getAliasSet(lhsNo);
+        globals.locals.addAlias(lhsAlias, lhsAliasSet);
+
+        if (rhsAlias) {
+          int rhsNo = ag.getAliasSetNo(rhsAlias);
+          if (AliasGroups::isInvalidNo(rhsNo))
+            continue;
+
+          auto* rhsAliasSet = globals.locals.getAliasSet(rhsNo);
+          globals.locals.addAlias(rhsAlias, rhsAliasSet);
         }
       }
     }
@@ -170,7 +175,7 @@ template <typename Globals> class AliasParser {
       createAliasSets(funcSet, ag);
       ag.print(errs());
 
-      //addInstrInfo(funcSet, ag);
+      addInstrInfo(funcSet, ag);
     }
   }
 

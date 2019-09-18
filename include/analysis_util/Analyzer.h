@@ -2,22 +2,16 @@
 
 #include "Common.h"
 #include "ProgramStore.h"
-//#include "StateMachine.h"
+#include "StateMachine.h"
 #include "parser_util/Parser.h"
 
 namespace llvm {
 
-template <typename Globals, typename VarParser, typename State>
-/*, typename Lattice, typename Transfer,
-          typename BugReporter*/
+template <typename Globals, typename VarParser, typename State,
+          typename Transition, typename BReporter>
 class Analyzer {
   using FullParser = Parser<Globals, VarParser>;
-  /*
-
-  using Transition = typename Transfer<Globals, AbstractState>;
-  using BReporter = typename BugReporter<Globals, AbstractState>;
-  using SM = StateMachine<Globals, Variable, Lattice, Transition, BReporter>;
-  */
+  using FlowAnalyzer = StateMachine<Globals, State, Transition, BReporter>;
 
   Module& M;
   Globals globals;
@@ -40,7 +34,7 @@ public:
       globals.printLocals(errs());
 #endif
 
-      // StateMachine(M, globals).analyze(f);
+      // FlowAnalyzer(M, globals).analyze(f);
     }
   }
 

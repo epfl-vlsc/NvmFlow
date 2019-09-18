@@ -7,8 +7,10 @@
 
 namespace llvm {
 
-template<typename Globals, typename State>
+template<typename Globals, typename LatVar, typename LatVal>
 class BugReporter {
+  using AbstractState = std::map<LatVar, LatVal>;
+  
   using FunctionResults = std::map<Value*, AbstractState>;
   using ContextResults = std::map<Context, FunctionResults>;
   using AllResults = DataflowResults<AbstractState>;
@@ -20,22 +22,6 @@ class BugReporter {
 
   auto getVarName(Variable* var, InstrInfo* ii) {
     std::string name;
-    name.reserve(100);
-
-    auto pv = ii->getParsedVarInfo();
-
-    assert(pv.isUsed());
-    auto* lv = pv.getLocalVar();
-    assert(lv);
-
-    if (auto* diVar = globals.dbgInfo.getDILocalVariable(lv)) {
-      name += diVar->getName();
-    }
-
-    if (var->isField()) {
-      name += "->" + var->getName();
-    }
-
     return name;
   }
 
@@ -47,33 +33,7 @@ class BugReporter {
   void checkWrite(InstrInfo* ii, AbstractState& state) {}
 
   void checkFlush(InstrInfo* ii, AbstractState& state) {
-    auto* var = ii->getVariable();
-    if (buggedVars.count(var))
-      return;
-
-    auto& val = state[var];
-
-    Backtrace backtrace(topFunction);
-    auto* instr = ii->getInstruction();
-    auto* prevInstr = backtrace.getValueInstruction(
-        instr, var, allResults, contextList, sameDclFlush, InstrLoc::SameFirst);
-    if (prevInstr == instr)
-      return;
-
-    auto* prevII = globals.locals.getInstrInfo(prevInstr);
-    bool isDoubleFlush = val.isDclFlushFlush() && prevII->isFlushBasedInstr();
-
-    if (isDoubleFlush) {
-      buggedVars.insert(var);
-
-      auto varName = getVarName(var, ii);
-      auto prevVarName = getVarName(var, ii);
-      auto srcLoc = ii->getSrcLoc();
-      auto prevLoc = prevII->getSrcLoc();
-
-      DoubleFlushBug::report(varName, prevVarName, srcLoc, prevLoc);
-      bugNo++;
-    }
+    
   }
 
   void checkFinalBugs() {
