@@ -60,7 +60,6 @@ private:
     else if (values.empty()) {
       return curInstr;
     } else {
-      assert(loc == SameFirst);
       return values.back();
     }
   }
@@ -69,7 +68,6 @@ private:
     if (values.empty()) {
       return curInstr;
     } else {
-      assert(loc == SameFirst);
       return values.back();
     }
   }
@@ -99,6 +97,8 @@ public:
 
     // add the previous instructions in the current BB
     addToQueue(curInstr);
+    auto* initBB = curInstr->getParent();
+    travQueue.push(initBB);
 
     while (isValidContext(contextNo)) {
       // context traversal

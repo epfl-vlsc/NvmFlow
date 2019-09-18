@@ -26,7 +26,8 @@ class BugReporter {
     return name;
   }
 
-  void checkWrite(InstrInfo* ii, AbstractState& state, FunctionResults& results) {
+  void checkWrite(InstrInfo* ii, AbstractState& state,
+                  FunctionResults& results) {
     auto* varInfo = ii->getVarInfo();
     if (!varInfo->isAnnotated() || !ii->hasVariableRhs())
       return;
@@ -38,16 +39,24 @@ class BugReporter {
     Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
     auto* instKey = Traversal::getInstructionKey(instr);
-    auto* prevKey = backtrace.getKey(
-        instr, var, allResults, contextList, sameDclFlush, InstrLoc::Changed);
+    auto* prevKey = backtrace.getKey(instr, var, allResults, contextList,
+                                     sameDclCommit, InstrLoc::Changed);
 
+    Backtrace backtrace2(topFunction);
+    auto* prevKey2 = backtrace2.getKey(instr, var, allResults, contextList,
+                                      sameDclCommit, InstrLoc::SameFirst);
+
+    //errs() << "keys:" << *instKey << *prevKey << *prevKey2 << "\n";
     if (prevKey == instKey)
       return;
+
+    if (prevKey2 != instKey)
+      prevKey = prevKey2;
 
     auto& prevState = results[prevKey];
 
     auto& val = prevState[var];
-    errs() << val.getName() << *prevKey << "\n";
+    //errs() << val.getName() << *prevKey << "\n";
     if (!val.isDclFence()) {
       auto* instr = ii->getInstruction();
       auto* varInfo = ii->getVarInfo();
@@ -66,8 +75,8 @@ class BugReporter {
     Backtrace backtrace(topFunction);
     auto* instr = ii->getInstruction();
     auto* instKey = Traversal::getInstructionKey(instr);
-    auto* prevKey = backtrace.getKey(
-        instr, var, allResults, contextList, sameDclFlush, InstrLoc::SameFirst);
+    auto* prevKey = backtrace.getKey(instr, var, allResults, contextList,
+                                     sameDclFlush, InstrLoc::SameFirst);
 
     if (prevKey == instKey)
       return;
