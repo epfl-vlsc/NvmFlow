@@ -1,6 +1,14 @@
 #include "annot.h"
 #include "nvml/include/libpmemobj.h"
 
+#undef TX_BEGIN
+#undef TX_ONABORT
+#undef TX_END
+
+#define TX_BEGIN(pop) tx_begin(pop);
+#define TX_ONABORT
+#define TX_END tx_end();
+
 #define BTREE_MAP_TYPE_OFFSET 1012
 struct btree_map;
 TOID_DECLARE(struct btree_map, BTREE_MAP_TYPE_OFFSET + 0);
@@ -16,7 +24,7 @@ struct tree_map_node_item {
 #define EMPTY_ITEM ((struct tree_map_node_item){0, OID_NULL})
 
 struct tree_map_node {
-  int n; /* number of occupied slots */
+  int n;
   struct tree_map_node_item items[BTREE_ORDER - 1];
   TOID(struct tree_map_node) slots[BTREE_ORDER];
 };
