@@ -23,5 +23,5 @@ extern void no_inline pm_clflushopt(void const* p);
 extern void no_inline pm_clflush(void const* p);
 
 extern void no_inline tx_log(void* ptr);
-extern void no_inline tx_begin();
+extern void no_inline tx_begin(void *pop);
 extern void no_inline tx_end();
