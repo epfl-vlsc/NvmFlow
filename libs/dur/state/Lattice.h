@@ -91,61 +91,34 @@ public:
   }
 
   static Lattice getFlush(Lattice lattice, bool useFence) {
-    lattice.dclCommit.state = (useFence) ? DclCommit::Fence : DclCommit::Flush;
+    if (useFence)
+      lattice.dclCommit.state = DclCommit::Flush;
+    else
+      lattice.dclCommit.state = DclCommit::Fence;
+
     lattice.dclFlush.state = DclFlush::Flush;
     return lattice;
   }
 
-  static Lattice getDclFlushFlush(Lattice lattice) {
-    lattice.dclFlush.state = DclFlush::Flush;
-    return lattice;
-  }
-
-  static Lattice getCommitFlush(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Flush;
-    return lattice;
-  }
-
-  static Lattice getCommitFence(Lattice lattice) {
+  static Lattice getFence(Lattice lattice) {
     lattice.dclCommit.state = DclCommit::Fence;
     return lattice;
   }
 
-  static Lattice getPfence(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Fence;
-    return lattice;
-  }
+  bool isFlush() const { return dclCommit.state == DclCommit::Flush; }
 
-  static Lattice getFlushFence(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Fence;
-    lattice.dclFlush.state = DclFlush::Flush;
-    return lattice;
-  }
+  bool isFlushed() const { return dclFlush.state == DclFlush::Flush; }
 
-  bool isDclCommitWrite() const { return dclCommit.state == DclCommit::Write; }
-
-  bool isDclCommitFlush() const { return dclCommit.state == DclCommit::Flush; }
-
-  bool isDclCommitWriteFlush() const {
-    return dclCommit.state == DclCommit::Write ||
-           dclCommit.state == DclCommit::Flush;
-  }
-
-  bool isDclFlush() const {
-    return dclCommit.state == DclCommit::Flush &&
-           dclFlush.state == DclFlush::Flush;
-  }
-
-  bool isDclFence() const {
-    return dclCommit.state == DclCommit::Fence &&
-           dclFlush.state == DclFlush::Flush;
-  }
-
-  bool isDclFlushFlush() const { return dclFlush.state == DclFlush::Flush; }
+  bool isFence() const { return dclCommit.state == DclCommit::Fence; }
 
   bool isWrite() const {
     return (dclCommit.state == DclCommit::Write &&
             dclFlush.state == DclFlush::Write);
+  }
+
+  bool isWriteFlush() const {
+    return dclCommit.state == DclCommit::Write ||
+           dclCommit.state == DclCommit::Flush;
   }
 
   bool isUnseen() const { return dclCommit.state == DclCommit::Unseen; }

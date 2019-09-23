@@ -7,8 +7,6 @@
 namespace llvm {
 
 template <typename Globals> class DbgParser {
-  using InstrType = typename InstrInfo::InstrType;
-
   static constexpr const char* DurableField = "DurableField";
  
   void addUsedTypes(Function* func, std::set<Type*>& ptrTypes,

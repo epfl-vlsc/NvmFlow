@@ -1,6 +1,7 @@
 #include "DurPass.h"
+
 #include "analysis_util/Analyzer.h"
-#include "ds/Functions.h"
+#include "pair_dur_util/Functions.h"
 #include "ds/Locals.h"
 #include "ds/Variable.h"
 #include "preprocess/VariableParser.h"
@@ -24,14 +25,14 @@ bool DurPass::runOnModule(Module& M) {
   auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(aaResults);
 
-  using Globals = ProgramStore<Functions, Locals>;
+  using Globals = GlobalStore<Functions, Locals>;
   using VarParser = VariableParser<Globals>;
 
   using LatVar = Variable*;
   using LatVal = Lattice;
   using State = std::map<LatVar, LatVal>;
-  using Transition = Transfer<Globals, LatVar, LatVal>;
-  using BReporter = BugReporter<Globals, LatVar, LatVal>;
+  using BReporter = BugReporter<Globals>;
+  using Transition = Transfer<Globals, BReporter>;
 
   using DurAnalyzer =
       Analyzer<Globals, VarParser, State, Transition, BReporter>;

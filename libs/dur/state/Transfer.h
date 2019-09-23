@@ -1,22 +1,23 @@
 #pragma once
 #include "Common.h"
+#include "Lattice.h"
 #include "analysis_util/DfUtil.h"
 #include "ds/Variable.h"
-#include "Lattice.h"
 
 namespace llvm {
 
-template<typename Globals, typename LatVar, typename LatVal>
-class Transfer {
-  using AbstractState = std::map<LatVar, LatVal>;
+template <typename Globals, typename BReporter> class Transfer {
+  using AbstractState = std::map<Variable*, Lattice>;
 
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
+    auto instr = ii->getInstruction();
     bool stateChanged = false;
 
     for (auto& [var, val] : state) {
-      if (val.isDclCommitFlush()) {
-        val = LatVal::getPfence(val);
+      if (val.isFlush()) {
+        val = Lattice::getFence(val);
         stateChanged = true;
+        breporter.addLastSeen(var, val, instr);
       }
     }
 
@@ -24,26 +25,40 @@ class Transfer {
   }
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
+    auto* instr = ii->getInstruction();
     auto* var = ii->getVariable();
+
+    breporter.checkDoubleFlushBug(var, ii, state);
+
     auto& val = state[var];
 
-    val = LatVal::getFlush(val, useFence);
+    val = Lattice::getFlush(val, useFence);
+
+    breporter.addLastSeen(var, val, instr);
 
     return true;
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
+    auto* instr = ii->getInstruction();
+
+    breporter.checkCommitPtrBug(ii, state);
+
     auto* var = ii->getVariable();
     auto& val = state[var];
-    val = LatVal::getWrite(val);
+    val = Lattice::getWrite(val);
+
+    breporter.addLastSeen(var, val, instr);
+
     return true;
   }
 
   Globals& globals;
+  BReporter& breporter;
 
 public:
-  Transfer(Module& M_, Globals& globals_)
-      : globals(globals_){}
+  Transfer(Module& M_, Globals& globals_, BReporter& breporter_)
+      : globals(globals_), breporter(breporter_) {}
 
   ~Transfer() {}
 
@@ -51,7 +66,7 @@ public:
     // for tracking locals
     for (auto& var : globals.getVariables()) {
       auto* varPtr = (Variable*)&var;
-      state[varPtr] = LatVal::getInit();
+      state[varPtr] = Lattice::getInit();
     }
   }
 
@@ -73,7 +88,7 @@ public:
       stateChanged = handleFlush(ii, state, true);
       break;
     case InstrInfo::VfenceInstr:
-      //ignore scl case
+      // ignore scl case
       break;
     case InstrInfo::PfenceInstr:
       stateChanged = handlePfence(ii, state);
