@@ -32,8 +32,7 @@ template <typename Globals> class FunctionParser {
 
   void insertNamedFunctions() {
     for (auto& F : M) {
-      auto mangledName = F.getName();
-      globals.functions.insertNamedFunction(&F, mangledName);
+      globals.functions.insertNamedFunction(&F);
     }
   }
 

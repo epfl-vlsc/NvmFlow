@@ -88,11 +88,12 @@ public:
     flushFenceFunctions.insertNamedFunction(f, annotation);
   }
 
-  void insertNamedFunction(Function* f, StringRef realName) {
-    pfenceFunctions.insertNamedFunction(f, realName);
-    vfenceFunctions.insertNamedFunction(f, realName);
-    flushFunctions.insertNamedFunction(f, realName);
-    flushFenceFunctions.insertNamedFunction(f, realName);
+  void insertNamedFunction(Function* f) {
+    auto name = f->getName();
+    pfenceFunctions.insertNamedFunction(f, name);
+    vfenceFunctions.insertNamedFunction(f, name);
+    flushFunctions.insertNamedFunction(f, name);
+    flushFenceFunctions.insertNamedFunction(f, name);
   }
 
   void insertToAllAnalyzed(Function* f) { allAnalyzedFunctions.insert(f); }

@@ -14,8 +14,8 @@ public:
   NamedFunctions(const char* annot_) : AnnotatedFunctions(annot_) {}
   NamedFunctions() : AnnotatedFunctions(nullptr) {}
 
-  void insertNamedFunction(Function* f, StringRef realName) {
-    if (sameName(realName)) {
+  void insertNamedFunction(Function* f, StringRef name) {
+    if (sameName(name)) {
       fs.insert(f);
     }
   }
@@ -52,11 +52,9 @@ public:
   FlushFunctions(const char* annot_) : NamedFunctions(annot_) {}
   FlushFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const {
-    return name.equals("_Z13pm_clflushoptPKv");
-  }
+  bool sameName(StringRef name) const { return name.equals("_Z8pm_flushPKv"); }
 
-  const char* getName() const { return "clflushopt"; }
+  const char* getName() const { return "flush"; }
 };
 
 class FlushFenceFunctions : public NamedFunctions {
@@ -65,7 +63,7 @@ public:
   FlushFenceFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("_Z10pm_clflushPKv") || name.equals("flush_range");
+    return name.equals("_Z13pm_flushfencePKv") || name.equals("flush_range");
   }
 
   const char* getName() const { return "flush fence"; }
