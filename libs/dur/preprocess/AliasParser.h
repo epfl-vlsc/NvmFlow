@@ -15,9 +15,6 @@ template <typename Globals> class AliasParser {
   auto getCallInstrType(CallInst* ci) const {
     auto* callee = ci->getCalledFunction();
 
-    errs() << "lol:" << callee->getName()
-           << (int)globals.functions.isFlushFunction(callee) << "\n";
-
     if (globals.functions.isSkippedFunction(callee)) {
       return InstrType::None;
     } else if (globals.functions.isPfenceFunction(callee)) {

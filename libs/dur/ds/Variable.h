@@ -6,6 +6,7 @@
 
 namespace llvm {
 
+
 class Variable {
   int aliasSetNo;
 
