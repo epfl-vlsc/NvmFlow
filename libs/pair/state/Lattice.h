@@ -124,9 +124,9 @@ public:
 
   static Lattice getFlush(Lattice lattice, bool useFence) {
     if (useFence)
-      lattice.dclCommit.state = DclCommit::Flush;
-    else
       lattice.dclCommit.state = DclCommit::Fence;
+    else
+      lattice.dclCommit.state = DclCommit::Flush;
 
     lattice.dclFlush.state = DclFlush::Flush;
     return lattice;

@@ -107,7 +107,6 @@ public:
       return ParsedVariable();
 
     auto instCat = ParsedVariable::getInstCat(i);
-    errs() << instCat << "\n";
     auto [opndVar, opndRhs] = getOpndVar(i);
     auto* localVar = getLocalVar(i);
     auto* type = getOpndType(i);
