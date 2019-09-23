@@ -30,8 +30,8 @@ bool PairPass::runOnModule(Module& M) {
   using LatVar = Variable*;
   using LatVal = Lattice;
   using State = std::map<LatVar, LatVal>;
-  using Transition = Transfer<Globals, LatVar, LatVal>;
-  using BReporter = BugReporter<Globals, LatVar, LatVal>;
+  using Transition = Transfer<Globals>;
+  using BReporter = BugReporter<Globals>;
 
   using PairAnalyzer =
       Analyzer<Globals, VarParser, State, Transition, BReporter>;

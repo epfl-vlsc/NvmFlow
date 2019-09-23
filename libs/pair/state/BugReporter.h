@@ -3,7 +3,7 @@
 
 namespace llvm {
 
-template <typename Globals, typename LatVar, typename LatVal>
+template <typename Globals>
 class BugReporter {
   /*
   using AllResults = DataflowResults<AbstractState>;

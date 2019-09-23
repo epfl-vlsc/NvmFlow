@@ -6,21 +6,21 @@
 
 namespace llvm {
 
-template<typename Globals, typename LatVar, typename LatVal>
+template<typename Globals>
 class Transfer {
-  using AbstractState = std::map<LatVar, LatVal>;
+  using AbstractState = std::map<Variable*, Lattice>;
 
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
     bool stateChanged = false;
 
     for (auto& [var, val] : state) {
       if (val.isSclCommitWrite()) {
-        val = LatVal::getVfence(val);
+        val = Lattice::getVfence(val);
         stateChanged = true;
       }
 
       if (val.isDclCommitFlush()) {
-        val = LatVal::getPfence(val);
+        val = Lattice::getPfence(val);
         stateChanged = true;
       }
     }
@@ -32,7 +32,7 @@ class Transfer {
     bool stateChanged = false;
     for (auto& [var, val] : state) {
       if (val.isSclCommitWrite()) {
-        val = LatVal::getVfence(val);
+        val = Lattice::getVfence(val);
         stateChanged = true;
       }
     }
@@ -43,13 +43,13 @@ class Transfer {
   void doFlush(Variable* var, AbstractState& state, bool useFence) {
     auto& val = state[var];
 
-    val = LatVal::getDclFlushFlush(val);
+    val = Lattice::getDclFlushFlush(val);
 
     if (val.isDclCommitWrite()) {
       if (useFence) {
-        val = LatVal::getCommitFence(val);
+        val = Lattice::getCommitFence(val);
       } else {
-        val = LatVal::getCommitFlush(val);
+        val = Lattice::getCommitFlush(val);
       }
     }
   }
@@ -67,7 +67,7 @@ class Transfer {
 
   void doWrite(Variable* var, AbstractState& state) {
     auto& val = state[var];
-    val = LatVal::getWrite(val);
+    val = Lattice::getWrite(val);
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
@@ -92,7 +92,7 @@ public:
     // for tracking locals
     for (auto& var : globals.getVariables()) {
       auto* varPtr = (Variable*)&var;
-      state[varPtr] = LatVal::getInit();
+      state[varPtr] = Lattice::getInit();
     }
   }
 
