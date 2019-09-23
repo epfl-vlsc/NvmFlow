@@ -122,14 +122,12 @@ public:
     return lattice;
   }
 
-  static Lattice getFlush(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Flush;
-    lattice.dclFlush.state = DclFlush::Flush;
-    return lattice;
-  }
+  static Lattice getFlush(Lattice lattice, bool useFence) {
+    if (useFence)
+      lattice.dclCommit.state = DclCommit::Flush;
+    else
+      lattice.dclCommit.state = DclCommit::Fence;
 
-  static Lattice getFlushFence(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Fence;
     lattice.dclFlush.state = DclFlush::Flush;
     return lattice;
   }

@@ -31,11 +31,7 @@ template <typename Globals, typename BReporter> class Transfer {
 
     auto& val = state[var];
 
-    if (useFence) {
-      val = Lattice::getFlushFence(val);
-    } else {
-      val = Lattice::getFlush(val);
-    }
+    val = Lattice::getFlush(val, useFence);
 
     breporter.addLastSeen(var, val, instr);
   }

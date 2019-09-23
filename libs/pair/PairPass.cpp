@@ -1,7 +1,7 @@
 #include "PairPass.h"
 
 #include "analysis_util/Analyzer.h"
-#include "ds/Functions.h"
+#include "pair_dur_util/Functions.h"
 #include "ds/Locals.h"
 #include "ds/Variable.h"
 #include "preprocess/VariableParser.h"
