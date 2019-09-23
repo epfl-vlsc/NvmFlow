@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "ProgramStore.h"
+#include "GlobalStore.h"
 #include "StateMachine.h"
 #include "parser_util/Parser.h"
 

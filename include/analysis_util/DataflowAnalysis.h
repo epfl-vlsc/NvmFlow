@@ -7,9 +7,9 @@ namespace llvm {
 
 template <typename StateMachine> class DataflowAnalysis {
   // df results
-  using AllResults = typename StateMachine::AllResults;
-  using AbstractState = typename AllResults::AbstractState;
-  using FunctionResults = typename AllResults::FunctionResults;
+  using DfResults = typename StateMachine::DfResults;
+  using AbstractState = typename DfResults::AbstractState;
+  using FunctionResults = typename DfResults::FunctionResults;
 
   // context helpers
   using FunctionContext = std::pair<Function*, Context>;
@@ -39,7 +39,7 @@ template <typename StateMachine> class DataflowAnalysis {
   }
 
   auto& getFunctionResults(Function* function, const Context& context) {
-    auto& results = allResults.getFunctionResults(context);
+    auto& results = dfResults.getFunctionResults(context);
     auto* functionEntryKey = Traversal::getFunctionEntryKey(function);
 
     if (!results.count(functionEntryKey)) {
@@ -114,7 +114,7 @@ template <typename StateMachine> class DataflowAnalysis {
     auto* calleeExitKey = Traversal::getFunctionExitKey(callee);
 
     // get previously computed states in the context
-    auto& calleeResults = allResults.getFunctionResults(newContext);
+    auto& calleeResults = dfResults.getFunctionResults(newContext);
     AbstractState& calleeEntryState = calleeResults[calleeEntryKey];
 
     if (active.count(toCall) || state == calleeEntryState) {
@@ -222,7 +222,7 @@ template <typename StateMachine> class DataflowAnalysis {
     // data flow over all blocks for the function has finished
     // update context information
     // if function changed update all callers
-    auto& oldResults = allResults.getFunctionResults(context);
+    auto& oldResults = dfResults.getFunctionResults(context);
     if (oldResults != results) {
       oldResults = results;
       for (const FunctionContext& caller : callers[{function, context}]) {
@@ -246,14 +246,14 @@ template <typename StateMachine> class DataflowAnalysis {
   FunctionContextSet active;
 
   // top info
-  AllResults& allResults;
+  DfResults& dfResults;
   StateMachine& stateMachine;
 
 public:
-  DataflowAnalysis(Function* function, AllResults& allResults_,
+  DataflowAnalysis(Function* function, DfResults& dfResults_,
                    StateMachine& stateMachine_)
-      : allResults(allResults_), stateMachine(stateMachine_) {
-    allResults.setFunction(function);
+      : dfResults(dfResults_), stateMachine(stateMachine_) {
+    dfResults.setFunction(function);
     contextWork.insert({function, Context()});
     computeDataflow();
   }

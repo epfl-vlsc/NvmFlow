@@ -102,7 +102,6 @@ struct SclCommit {
 class Lattice {
   DclCommit dclCommit;
   DclFlush dclFlush;
-  SclCommit sclCommit;
 
 public:
   Lattice() {}
@@ -112,7 +111,6 @@ public:
   Lattice meet(const Lattice& X) {
     dclCommit.meetValue(X.dclCommit);
     dclFlush.meetValue(X.dclFlush);
-    sclCommit.meetValue(X.sclCommit);
     return *this;
   }
 
@@ -121,105 +119,73 @@ public:
   static Lattice getWrite(Lattice lattice) {
     lattice.dclCommit.state = DclCommit::Write;
     lattice.dclFlush.state = DclFlush::Write;
-    lattice.sclCommit.state = SclCommit::Write;
     return lattice;
   }
 
-  static Lattice getDclFlushFlush(Lattice lattice) {
-    lattice.dclFlush.state = DclFlush::Flush;
-    return lattice;
-  }
-
-  static Lattice getCommitFlush(Lattice lattice) {
+  static Lattice getFlush(Lattice lattice) {
     lattice.dclCommit.state = DclCommit::Flush;
-    return lattice;
-  }
-
-  static Lattice getCommitFence(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Fence;
-    lattice.sclCommit.state = SclCommit::Fence;
-    return lattice;
-  }
-
-  static Lattice getPfence(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Fence;
+    lattice.dclFlush.state = DclFlush::Flush;
     return lattice;
   }
 
   static Lattice getFlushFence(Lattice lattice) {
     lattice.dclCommit.state = DclCommit::Fence;
     lattice.dclFlush.state = DclFlush::Flush;
-    lattice.sclCommit.state = SclCommit::Fence;
     return lattice;
   }
 
-  static Lattice getVfence(Lattice lattice) {
-    lattice.sclCommit.state = SclCommit::Fence;
+  static Lattice getFence(Lattice lattice) {
+    lattice.dclCommit.state = DclCommit::Fence;
     return lattice;
   }
 
-  bool isSclCommitWrite() const { return sclCommit.state == SclCommit::Write; }
+  bool isFlush() const { return dclCommit.state == DclCommit::Flush; }
 
-  bool isDclCommitWrite() const { return dclCommit.state == DclCommit::Write; }
+  bool isFlushed() const { return dclFlush.state == DclFlush::Flush; }
 
-  bool isDclCommitFlush() const { return dclCommit.state == DclCommit::Flush; }
-
-  bool isDclCommitWriteFlush() const {
+  bool isWriteFlush() const {
     return dclCommit.state == DclCommit::Write ||
            dclCommit.state == DclCommit::Flush;
   }
+
+  bool isUnseen() const { return dclCommit.state == DclCommit::Unseen; }
 
   bool isDclFlush() const {
     return dclCommit.state == DclCommit::Flush &&
            dclFlush.state == DclFlush::Flush;
   }
 
-  bool isDclFence() const {
+  bool isFinal() const {
     return dclCommit.state == DclCommit::Fence &&
            dclFlush.state == DclFlush::Flush;
   }
 
-  bool isDclFlushFlush() const { return dclFlush.state == DclFlush::Flush; }
-
   bool isWrite() const {
-    return (dclCommit.state == DclCommit::Write &&
-            dclFlush.state == DclFlush::Write) &&
-           sclCommit.state == SclCommit::Write;
-  }
-
-  bool isUnseen() const {
-    return dclCommit.state == DclCommit::Unseen ||
-           sclCommit.state == SclCommit::Unseen;
+    return dclCommit.state == DclCommit::Write &&
+           dclFlush.state == DclFlush::Write;
   }
 
   auto getName() const {
-    return dclCommit.getName() + " " + dclFlush.getName() + " " +
-           sclCommit.getName();
+    return dclCommit.getName() + " " + dclFlush.getName();
   }
 
   void print(raw_ostream& O) const {
     dclCommit.print(O);
     O << " ";
     dclFlush.print(O);
-    O << " ";
-    sclCommit.print(O);
   }
 
   bool operator<(const Lattice& X) const {
-    return std::tie(dclCommit, dclFlush, sclCommit) <
-           std::tie(X.dclCommit, X.dclFlush, X.sclCommit);
+    return std::tie(dclCommit, dclFlush) < std::tie(X.dclCommit, X.dclFlush);
   }
 
   bool operator==(const Lattice& X) const {
-    return dclCommit == X.dclCommit && dclFlush == X.dclFlush &&
-           sclCommit == X.sclCommit;
+    return dclCommit == X.dclCommit && dclFlush == X.dclFlush;
   }
 
   friend bool sameDclCommit(const Lattice& X, const Lattice& Y);
 
   friend bool sameDclFlush(const Lattice& X, const Lattice& Y);
-
-  friend bool sameSclCommit(const Lattice& X, const Lattice& Y);
 };
 
 bool sameDclCommit(const Lattice& X, const Lattice& Y) {
@@ -228,10 +194,6 @@ bool sameDclCommit(const Lattice& X, const Lattice& Y) {
 
 bool sameDclFlush(const Lattice& X, const Lattice& Y) {
   return X.dclFlush == Y.dclFlush;
-}
-
-bool sameSclCommit(const Lattice& X, const Lattice& Y) {
-  return X.sclCommit == Y.sclCommit;
 }
 
 } // namespace llvm

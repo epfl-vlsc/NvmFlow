@@ -4,13 +4,13 @@
 
 namespace llvm {
 
-template <typename Functions, typename Locals> struct ProgramStore {
+template <typename Functions, typename Locals> struct GlobalStore {
   DbgInfo dbgInfo;
   Functions functions;
   Locals locals;
   AAResults& AAR;
 
-  ProgramStore(Module& M, AAResults& AAR_) : dbgInfo(M), AAR(AAR_) {}
+  GlobalStore(Module& M, AAResults& AAR_) : dbgInfo(M), AAR(AAR_) {}
 
   // globals methods----------------------------------
 

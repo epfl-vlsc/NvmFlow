@@ -1,41 +1,71 @@
 #pragma once
 #include "Common.h"
 
+#include "analysis_util/BugUtil.h"
+
 namespace llvm {
 
-struct NotCommittedBug {
-  static void report(std::string& varName, std::string& prevName,
-                     std::string& srcLoc, std::string& prevLoc) {
-    errs() << "*) For " + varName;
-    errs() << " at " + srcLoc + "\n";
-    errs() << "\tCommit " + prevName;
-    errs() << " at " + prevLoc + "\n";
+struct CommitPairBug : public BugData {
+  std::string varName;
+  std::string prevName;
+  std::string srcLoc;
+  std::string prevLoc;
+
+  CommitPairBug(std::string varName_, std::string prevName_,
+                std::string srcLoc_, std::string prevLoc_)
+      : varName(varName_), prevName(prevName_), srcLoc(srcLoc_),
+        prevLoc(prevLoc_) {}
+
+  void print(raw_ostream& O) const {
+    O << "*) For " + varName;
+    O << " at " + srcLoc + "\n";
+    O << "\tCommit " + prevName;
+    O << " at " + prevLoc + "\n";
   }
 };
 
-struct SentinelFirstBug {
-  static void report(std::string& varName, std::string& prevName,
-                     std::string& srcLoc) {
-    errs() << "*) Writing " + varName;
-    errs() << " at " + srcLoc;
-    errs() << " before writing " + prevName + "\n";
+struct CommitDataBug : public BugData {
+  std::string varName;
+  std::string prevName;
+  std::string srcLoc;
+
+  CommitDataBug(std::string varName_, std::string prevName_,
+                std::string srcLoc_)
+      : varName(varName_), prevName(prevName_), srcLoc(srcLoc_) {}
+
+  void print(raw_ostream& O) const {
+    O << "*) For " + varName;
+    O << " at " + srcLoc + "\n";
+    O << "\tCommit " + prevName + "\n";
   }
 };
 
-struct DoubleFlushBug {
-  static void report(std::string& varName, std::string& prevName,
-                     std::string& srcLoc, std::string& prevLoc) {
-    errs() << "*) Double flush " + varName;
-    errs() << " at " + srcLoc + "\n";
-    errs() << "\tFlushed before " + prevName;
-    errs() << " at " + prevLoc + "\n";
+struct DoubleFlushBug : public BugData {
+  std::string varName;
+  std::string srcLoc;
+  std::string prevLoc;
+
+  DoubleFlushBug(std::string varName_, std::string srcLoc_,
+                 std::string prevLoc_)
+      : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_) {}
+
+  void print(raw_ostream& O) const {
+    O << "*) Double flush " + varName;
+    O << " at " + srcLoc + "\n";
+    O << "\tFlushed before at " + prevLoc + "\n";
   }
 };
 
-struct SentinelCommitBug {
-  static void report(std::string& varName, std::string& funcName) {
-    errs() << "*) \tCommit " + varName;
-    errs() << " at the end of " + funcName + "\n";
+struct VolatileSentinelBug : public BugData {
+  std::string varName;
+  std::string funcName;
+
+  VolatileSentinelBug(std::string varName_, std::string funcName_)
+      : varName(varName_), funcName(funcName_) {}
+
+  void print(raw_ostream& O) const {
+    O << "*) \tCommit " + varName;
+    O << " at the end of " + funcName + "\n";
   }
 };
 

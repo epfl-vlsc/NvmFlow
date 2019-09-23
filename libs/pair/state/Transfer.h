@@ -1,90 +1,83 @@
 #pragma once
 #include "Common.h"
+#include "Lattice.h"
 #include "analysis_util/DfUtil.h"
 #include "ds/Variable.h"
-#include "Lattice.h"
 
 namespace llvm {
 
-template<typename Globals>
-class Transfer {
+template <typename Globals, typename BReporter> class Transfer {
   using AbstractState = std::map<Variable*, Lattice>;
 
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
+    auto instr = ii->getInstruction();
     bool stateChanged = false;
 
     for (auto& [var, val] : state) {
-      if (val.isSclCommitWrite()) {
-        val = Lattice::getVfence(val);
+      if (val.isFlush()) {
+        val = Lattice::getFence(val);
         stateChanged = true;
-      }
-
-      if (val.isDclCommitFlush()) {
-        val = Lattice::getPfence(val);
-        stateChanged = true;
+        breporter.addLastSeen(var, val, instr);
       }
     }
 
     return stateChanged;
   }
 
-  bool handleVfence(InstrInfo* ii, AbstractState& state) {
-    bool stateChanged = false;
-    for (auto& [var, val] : state) {
-      if (val.isSclCommitWrite()) {
-        val = Lattice::getVfence(val);
-        stateChanged = true;
-      }
-    }
+  void doFlush(Variable* var, InstrInfo* ii, AbstractState& state,
+               bool useFence) {
+    auto* instr = ii->getInstruction();
+    breporter.checkDoubleFlushBug(var, ii, state);
 
-    return stateChanged;
-  }
-
-  void doFlush(Variable* var, AbstractState& state, bool useFence) {
     auto& val = state[var];
 
-    val = Lattice::getDclFlushFlush(val);
-
-    if (val.isDclCommitWrite()) {
-      if (useFence) {
-        val = Lattice::getCommitFence(val);
-      } else {
-        val = Lattice::getCommitFlush(val);
-      }
+    if (useFence) {
+      val = Lattice::getFlushFence(val);
+    } else {
+      val = Lattice::getFlush(val);
     }
+
+    breporter.addLastSeen(var, val, instr);
   }
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
     auto* var = ii->getVariable();
-    doFlush(var, state, useFence);
+    doFlush(var, ii, state, useFence);
 
     for (auto* fvar : var->getFlushSet()) {
-      doFlush(fvar, state, useFence);
+      doFlush(fvar, ii, state, useFence);
     }
 
     return true;
   }
 
-  void doWrite(Variable* var, AbstractState& state) {
+  void doWrite(Variable* var, InstrInfo* ii, AbstractState& state) {
+    auto* instr = ii->getInstruction();
+    breporter.checkCommitPairBug(var, ii, state);
+
     auto& val = state[var];
     val = Lattice::getWrite(val);
+
+    breporter.addLastSeen(var, val, instr);
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    doWrite(var, state);
+    doWrite(var, ii, state);
 
     for (auto* wvar : var->getWriteSet()) {
-      doWrite(wvar, state);
+      doWrite(wvar, ii, state);
     }
 
     return true;
   }
 
   Globals& globals;
+  BReporter& breporter;
 
 public:
-  Transfer(Module& M_, Globals& globals_) : globals(globals_) {}
+  Transfer(Module& M_, Globals& globals_, BReporter& breporter_)
+      : globals(globals_), breporter(breporter_) {}
 
   ~Transfer() {}
 
@@ -114,7 +107,7 @@ public:
       stateChanged = handleFlush(ii, state, true);
       break;
     case InstrInfo::VfenceInstr:
-      stateChanged = handleVfence(ii, state);
+      // stateChanged = handleVfence(ii, state);
       break;
     case InstrInfo::PfenceInstr:
       stateChanged = handlePfence(ii, state);

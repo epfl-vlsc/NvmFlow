@@ -24,14 +24,14 @@ bool PairPass::runOnModule(Module& M) {
   auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(aaResults);
 
-  using Globals = ProgramStore<Functions, Locals>;
+  using Globals = GlobalStore<Functions, Locals>;
   using VarParser = VariableParser<Globals>;
 
   using LatVar = Variable*;
   using LatVal = Lattice;
   using State = std::map<LatVar, LatVal>;
-  using Transition = Transfer<Globals>;
   using BReporter = BugReporter<Globals>;
+  using Transition = Transfer<Globals, BReporter>;
 
   using PairAnalyzer =
       Analyzer<Globals, VarParser, State, Transition, BReporter>;
