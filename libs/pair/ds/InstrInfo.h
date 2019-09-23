@@ -79,7 +79,7 @@ struct InstrInfo {
 
   bool isUsedInstr() const { return instrType != None; }
 
-  bool isFlushBasedInstr() const{
+  bool isFlushBasedInstr() const {
     return instrType == FlushInstr || instrType == FlushFenceInstr;
   }
 
@@ -88,6 +88,12 @@ struct InstrInfo {
   }
 
   static bool isUsedInstr(InstrType it) { return it != None; }
+
+  static bool isNonVarInstr(InstrType it) {
+    return it == PfenceInstr || it == IpInstr;
+  }
+
+  static bool isWriteInstr(InstrType it) { return it == WriteInstr; }
 };
 
 } // namespace llvm

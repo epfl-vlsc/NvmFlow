@@ -1,13 +1,12 @@
 #pragma once
 #include "Common.h"
 
-#include "parser_util/InstrParser.h"
-#include "ds/Globals.h"
 #include "ds/InstrInfo.h"
+#include "parser_util/InstrParser.h"
 
 namespace llvm {
 
-class DataParser {
+template <typename Globals> class DataParser {
   using InstrType = typename InstrInfo::InstrType;
 
   void addVar(Instruction* i, InstrType instrType) {

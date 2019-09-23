@@ -2,11 +2,11 @@
 #include "Common.h"
 
 #include "parser_util/InstrParser.h"
-#include "ds/Globals.h"
 #include "ds/InstrInfo.h"
 
 namespace llvm {
 
+template <typename Globals> 
 class ValidParser {
   using InstrType = typename InstrInfo::InstrType;
 

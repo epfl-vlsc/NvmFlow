@@ -1,10 +1,9 @@
 #pragma once
 #include "Common.h"
-#include "ds/Globals.h"
 
 namespace llvm {
 
-class VarFiller {
+template <typename Globals> class VarFiller {
   void fillWriteSets() {
     for (auto& variable : globals.locals.getVariables()) {
       auto* var = (Variable*)&variable;

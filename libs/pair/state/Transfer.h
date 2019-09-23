@@ -1,12 +1,15 @@
 #pragma once
 #include "Common.h"
-#include "FlowTypes.h"
 #include "analysis_util/DfUtil.h"
-#include "ds/Globals.h"
+#include "ds/Variable.h"
+#include "Lattice.h"
 
 namespace llvm {
 
+template<typename Globals, typename LatVar, typename LatVal>
 class Transfer {
+  using AbstractState = std::map<LatVar, LatVal>;
+
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
     bool stateChanged = false;
 

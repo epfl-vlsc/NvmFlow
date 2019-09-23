@@ -1,15 +1,11 @@
 #pragma once
-#include "BugData.h"
 #include "Common.h"
-#include "FlowTypes.h"
-#include "analysis_util/Backtrace.h"
-#include "analysis_util/DataflowResults.h"
-#include "analysis_util/DfUtil.h"
-#include "ds/Globals.h"
 
 namespace llvm {
 
+template <typename Globals, typename LatVar, typename LatVal>
 class BugReporter {
+  /*
   using AllResults = DataflowResults<AbstractState>;
   using BuggedVars = std::set<Variable*>;
   using SeenContext = std::set<Context>;
@@ -248,37 +244,27 @@ class BugReporter {
     auto fncName = globals.dbgInfo.getFunctionName(mangledName);
     errs() << "Bugs in " << fncName << "\n";
   }
-
+*/
   // data structures
   Globals& globals;
 
-  // per analysis structures
-  AllResults& allResults;
-
-  // bug report structures
-  Function* topFunction;
-  BuggedVars buggedVars;
-  SeenContext seen;
-  ContextList contextList;
-  int bugNo;
-
 public:
-  BugReporter(Globals& globals_, AllResults& allResults_)
-      : globals(globals_), allResults(allResults_), topFunction(nullptr),
-        bugNo(0) {}
+  template <typename AllResults>
+  BugReporter(Globals& globals_, AllResults& allResults_) {}
 
-  ~BugReporter() { resetStructures(nullptr); }
+  ~BugReporter() {}
+  /*
+    void checkBugs(Function* f) {
+      // allResults.print(errs());
+      resetStructures(f);
 
-  void checkBugs(Function* f) {
-    // allResults.print(errs());
-    resetStructures(f);
-
-    auto c = Context();
-    reportTitle();
-    checkBugs(f, c);
-    checkFinalBugs();
-    reportNumBugs();
-  }
+      auto c = Context();
+      reportTitle();
+      checkBugs(f, c);
+      checkFinalBugs();
+      reportNumBugs();
+    }
+  */
 };
 
 } // namespace llvm
