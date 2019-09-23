@@ -1,6 +1,6 @@
 add_subdirectory(exp)
 #add_subdirectory(log)
-#add_subdirectory(dur)
+add_subdirectory(dur)
 add_subdirectory(cons)
 add_subdirectory(pair)
 add_subdirectory(alias)

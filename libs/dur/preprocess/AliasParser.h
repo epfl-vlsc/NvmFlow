@@ -12,15 +12,11 @@ template <typename Globals> class AliasParser {
 
   static constexpr const char* DurableField = "DurableField";
 
-  struct LocRefData {
-    Instruction* instr;
-    InstrType instrType;
-    Variable var;
-    Value* rhsAlias;
-  };
-
   auto getCallInstrType(CallInst* ci) const {
     auto* callee = ci->getCalledFunction();
+
+    errs() << "lol:" << callee->getName()
+           << (int)globals.functions.isFlushFunction(callee) << "\n";
 
     if (globals.functions.isSkippedFunction(callee)) {
       return InstrType::None;
@@ -110,7 +106,7 @@ template <typename Globals> class AliasParser {
 
         if (rhsAlias) {
           int rhsNo = ag.getAliasSetNo(rhsAlias);
-          if (!AliasGroups::isInvalidNo(rhsNo)){
+          if (!AliasGroups::isInvalidNo(rhsNo)) {
             rhsVar = globals.locals.getAliasSet(rhsNo);
             globals.locals.addAlias(rhsAlias, rhsVar);
           }
@@ -154,8 +150,15 @@ template <typename Globals> class AliasParser {
 
         // create alias sets
         auto* lhsAlias = pv.getOpndVar();
+
+        if (pv.isObjPtr()) {
+          auto* lv = pv.getLocalVar();
+          ag.insert(lhsAlias, lv);
+        } else {
+          ag.insert(lhsAlias);
+        }
+
         auto* rhsAlias = pv.getRhs();
-        ag.insert(lhsAlias);
         if (rhsAlias) {
           ag.insert(rhsAlias);
         }
@@ -181,7 +184,6 @@ template <typename Globals> class AliasParser {
   }
 
   Globals& globals;
-  std::vector<LocRefData> locReferences;
 
 public:
   AliasParser(Globals& globals_) : globals(globals_) { addLocals(); }

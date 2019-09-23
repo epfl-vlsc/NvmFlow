@@ -20,7 +20,6 @@ void AliasPass::print(raw_ostream& OS, const Module* m) const {
   OS << "pass\n";
 }
 
-
 /*
 std::set<Value*> vals;
   for (auto& I : instructions(F)) {
@@ -86,16 +85,44 @@ std::set<Value*> vals;
   }
 */
 
-void runOnFunction(Function& F, AAResults& AAR) {
-}
-
 bool AliasPass::runOnModule(Module& M) {
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
   auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(cflResult);
 
+  AliasGroups ag(AAR);
+
   for (auto& F : M) {
-    runOnFunction(F, AAR);
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed())
+        continue;
+
+      auto* lhs = pv.getOpndVar();
+      auto* lv = pv.getLocalVar();
+      ag.insert(lhs, lv);
+
+      if (auto* rhs = pv.getRhs()) {
+        ag.insert(rhs);
+      }
+    }
+  }
+  ag.print(errs());
+
+  for (auto& F : M) {
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed())
+        continue;
+
+      auto* lhs = pv.getOpndVar();
+      int setNo = ag.getAliasSetNo(lhs);
+      errs() << *lhs << " " << setNo << "\n";
+      if (auto* rhs = pv.getRhs()) {
+        int setNo = ag.getAliasSetNo(rhs);
+        errs() << *rhs << " " << setNo << "\n";
+      }
+    }
   }
 
   return false;

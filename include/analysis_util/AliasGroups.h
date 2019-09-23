@@ -12,6 +12,7 @@ struct AliasGroups {
 
   AliasSets aliasSets;
   ValueCat valueCat;
+  ValueCat localCat;
   AAResults& AAR;
 
   size_t size() const { return aliasSets.size(); }
@@ -25,35 +26,52 @@ struct AliasGroups {
 
   static bool isInvalidNo(int no) { return no == InvalidSetNo; }
 
+  //skip alias checking for local variables that are on the stack
+  void insert(Value* v, Value* lv) {
+    if (localCat.count(lv)) {
+      int setNo = localCat[lv];
+      addToAliasSet(setNo, v);
+    } else {
+      aliasSets.push_back(AliasSet());
+      int setNo = aliasSets.size() - 1;
+      localCat[lv] = setNo;
+      addToAliasSet(setNo, v);
+    }
+  }
+
+  void addToAliasSet(int setNo, Value* v) {
+    auto& aliasSet = aliasSets[setNo];
+    aliasSet.push_back(v);
+    valueCat[v] = setNo;
+  }
+
   void insert(Value* v) {
     // todo check
     auto* type = v->getType();
     if (!type->isPointerTy())
       return;
 
-    int c = 0;
+    int setNo = 0;
     for (auto& aliasSet : aliasSets) {
       auto* e = aliasSet[0];
       auto res = AAR.alias(v, e);
       if (res != NoAlias) {
-        aliasSet.push_back(v);
-        valueCat[v] = c;
+        addToAliasSet(setNo, v);
         return;
       }
-      c++;
+      setNo++;
     }
 
     // create new set
     aliasSets.push_back(AliasSet());
-    aliasSets.at(c).push_back(v);
-    valueCat[v] = c;
+    addToAliasSet(setNo, v);
   }
 
   void print(raw_ostream& O) const {
     O << "Alias Groups\n";
     O << "------------\n";
-    for (auto& [val, no] : valueCat) {
-      O << "(" << *val << "," << no << ")\n";
+    for (auto& [val, setNo] : valueCat) {
+      O << "(" << *val << "," << setNo << ")\n";
     }
   }
 
