@@ -12,13 +12,11 @@ template <typename Globals> class VariableParser {
 public:
   VariableParser(Globals& globals) {
     // ordering matters!
-    
+
     DbgParser bParser(globals);
-    /*
     ValidParser vParser(globals);
     DataParser dParser(globals);
     VarFiller vFiller(globals);
-    */
   }
 };
 

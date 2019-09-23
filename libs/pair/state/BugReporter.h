@@ -250,7 +250,7 @@ class BugReporter {
 
 public:
   template <typename AllResults>
-  BugReporter(Globals& globals_, AllResults& allResults_) {}
+  BugReporter(Globals& globals_, AllResults& allResults_):globals(globals_) {}
 
   ~BugReporter() {}
   /*
