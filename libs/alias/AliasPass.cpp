@@ -87,10 +87,6 @@ std::set<Value*> vals;
 */
 
 void runOnFunction(Function& F, AAResults& AAR) {
-  AliasGroups ags;
-  //addToAgs(F, ags);
-  ags.createGroups(&AAR);
-  ags.print(errs());  
 }
 
 bool AliasPass::runOnModule(Module& M) {
