@@ -30,6 +30,12 @@ public:
   auto count(Function* f) const { return fs.count(f); }
 
   auto size() const { return fs.size(); }
+
+  void remove(Function* f){
+    auto it = fs.find(f);
+    if(it != fs.end())
+      fs.erase(it);
+  }
 };
 
 } // namespace llvm
