@@ -1,10 +1,12 @@
 #include "DurPass.h"
 
 #include "analysis_util/Analyzer.h"
-#include "checker_util/Functions.h"
+#include "data_util/Functions.h"
 #include "ds/Locals.h"
 #include "ds/Variable.h"
 #include "preprocess/VariableParser.h"
+#include "parser_util/FunctionParser.h"
+#include "parser_util/Parser.h"
 
 #include "state/BugReporter.h"
 #include "state/Lattice.h"
@@ -26,7 +28,9 @@ bool DurPass::runOnModule(Module& M) {
   AAR.addAAResult(aaResults);
 
   using Globals = GlobalStore<Functions, Locals>;
+  using FuncParser = FunctionParser<Globals>;
   using VarParser = VariableParser<Globals>;
+  using AllParser = Parser<Globals, FuncParser, VarParser>;
 
   using LatVar = Variable*;
   using LatVal = Lattice;
@@ -35,7 +39,7 @@ bool DurPass::runOnModule(Module& M) {
   using Transition = Transfer<Globals, BReporter>;
 
   using DurAnalyzer =
-      Analyzer<Globals, VarParser, State, Transition, BReporter>;
+      Analyzer<Globals, AllParser, State, Transition, BReporter>;
   DurAnalyzer analyzer(M, AAR);
   return false;
 }

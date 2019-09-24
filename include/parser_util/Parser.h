@@ -1,14 +1,15 @@
 #pragma once
 #include "Common.h"
-#include "FunctionParser.h"
 
 namespace llvm {
 
-template <typename Globals, typename VariableParser> class Parser {
+template <typename Globals, typename FunctionParser, typename VariableParser>
+class Parser {
 public:
   Parser(Module& M, Globals& globals) {
     // ordering matters!
-    FunctionParser<Globals> fParser(M, globals);
+    FunctionParser fParser(M, globals);
+
 #ifdef DBGMODE
     globals.printFunctions(errs());
 #endif

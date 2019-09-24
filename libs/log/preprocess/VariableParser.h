@@ -1,20 +1,15 @@
 #pragma once
 #include "Common.h"
 
-#include "FieldParser.h"
-#include "ObjParser.h"
-#include "VarFinalizerParser.h"
+#include "DbgParser.h"
 
 namespace llvm {
 
-class VariableParser {
-
+template <typename Globals> class VariableParser {
 public:
-  VariableParser(Units& units) {
+  VariableParser(Globals& globals) {
     // ordering matters!
-    FieldParser vParser(units);
-    ObjParser oParser(units);
-    VarFinalizerParser vfParser(units);
+    DbgParser dParser(globals);    
   }
 };
 

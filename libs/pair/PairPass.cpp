@@ -1,10 +1,12 @@
 #include "PairPass.h"
 
 #include "analysis_util/Analyzer.h"
-#include "checker_util/Functions.h"
+#include "data_util/Functions.h"
 #include "ds/Locals.h"
 #include "ds/Variable.h"
 #include "preprocess/VariableParser.h"
+#include "parser_util/FunctionParser.h"
+#include "parser_util/Parser.h"
 
 #include "state/BugReporter.h"
 #include "state/Lattice.h"
@@ -25,7 +27,9 @@ bool PairPass::runOnModule(Module& M) {
   AAR.addAAResult(aaResults);
 
   using Globals = GlobalStore<Functions, Locals>;
+  using FuncParser = FunctionParser<Globals>;
   using VarParser = VariableParser<Globals>;
+  using AllParser = Parser<Globals, FuncParser, VarParser>;
 
   using LatVar = Variable*;
   using LatVal = Lattice;
@@ -34,7 +38,7 @@ bool PairPass::runOnModule(Module& M) {
   using Transition = Transfer<Globals, BReporter>;
 
   using PairAnalyzer =
-      Analyzer<Globals, VarParser, State, Transition, BReporter>;
+      Analyzer<Globals, AllParser, State, Transition, BReporter>;
   PairAnalyzer analyzer(M, AAR);
   return false;
 }
