@@ -3,6 +3,7 @@
 
 #include "DbgParser.h"
 #include "VarParser.h"
+#include "VarFiller.h"
 
 namespace llvm {
 
@@ -12,6 +13,7 @@ public:
     // ordering matters!
     DbgParser dParser(globals);
     VarParser vParser(globals);
+    VarFiller fParser(globals);
   }
 };
 

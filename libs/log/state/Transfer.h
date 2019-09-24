@@ -32,19 +32,10 @@ template <typename Globals, typename BReporter> class Transfer {
     return true;
   }
 
-  void doWrite(Variable* var, InstrInfo* ii, AbstractState& state) {
-    breporter.checkOutTxBug(txVar, ii, state);
-    breporter.checkCommitBug(var, ii, state);
-  }
-
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    doWrite(var, ii, state);
-
-    for (auto* wvar : var->getWriteSet()) {
-      doWrite(wvar, ii, state);
-    }
-
+    breporter.checkOutTxBug(txVar, ii, state);
+    breporter.checkCommitBug(var, ii, state);
     return true;
   }
 
