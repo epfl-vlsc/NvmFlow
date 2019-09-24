@@ -153,7 +153,6 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
-    if (ii.isLogBasedInstr())
       O << "\t" << ii.getName() << "\n";
   }
 }

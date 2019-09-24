@@ -6,16 +6,9 @@
 namespace llvm {
 
 template <typename Globals> class DbgParser {
-  static constexpr const char* PersistentName = "_ZL14pmemobj_direct7pmemoid";
+  
 
-  bool isPersistentVar(Value* v) const {
-    if (auto* ci = dyn_cast<CallInst>(v)) {
-      auto* f = ci->getCalledFunction();
-      if (f->getName().equals(PersistentName))
-        return true;
-    }
-    return false;
-  }
+  
 
   void addUsedTypes(Function* func, std::set<Type*>& ptrTypes,
                     std::set<StructType*>& structTypes) {
@@ -23,12 +16,7 @@ template <typename Globals> class DbgParser {
       for (auto& I : instructions(*f)) {
         // parse instr
         auto pv = InstrParser::parseInstruction(&I);
-        if (!pv.isUsed())
-          continue;
-
-        // check annotation type
-        auto* lv = pv.getLocalVar();
-        if (!isPersistentVar(lv))
+        if (!pv.isUsed() || !pv.isPersistentVar())
           continue;
 
         if (auto* persistentSt = pv.getObjStructType())

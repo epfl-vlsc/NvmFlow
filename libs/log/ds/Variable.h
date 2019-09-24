@@ -51,5 +51,19 @@ public:
   bool operator==(const Variable& X) const { return sf == X.sf && st == X.st; }
 };
 
+void Variable::print(raw_ostream& O) const {
+  O << this->getName();
+
+  O << ": writeSet:(";
+  for (auto* var : writeSet) {
+    O << var->getName() << ",";
+  }
+
+  O << ") flushSet:(";
+  for (auto* var : flushSet) {
+    O << var->getName() << ",";
+  }
+  O << ")";
+}
 
 } // namespace llvm

@@ -15,6 +15,8 @@ struct ParsedVariable {
                                           "NoneVar"};
   static constexpr const char* RCStr[] = {"VarRef", "LocRef"};
 
+  static constexpr const char* PersistentName = "_ZL14pmemobj_direct7pmemoid";
+
   // use opndVar for alias as well
 
   InsCat ic;
@@ -79,6 +81,16 @@ struct ParsedVariable {
 
   bool isLocRef() const { return rc == LocRef; }
 
+  bool isPersistentVar() const {
+    assert(localVar);
+    if (auto* ci = dyn_cast<CallInst>(localVar)) {
+      auto* f = ci->getCalledFunction();
+      if (f->getName().equals(PersistentName))
+        return true;
+    }
+    return false;
+  }
+
   auto* getStructType() {
     assert(st);
     return st;
@@ -95,18 +107,17 @@ struct ParsedVariable {
   }
 
   StructType* getObjStructType() {
-    if(st)
+    if (st)
       return st;
-    
-    assert(localVar);
-    auto* oType = localVar->getType();
-    assert(type->isPointerTy());
-    auto* ptrType = dyn_cast<PointerType>(oType);
-    auto* objType = ptrType->getPointerElementType();
-    assert(objType);
-    if(auto* structType = dyn_cast<StructType>(objType))
-      return structType;
-    
+
+    if (auto* ptrType = dyn_cast<PointerType>(type)) {
+      auto* objType = ptrType->getPointerElementType();
+      assert(objType);
+
+      if (auto* structType = dyn_cast<StructType>(objType))
+        return structType;
+    }
+
     return nullptr;
   }
 

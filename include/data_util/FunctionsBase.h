@@ -60,6 +60,8 @@ public:
     return !f || f->isIntrinsic() || skippedFunctions.count(f);
   }
 
+  bool isStoreFunction(Function* f) const { return storeFunctions.count(f); }
+
   void addAnnotFunc(Function* f, StringRef annotation) {
     analyzedFunctions.addAnnotFunc(f, annotation);
     skippedFunctions.addAnnotFunc(f, annotation);

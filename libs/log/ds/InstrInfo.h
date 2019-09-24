@@ -15,8 +15,8 @@ struct InstrInfo {
     None
   };
 
-  static constexpr const char* Strs[] = {"write", "logging", "txbegin",
-                                         "txend", "ip",      "none"};
+  static constexpr const char* Strs[] = {"write",  "logging", "tx begin",
+                                         "tx end", "ip",      "none"};
   Instruction* instr;
   InstrType instrType;
   Variable* var;
