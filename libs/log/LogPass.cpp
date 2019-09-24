@@ -5,7 +5,7 @@
 #include "ds/Variable.h"
 #include "ds/Functions.h"
 #include "preprocess/VariableParser.h"
-#include "parser_util/FunctionParser.h"
+#include "preprocess/FuncParser.h"
 #include "parser_util/Parser.h"
 
 #include "state/BugReporter.h"
@@ -27,7 +27,7 @@ bool LogPass::runOnModule(Module& M) {
   AAR.addAAResult(aaResults);
 
   using Globals = GlobalStore<Functions, Locals>;
-  using FuncParser = FunctionParser<Globals>;
+  using FuncParser = FuncParser<Globals>;
   using VarParser = VariableParser<Globals>;
   using AllParser = Parser<Globals, FuncParser, VarParser>;
 

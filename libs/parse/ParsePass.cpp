@@ -23,7 +23,7 @@ bool ParsePass::runOnModule(Module& M) {
     if (F.isIntrinsic() || F.isDeclaration())
       continue;
 
-    if (!F.getName().equals("_Z6insert18tree_map_node_toid14btree_map_toid"))
+    if (!F.getName().equals("_Z7correct18tree_map_node_toid14btree_map_toid"))
       continue;
 
     errs() << F.getName() << "\n";

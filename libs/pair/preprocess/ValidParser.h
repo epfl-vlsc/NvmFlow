@@ -1,13 +1,12 @@
 #pragma once
 #include "Common.h"
 
-#include "parser_util/InstrParser.h"
 #include "ds/InstrInfo.h"
+#include "parser_util/InstrParser.h"
 
 namespace llvm {
 
-template <typename Globals> 
-class ValidParser {
+template <typename Globals> class ValidParser {
   using InstrType = typename InstrInfo::InstrType;
 
   void addVar(Instruction* i, InstrType instrType) {
@@ -52,8 +51,6 @@ class ValidParser {
     globals.locals.addInstrInfo(i, instrType, valid, pv);
   }
 
-  void addRead(LoadInst* li) { addVar(li, InstrType::None); }
-
   void addWrite(StoreInst* si) { addVar(si, InstrType::WriteInstr); }
 
   void addFlush(CallInst* ci, InstrType instrType) { addVar(ci, instrType); }
@@ -84,8 +81,6 @@ class ValidParser {
   void addI(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
       addWrite(si);
-    } else if (auto* li = dyn_cast<LoadInst>(i)) {
-      // addRead(li);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       addCall(ci);
     }

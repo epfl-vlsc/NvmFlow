@@ -44,13 +44,19 @@ template <typename Globals> class FunctionParser {
     }
   }
 
+  virtual bool isKnownSkipFunction(Function* f) const {
+    (void)(f);
+    return false;
+  }
+
   void insertSkipFunctions() {
     for (auto& F : M) {
       if (F.isIntrinsic() || F.isDeclaration())
         continue;
 
+      // insert all skip functions
       auto* lastInstr = Traversal::getFunctionExitKey(&F);
-      if (!isa<ReturnInst>(lastInstr))
+      if (!isa<ReturnInst>(lastInstr) || isKnownSkipFunction(&F))
         globals.functions.insertSkipFunction(&F);
     }
   }
@@ -59,7 +65,9 @@ template <typename Globals> class FunctionParser {
   Globals& globals;
 
 public:
-  FunctionParser(Module& M_, Globals& globals_) : M(M_), globals(globals_) {
+  FunctionParser(Module& M_, Globals& globals_) : M(M_), globals(globals_) {}
+
+  void parse(){
     insertSkipFunctions();
     insertAnnotatedFunctions();
     insertNamedFunctions();
