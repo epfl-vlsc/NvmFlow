@@ -8,20 +8,20 @@ struct A {
 
   void up() {
     a = 5;
-    pm_clflush(&a);
+    pm_flushfence(&a);
 
     b = new int;
-    pm_clflush(&b);
+    pm_flushfence(&b);
     *b = 5;
-    pm_clflush(b);
+    pm_flushfence(b);
 
     c = 5;
-    pm_clflush(&c);
+    pm_flushfence(&c);
 
     d = new int;
-    pm_clflush(&d);
+    pm_flushfence(&d);
     *d = 5;
-    pm_clflush(d);
+    pm_flushfence(d);
   }
 };
 
@@ -37,18 +37,18 @@ struct B {
 
   void up() {
     a.a = 5;
-    pm_clflush(&a.a);
+    pm_flushfence(&a.a);
 
     a.b = new int;
-    pm_clflush(&a.b);
+    pm_flushfence(&a.b);
     *a.b = 5;
-    pm_clflush(a.b);
+    pm_flushfence(a.b);
   }
 
   void local(A** b, A** c) {
     *b = *c;
-    pm_clflush(*b);
-    pm_clflush(b);
+    pm_flushfence(*b);
+    pm_flushfence(b);
   }
 };
 
@@ -73,20 +73,20 @@ struct C {
 
   void array() {
     a[1] = 5;
-    pm_clflush(&a);
-    pm_clflush(&a[1]);
-    pm_clflush(a);
+    pm_flushfence(&a);
+    pm_flushfence(&a[1]);
+    pm_flushfence(a);
   }
 };
 
 void ptrs(int* a) {
   a = new int(2);
   *a = 5;
-  pm_clflush(&a);
-  pm_clflush(a);
+  pm_flushfence(&a);
+  pm_flushfence(a);
 
   int* b = new int(2);
   *b = 5;
-  pm_clflush(&b);
-  pm_clflush(b);
+  pm_flushfence(&b);
+  pm_flushfence(b);
 }

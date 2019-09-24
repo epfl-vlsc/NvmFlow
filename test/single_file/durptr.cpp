@@ -6,42 +6,42 @@ struct Dur {
 
   void nvm_fnc correct() {
     auto* ptr = new int(5);
-    pm_clflushopt(ptr);
+    pm_flush(ptr);
     pfence();
     next = ptr;
   }
 
   void nvm_fnc doubleFlush() {
     auto* ptr = new int(5);
-    pm_clflushopt(ptr);
+    pm_flush(ptr);
     pfence();
-    pm_clflushopt(ptr);
+    pm_flush(ptr);
     next = ptr;
   }
 
   void nvm_fnc doubleFlushParam(int* ptr) {
-    pm_clflushopt(ptr);
+    pm_flush(ptr);
     pfence();
-    pm_clflushopt(ptr);
+    pm_flush(ptr);
     next = ptr;
   }
 
   void nvm_fnc correctParam(int* ptr) {
-    pm_clflush(ptr);
+    pm_flushfence(ptr);
     next = ptr;
   }
 
   void nvm_fnc correctInt() {
     auto* data = new int(5);
 
-    pm_clflush(data);
+    pm_flushfence(data);
     next = data;
   }
 
   void nvm_fnc writeInt() {
     auto* data = new int(5);
 
-    pm_clflush(data);
+    pm_flushfence(data);
     *data = 5;
 
     next = data;
@@ -49,7 +49,7 @@ struct Dur {
 
   void nvm_fnc branchFlush(int* ptr) {
     if (*ptr == 1)
-      pm_clflush(ptr);
+      pm_flushfence(ptr);
     next = ptr;
   }
 
@@ -57,7 +57,7 @@ struct Dur {
 
   void nvm_fnc ipa() {
     auto* data = new int(5);
-    pm_clflushopt(data);
+    pm_flush(data);
     writeIpa(data);
   }
 };
