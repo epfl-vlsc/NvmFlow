@@ -8,7 +8,7 @@ namespace llvm {
 
 class InstrParser {
   static constexpr const StringRef EmptyRef;
-
+  
   static auto getStructInfo(GetElementPtrInst* gepi) {
     assert(gepi);
 
@@ -94,6 +94,7 @@ public:
       auto* opndRhs = si->getValueOperand();
       return std::pair(opndLhs, opndRhs);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      //todo - currently ignore rhs of llvm.memcpy
       auto* opnd = ci->getArgOperand(0);
       return std::pair(opnd, nullptr);
     }
@@ -197,6 +198,6 @@ public:
 
     return ParsedVariable();
   }
-};
+}; // namespace llvm
 
 } // namespace llvm

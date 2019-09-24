@@ -1,6 +1,8 @@
 #pragma once
 #include "Common.h"
 
+#include "data_util/NamedFunctions.h"
+
 namespace llvm {
 
 struct ParsedVariable {
@@ -57,6 +59,8 @@ struct ParsedVariable {
     if (auto* si = dyn_cast<StoreInst>(i)) {
       return StoreIns;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      if(NameFilter::isStoreFunction(ci))
+        return StoreIns;
       return CallIns;
     }
 

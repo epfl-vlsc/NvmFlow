@@ -11,11 +11,15 @@ class NameFilter {
                                              "_Z8tx_beginv", "_Z6tx_endv"};
 
   static constexpr const char* varCalls[] = {
-      "_Z8pm_flushPKv", "_Z13pm_flushfencePKv", "flush_range",
-      "pmemobj_tx_add_range", "_Z6tx_logPv"};
+      "_Z8pm_flushPKv",       "_Z13pm_flushfencePKv", "flush_range",
+      "pmemobj_tx_add_range", "_Z6tx_logPv",          "llvm.memcpy"};
+
+  static constexpr const char* storeFunctions[] = {"llvm.memcpy"};
+
+  static constexpr const size_t ElementSize = sizeof(const char*);
 
 public:
-  static bool isVarCall(CallInst* ci) {
+  static bool contains(CallInst* ci, const char* const* names, size_t size) {
     auto* f = ci->getCalledFunction();
     if (!f)
       return false;
@@ -24,12 +28,21 @@ public:
     if (n.empty())
       return false;
 
-    for (auto name : varCalls) {
-      if (n.equals(name)) {
+    for (size_t i = 0; i < size; ++i) {
+      auto* name = names[i];
+      if (n.contains(name)) {
         return true;
       }
     }
     return false;
+  }
+
+  static bool isVarCall(CallInst* ci) {
+    return contains(ci, varCalls, sizeof(varCalls) / ElementSize);
+  }
+
+  static bool isStoreFunction(CallInst* ci) {
+    return contains(ci, storeFunctions, sizeof(storeFunctions) / ElementSize);
   }
 };
 
