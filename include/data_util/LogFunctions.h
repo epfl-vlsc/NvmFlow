@@ -15,7 +15,7 @@ private:
 
 public:
   bool skipFunction(Function* f) const override {
-    return isLoggingFunction(f) || isTxbeginFunction(f) || isTxendFunction(f) ||
+    return isLoggingFunction(f) || isTxBeginFunction(f) || isTxEndFunction(f) ||
            isSkippedFunction(f);
   }
 
@@ -23,11 +23,11 @@ public:
     return loggingFunctions.count(f);
   }
 
-  bool isTxbeginFunction(Function* f) const {
+  bool isTxBeginFunction(Function* f) const {
     return txBeginFunctions.count(f);
   }
 
-  bool isTxendFunction(Function* f) const { return txEndFunctions.count(f); }
+  bool isTxEndFunction(Function* f) const { return txEndFunctions.count(f); }
 
   void addAnnotFuncChecker(Function* f, StringRef annotation) override {
     loggingFunctions.addAnnotFunc(f, annotation);
