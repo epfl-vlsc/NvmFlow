@@ -33,11 +33,8 @@ template <typename Globals, typename BReporter> class Transfer {
   }
 
   void doWrite(Variable* var, InstrInfo* ii, AbstractState& state) {
-    auto* instr = ii->getInstruction();
     breporter.checkOutTxBug(txVar, ii, state);
     breporter.checkCommitPairBug(var, ii, state);
-
-    breporter.addLastSeen(var, val, instr);
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
@@ -51,15 +48,15 @@ template <typename Globals, typename BReporter> class Transfer {
     return true;
   }
 
-  bool handleTxBeg(InstructionInfo* ii, AbstractState& state) {
+  bool handleTxBeg(InstrInfo* ii, AbstractState& state) {
     auto& val = state[txVar];
-    val = LatVal::getBeginTx(val);
+    val = Lattice::getBeginTx(val);
     return true;
   }
 
-  bool handleTxEnd(InstructionInfo* ii, AbstractState& state) {
+  bool handleTxEnd(InstrInfo* ii, AbstractState& state) {
     auto& val = state[txVar];
-    val = LatVal::getEndTx(val);
+    val = Lattice::getEndTx(val);
     return true;
   }
 
@@ -72,19 +69,19 @@ public:
       : globals(globals_), breporter(breporter_) {
     auto& llvmContext = M_.getContext();
     auto* st = StructType::create(llvmContext, "TxVal");
-    txVar = new Variable(st, 0);
+    txVar = new Variable(st);
   }
 
   ~Transfer() {}
 
   void initLatticeValues(AbstractState& state) {
     // for tracking variables
-    for (auto& var : units.getVariables()) {
-      state[var] = LatVal::getInitLog();
+    for (auto& var : globals.getVariables()) {
+      state[var] = Lattice::getInitLog();
     }
 
     // store transaction at nullptr
-    state[txVar] = LatVal::getInitTx();
+    state[txVar] = Lattice::getInitTx();
   }
 
   bool handleInstruction(Instruction* i, AbstractState& state) {
@@ -95,16 +92,16 @@ public:
       return stateChanged;
 
     switch (ii->getInstrType()) {
-    case InstructionInfo::LoggingInstr:
+    case InstrInfo::LoggingInstr:
       stateChanged = handleLog(ii, state);
       break;
-    case InstructionInfo::WriteInstr:
+    case InstrInfo::WriteInstr:
       stateChanged = handleWrite(ii, state);
       break;
-    case InstructionInfo::TxBegInstr:
+    case InstrInfo::TxBegInstr:
       stateChanged = handleTxBeg(ii, state);
       break;
-    case InstructionInfo::TxEndInstr:
+    case InstrInfo::TxEndInstr:
       stateChanged = handleTxEnd(ii, state);
       break;
     default:

@@ -8,7 +8,7 @@ namespace llvm {
 
 class Functions {
 public:
-  static constexpr const char* LOG = "LogCode";
+  static constexpr const char* NVM = "NvmCode";
   static constexpr const char* SKIP = "SkipCode";
 
 private:
@@ -21,7 +21,7 @@ private:
   TxendFunctions txendFunctions;
 
 public:
-  Functions() : analyzedFunctions(LOG), skippedFunctions(SKIP) {}
+  Functions() : analyzedFunctions(NVM), skippedFunctions(SKIP) {}
 
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
 
