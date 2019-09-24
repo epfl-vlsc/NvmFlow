@@ -6,35 +6,34 @@
 namespace llvm {
 
 template <typename Globals> class DbgParser {
-  static constexpr const char* skipNames[] = {"_ZL14pmemobj_direct7pmemoid",
-                                                  "pmemobj_pool_by_oid"};
-  
-  bool isASkipFunction(Function* f){
-      for(auto * skipName : skipNames){
-          if(f->getName().equals(skipName))
-            globals.functions.insertSkipFunction(f);
-      }
+  static constexpr const char* PersistentName = "_ZL14pmemobj_direct7pmemoid";
+
+  bool isPersistentVar(Value* v) const {
+    if (auto* ci = dyn_cast<CallInst>(v)) {
+      auto* f = ci->getCalledFunction();
+      if (f->getName().equals(PersistentName))
+        return true;
+    }
+    return false;
   }
 
   void addUsedTypes(Function* func, std::set<Type*>& ptrTypes,
                     std::set<StructType*>& structTypes) {
     for (auto* f : globals.functions.getUnitFunctions(func)) {
-      errs() << f->getName() << "\n";
-      /*
-    for (auto& I : instructions(*f)) {
-      // parse instr
-      auto pv = InstrParser::parseInstruction(&I);
-      if (!pv.isUsed() || !pv.isAnnotated())
-        continue;
+      for (auto& I : instructions(*f)) {
+        // parse instr
+        auto pv = InstrParser::parseInstruction(&I);
+        if (!pv.isUsed())
+          continue;
 
-      // check annotation type
-      auto annotation = pv.getAnnotation();
-      if (AnnotParser::isValidAnnotation(annotation)) {
-        auto* st = pv.getStructType();
-        structTypes.insert(st);
+        // check annotation type
+        auto* lv = pv.getLocalVar();
+        if (!isPersistentVar(lv))
+          continue;
+
+        if (auto* persistentSt = pv.getObjStructType())
+          structTypes.insert(persistentSt);
       }
-    }
-    */
     }
   }
 
@@ -51,8 +50,6 @@ template <typename Globals> class DbgParser {
     auto& funcSet = globals.functions.getAllAnalyzedFunctions();
     globals.dbgInfo.addDbgInfoFunctions(funcSet, ptrTypes, structTypes);
   }
-
-  void addSkipFunctions() {}
 
   Globals& globals;
 

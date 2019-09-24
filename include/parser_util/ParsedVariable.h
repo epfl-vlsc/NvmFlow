@@ -96,6 +96,22 @@ struct ParsedVariable {
     return objType;
   }
 
+  StructType* getObjStructType() {
+    if(st)
+      return st;
+    
+    assert(localVar);
+    auto* oType = localVar->getType();
+    assert(type->isPointerTy());
+    auto* ptrType = dyn_cast<PointerType>(oType);
+    auto* objType = ptrType->getPointerElementType();
+    assert(objType);
+    if(auto* structType = dyn_cast<StructType>(objType))
+      return structType;
+    
+    return nullptr;
+  }
+
   Type* getObjType() const {
     if (isField()) {
       assert(st);
