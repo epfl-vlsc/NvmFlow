@@ -9,7 +9,7 @@ namespace llvm {
 class FunctionParser {
   static constexpr const char* GLOBAL_ANNOT = "llvm.global.annotations";
 
-  void insertAnnotatedFunctions() {
+  void addAnnotFuncs() {
     for (Module::global_iterator I = M.global_begin(), E = M.global_end();
          I != E; ++I) {
       if (I->getName() == GLOBAL_ANNOT) {
@@ -25,14 +25,14 @@ class FunctionParser {
           Function* annotatedFunction =
               dyn_cast<Function>(CS->getOperand(0)->getOperand(0));
 
-          units.functions.insertAnnotatedFunction(annotatedFunction,
+          units.functions.addAnnotFunc(annotatedFunction,
                                                   annotation);
         }
       }
     }
   }
 
-  void insertNamedFunctions() {
+  void addNamedFuncs() {
     for (auto& F : M) {
       auto* f = &F;
       auto mangledName = f->getName();
@@ -42,7 +42,7 @@ class FunctionParser {
       }
 
       auto realName = units.dbgInfo.getFunctionName(mangledName);
-      units.functions.insertNamedFunction(f, realName);
+      units.functions.addNamedFunc(f, realName);
     }
 
     // ensure tx are properly used
@@ -54,8 +54,8 @@ class FunctionParser {
 
 public:
   FunctionParser(Module& M_, Units& units_) : M(M_), units(units_) {
-    insertAnnotatedFunctions();
-    insertNamedFunctions();
+    addAnnotFuncs();
+    addNamedFuncs();
   }
 };
 

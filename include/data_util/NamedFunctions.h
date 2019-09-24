@@ -56,7 +56,7 @@ public:
   NamedFunctions(const char* annot_) : AnnotatedFunctions(annot_) {}
   NamedFunctions() : AnnotatedFunctions(nullptr) {}
 
-  void insertNamedFunction(Function* f, StringRef name) {
+  void addNamedFunc(Function* f, StringRef name) {
     if (sameName(name)) {
       fs.insert(f);
     }
@@ -67,6 +67,16 @@ public:
     FunctionSet::print(O);
     O << "\n";
   }
+};
+
+class StoreFunctions : public NamedFunctions {
+public:
+  StoreFunctions(const char* annot_) : NamedFunctions(annot_) {}
+  StoreFunctions() : NamedFunctions(nullptr) {}
+
+  bool sameName(StringRef name) const { return name.contains("llvm.memcpy"); }
+
+  const char* getName() const { return "store"; }
 };
 
 class PfenceFunctions : public NamedFunctions {

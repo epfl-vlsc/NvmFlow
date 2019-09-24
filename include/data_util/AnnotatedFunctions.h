@@ -16,7 +16,7 @@ public:
   AnnotatedFunctions(const char* annot_)
       : annot(annot_) {}
 
-  virtual void insertAnnotatedFunction(Function* f, StringRef annotation) {
+  virtual void addAnnotFunc(Function* f, StringRef annotation) {
     if (sameAnnotation(annotation)) {
       fs.insert(f);
     }

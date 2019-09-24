@@ -1,7 +1,7 @@
 #include "DurPass.h"
 
 #include "analysis_util/Analyzer.h"
-#include "data_util/Functions.h"
+#include "data_util/PersistFunctions.h"
 #include "ds/Locals.h"
 #include "ds/Variable.h"
 #include "preprocess/VariableParser.h"
@@ -27,7 +27,7 @@ bool DurPass::runOnModule(Module& M) {
   auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(aaResults);
 
-  using Globals = GlobalStore<Functions, Locals>;
+  using Globals = GlobalStore<PersistFunctions, Locals>;
   using FuncParser = FunctionParser<Globals>;
   using VarParser = VariableParser<Globals>;
   using AllParser = Parser<Globals, FuncParser, VarParser>;

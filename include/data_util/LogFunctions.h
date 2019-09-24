@@ -1,20 +1,20 @@
 #pragma once
 #include "Common.h"
 
-#include "data_util/FunctionsBase.h"
 #include "data_util/AnnotatedFunctions.h"
+#include "data_util/FunctionsBase.h"
 #include "data_util/NamedFunctions.h"
 
 namespace llvm {
 
-class Functions : public FunctionsBase {
+class LogFunctions : public FunctionsBase {
 private:
   LoggingFunctions loggingFunctions;
   TxBeginFunctions txBeginFunctions;
   TxEndFunctions txEndFunctions;
 
 public:
-  bool skipFunction(Function* f) const {
+  bool skipFunction(Function* f) const override {
     return isLoggingFunction(f) || isTxbeginFunction(f) || isTxendFunction(f) ||
            isSkippedFunction(f);
   }
@@ -29,22 +29,19 @@ public:
 
   bool isTxendFunction(Function* f) const { return txEndFunctions.count(f); }
 
-  void insertAnnotatedFunction(Function* f, StringRef annotation) {
-    analyzedFunctions.insertAnnotatedFunction(f, annotation);
-    skippedFunctions.insertAnnotatedFunction(f, annotation);
-    loggingFunctions.insertNamedFunction(f, annotation);
-    txBeginFunctions.insertNamedFunction(f, annotation);
-    txEndFunctions.insertNamedFunction(f, annotation);
+  void addAnnotFuncChecker(Function* f, StringRef annotation) override {
+    loggingFunctions.addAnnotFunc(f, annotation);
+    txBeginFunctions.addAnnotFunc(f, annotation);
+    txEndFunctions.addAnnotFunc(f, annotation);
   }
 
-  void insertNamedFunction(Function* f) {
-    auto name = f->getName();
-    loggingFunctions.insertNamedFunction(f, name);
-    txBeginFunctions.insertNamedFunction(f, name);
-    txEndFunctions.insertNamedFunction(f, name);
+  void addNamedFuncChecker(Function* f, StringRef name) override {
+    loggingFunctions.addNamedFunc(f, name);
+    txBeginFunctions.addNamedFunc(f, name);
+    txEndFunctions.addNamedFunc(f, name);
   }
 
-  void printChecker(raw_ostream& O) const {
+  void printChecker(raw_ostream& O) const override {
     loggingFunctions.print(O);
     txBeginFunctions.print(O);
     txEndFunctions.print(O);

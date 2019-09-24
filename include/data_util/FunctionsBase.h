@@ -15,6 +15,7 @@ protected:
   AnnotatedFunctions analyzedFunctions;
   FunctionSet allAnalyzedFunctions;
   AnnotatedFunctions skippedFunctions;
+  StoreFunctions storeFunctions;
 
 public:
   FunctionsBase() : analyzedFunctions(NVM), skippedFunctions(SKIP) {}
@@ -59,13 +60,18 @@ public:
     return !f || f->isIntrinsic() || skippedFunctions.count(f);
   }
 
-  virtual void insertAnnotatedFunction(Function* f, StringRef annotation) = 0;
+  void addAnnotFunc(Function* f, StringRef annotation) {
+    analyzedFunctions.addAnnotFunc(f, annotation);
+    skippedFunctions.addAnnotFunc(f, annotation);
+    storeFunctions.addAnnotFunc(f, annotation);
+    addAnnotFuncChecker(f, annotation);
+  }
 
-  virtual void insertNamedFunction(Function* f) = 0;
-
-  virtual void printChecker(raw_ostream& O) const = 0;
-
-  virtual bool skipFunction(Function* f) const = 0;
+  void addNamedFunc(Function* f) {
+    auto name = f->getName();
+    storeFunctions.addNamedFunc(f, name);
+    addNamedFuncChecker(f, name);
+  }
 
   void insertToAllAnalyzed(Function* f) { allAnalyzedFunctions.insert(f); }
 
@@ -74,12 +80,21 @@ public:
     allAnalyzedFunctions.remove(f);
   }
 
+  virtual void addAnnotFuncChecker(Function* f, StringRef annotation) = 0;
+
+  virtual void addNamedFuncChecker(Function* f, StringRef name) = 0;
+
+  virtual void printChecker(raw_ostream& O) const = 0;
+
+  virtual bool skipFunction(Function* f) const = 0;
+
   void print(raw_ostream& O) const {
     O << "Functions Info\n";
     O << "--------------\n";
 
     analyzedFunctions.print(O);
     skippedFunctions.print(O);
+    storeFunctions.print(O);
     printChecker(O);
 
     O << "\n";

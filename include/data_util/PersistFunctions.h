@@ -1,13 +1,13 @@
 #pragma once
 #include "Common.h"
 
-#include "FunctionsBase.h"
 #include "AnnotatedFunctions.h"
+#include "FunctionsBase.h"
 #include "NamedFunctions.h"
 
 namespace llvm {
 
-class Functions : public FunctionsBase {
+class PersistFunctions : public FunctionsBase {
 private:
   PfenceFunctions pfenceFunctions;
   VfenceFunctions vfenceFunctions;
@@ -15,7 +15,7 @@ private:
   FlushFenceFunctions flushFenceFunctions;
 
 public:
-  bool skipFunction(Function* f) const {
+  bool skipFunction(Function* f) const override {
     return isPfenceFunction(f) || isVfenceFunction(f) || isFlushFunction(f) ||
            isFlushFenceFunction(f) || isSkippedFunction(f);
   }
@@ -30,24 +30,21 @@ public:
     return flushFenceFunctions.count(f);
   }
 
-  void insertAnnotatedFunction(Function* f, StringRef annotation) {
-    analyzedFunctions.insertAnnotatedFunction(f, annotation);
-    skippedFunctions.insertAnnotatedFunction(f, annotation);
-    pfenceFunctions.insertNamedFunction(f, annotation);
-    vfenceFunctions.insertNamedFunction(f, annotation);
-    flushFunctions.insertNamedFunction(f, annotation);
-    flushFenceFunctions.insertNamedFunction(f, annotation);
+  void addAnnotFuncChecker(Function* f, StringRef annotation) override {
+    pfenceFunctions.addAnnotFunc(f, annotation);
+    vfenceFunctions.addAnnotFunc(f, annotation);
+    flushFunctions.addAnnotFunc(f, annotation);
+    flushFenceFunctions.addAnnotFunc(f, annotation);
   }
 
-  void insertNamedFunction(Function* f) {
-    auto name = f->getName();
-    pfenceFunctions.insertNamedFunction(f, name);
-    vfenceFunctions.insertNamedFunction(f, name);
-    flushFunctions.insertNamedFunction(f, name);
-    flushFenceFunctions.insertNamedFunction(f, name);
+  void addNamedFuncChecker(Function* f, StringRef name) override {
+    pfenceFunctions.addNamedFunc(f, name);
+    vfenceFunctions.addNamedFunc(f, name);
+    flushFunctions.addNamedFunc(f, name);
+    flushFenceFunctions.addNamedFunc(f, name);
   }
 
-  void printChecker(raw_ostream& O) const {
+  void printChecker(raw_ostream& O) const override {
     pfenceFunctions.print(O);
     vfenceFunctions.print(O);
     flushFunctions.print(O);

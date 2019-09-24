@@ -7,7 +7,7 @@ namespace llvm {
 template <typename Globals> class FunctionParser {
   static constexpr const char* GLOBAL_ANNOT = "llvm.global.annotations";
 
-  void insertAnnotatedFunctions() {
+  void addAnnotFuncs() {
     for (Module::global_iterator I = M.global_begin(), E = M.global_end();
          I != E; ++I) {
       if (I->getName() == GLOBAL_ANNOT) {
@@ -23,16 +23,16 @@ template <typename Globals> class FunctionParser {
           Function* annotatedFunction =
               dyn_cast<Function>(CS->getOperand(0)->getOperand(0));
 
-          globals.functions.insertAnnotatedFunction(annotatedFunction,
+          globals.functions.addAnnotFunc(annotatedFunction,
                                                     annotation);
         }
       }
     }
   }
 
-  void insertNamedFunctions() {
+  void addNamedFuncs() {
     for (auto& F : M) {
-      globals.functions.insertNamedFunction(&F);
+      globals.functions.addNamedFunc(&F);
     }
   }
 
@@ -69,8 +69,8 @@ public:
 
   void parse(){
     insertSkipFunctions();
-    insertAnnotatedFunctions();
-    insertNamedFunctions();
+    addAnnotFuncs();
+    addNamedFuncs();
     insertAllAnalyzedFunctions();
   }
 };

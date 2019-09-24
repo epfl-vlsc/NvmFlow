@@ -3,7 +3,7 @@
 #include "analysis_util/Analyzer.h"
 #include "ds/Locals.h"
 #include "ds/Variable.h"
-#include "ds/Functions.h"
+#include "data_util/LogFunctions.h"
 #include "preprocess/VariableParser.h"
 #include "preprocess/FuncParser.h"
 #include "parser_util/Parser.h"
@@ -26,7 +26,7 @@ bool LogPass::runOnModule(Module& M) {
   auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   AAR.addAAResult(aaResults);
 
-  using Globals = GlobalStore<Functions, Locals>;
+  using Globals = GlobalStore<LogFunctions, Locals>;
   using FuncParser = FuncParser<Globals>;
   using VarParser = VariableParser<Globals>;
   using AllParser = Parser<Globals, FuncParser, VarParser>;
