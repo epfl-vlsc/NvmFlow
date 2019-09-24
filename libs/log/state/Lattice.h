@@ -131,20 +131,14 @@ public:
     return txValue.state > 0;
   }
 
-  bool isLogCommitLogged() const {
+  bool isLog() const {
     assert(type == LogType);
     return logCommit.state == LogValue::Logged;
   }
 
-  bool isLogFlushLogged() const {
-    assert(type == LogType);
-    return logFlush.state == LogValue::Logged;
-  }
-
   bool isLogged() const {
     assert(type == LogType);
-    return logCommit.state == LogValue::Logged &&
-           logFlush.state == LogValue::Logged;
+    return logFlush.state == LogValue::Logged;
   }
 
   auto getName() const {

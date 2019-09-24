@@ -1,5 +1,15 @@
 #include "LogPass.h"
 
+#include "analysis_util/Analyzer.h"
+#include "ds/Locals.h"
+#include "ds/Variable.h"
+#include "pair_dur_util/Functions.h"
+#include "preprocess/VariableParser.h"
+
+#include "state/BugReporter.h"
+#include "state/Lattice.h"
+#include "state/Transfer.h"
+
 namespace llvm {
 
 void LogPass::print(raw_ostream& OS, const Module* m) const {
@@ -7,11 +17,33 @@ void LogPass::print(raw_ostream& OS, const Module* m) const {
 }
 
 bool LogPass::runOnModule(Module& M) {
-  Analyzer analyzer(M);
+  auto& TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+  AAResults AAR(TLI);
+
+  // boost analysis with andersen analysis
+  auto& aaResults = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+  AAR.addAAResult(aaResults);
+
+  using Globals = GlobalStore<Functions, Locals>;
+  using VarParser = VariableParser<Globals>;
+
+  using LatVar = Variable*;
+  using LatVal = Lattice;
+  using State = std::map<LatVar, LatVal>;
+  using BReporter = BugReporter<Globals>;
+  using Transition = Transfer<Globals, BReporter>;
+
+  using LogAnalyzer =
+      Analyzer<Globals, VarParser, State, Transition, BReporter>;
+  LogAnalyzer analyzer(M, AAR);
   return false;
 }
 
 void LogPass::getAnalysisUsage(AnalysisUsage& AU) const {
+  AU.addRequired<TargetLibraryInfoWrapperPass>();
+  AU.addRequired<CFLAndersAAWrapperPass>();
+
+  AU.setPreservesAll();
 }
 
 char LogPass::ID = 0;

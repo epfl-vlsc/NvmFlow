@@ -13,16 +13,15 @@ public:
 
 private:
   AnnotatedFunctions analyzedFunctions;
+  FunctionSet allAnalyzedFunctions;
   AnnotatedFunctions skippedFunctions;
 
   LoggingFunctions loggingFunctions;
   TxbeginFunctions txbeginFunctions;
   TxendFunctions txendFunctions;
 
-  bool useTx;
-
 public:
-  Functions() : analyzedFunctions(LOG), skippedFunctions(SKIP), useTx(false) {}
+  Functions() : analyzedFunctions(LOG), skippedFunctions(SKIP) {}
 
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
 
@@ -32,8 +31,7 @@ public:
     for (auto& I : instructions(*f)) {
       if (auto* ci = dyn_cast<CallInst>(&I)) {
         auto* callee = ci->getCalledFunction();
-        bool doIp = !callee->isDeclaration() && !visited.count(callee) &&
-                    !skipFunction(callee);
+        bool doIp = !visited.count(callee) && !skipFunction(callee);
         if (doIp) {
           getUnitFunctions(callee, visited);
         }
@@ -47,6 +45,14 @@ public:
     return visited;
   }
 
+  auto getUnitFunctionSet(Function* f) {
+    std::set<Function*> visited;
+    getUnitFunctions(f, visited);
+
+    FunctionSet funcSet(visited);
+    return funcSet;
+  }
+
   bool skipFunction(Function* f) const {
     return isLoggingFunction(f) || isTxbeginFunction(f) || isTxendFunction(f) ||
            isSkippedFunction(f);
@@ -57,7 +63,7 @@ public:
   }
 
   bool isSkippedFunction(Function* f) const {
-    return skippedFunctions.count(f);
+    return !f || f->isIntrinsic() || skippedFunctions.count(f);
   }
 
   bool isLoggingFunction(Function* f) const {
@@ -70,36 +76,34 @@ public:
 
   bool isTxendFunction(Function* f) const { return txendFunctions.count(f); }
 
-  void setTxMode() {
-    useTx = !txbeginFunctions.empty() && !txendFunctions.empty();
-    if (useTx) {
-      assert(txbeginFunctions.size() == 1 && txendFunctions.size() == 1 &&
-             "must have one type of tx");
-    }
-  }
-
-  bool isUseTx() const { return useTx; }
-
   void insertAnnotatedFunction(Function* f, StringRef annotation) {
     analyzedFunctions.insertAnnotatedFunction(f, annotation);
     skippedFunctions.insertAnnotatedFunction(f, annotation);
-  }
-
-  void insertNamedFunction(Function* f, StringRef realName) {
     loggingFunctions.insertNamedFunction(f, realName);
     txbeginFunctions.insertNamedFunction(f, realName);
     txendFunctions.insertNamedFunction(f, realName);
   }
 
+  void insertNamedFunction(Function* f) {
+    auto name = f->getName();
+    loggingFunctions.insertNamedFunction(f, name);
+    txbeginFunctions.insertNamedFunction(f, name);
+    txendFunctions.insertNamedFunction(f, name);
+  }
+
+  void insertToAllAnalyzed(Function* f) { allAnalyzedFunctions.insert(f); }
+
+  void insertSkipFunction(Function* f) { skippedFunctions.insert(f); }
+
   void print(raw_ostream& O) const {
     O << "Functions Info\n";
+    O << "--------------\n";
+
     analyzedFunctions.print(O);
     skippedFunctions.print(O);
     loggingFunctions.print(O);
-    if (useTx) {
-      txbeginFunctions.print(O);
-      txendFunctions.print(O);
-    }
+    txbeginFunctions.print(O);
+    txendFunctions.print(O);
     O << "\n";
   }
 };

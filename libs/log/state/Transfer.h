@@ -1,80 +1,81 @@
 #pragma once
-#include "BugReporter.h"
 #include "Common.h"
-#include "FlowTypes.h"
-
+#include "Lattice.h"
 #include "analysis_util/DfUtil.h"
-
-#include "ds/Units.h"
+#include "ds/Variable.h"
 
 namespace llvm {
 
-class Transfer {
-  void trackVar(Variable* var, InstructionInfo* ii) {
-    breporter.updateLastLocation(var, ii);
-  }
+template <typename Globals, typename BReporter> class Transfer {
+  using AbstractState = std::map<Variable*, Lattice>;
 
-  bool doLog(Variable* var, AbstractState& state) {
+  void doLog(Variable* var, InstrInfo* ii, AbstractState& state) {
+    auto* instr = ii->getInstruction();
+    breporter.checkOutTxBug(txVar, ii, state);
+    breporter.checkDoubleLogBug(var, ii, state);
+
     auto& val = state[var];
 
-    if (!val.isLogged()) {
-      val = LatVal::getLogged();
-      return true;
-    }
-    return false;
+    val = Lattice::getLogged();
+
+    breporter.addLastSeen(var, val, instr);
   }
 
-  bool handleLog(InstructionInfo* ii, AbstractState& state) {
-    breporter.checkDoubleLogBug(txVar, ii, state);
-
+  bool handleLog(InstrInfo* ii, AbstractState& state) {
     auto* var = ii->getVariable();
-    assert(var);
+    doLog(var, ii, state);
 
-    bool stateChanged = doLog(var, state);
-    if (stateChanged)
-      trackVar(var, ii);
-
-    if (var->isObj()) {
-      for (auto* field : units.variables.getFlushFields(var)) {
-        bool fieldStateChanged = doLog(field, state);
-        if (fieldStateChanged)
-          trackVar(field, ii);
-
-        stateChanged |= fieldStateChanged;
-      }
+    for (auto* fvar : var->getFlushSet()) {
+      doLog(fvar, ii, state);
     }
 
-    return stateChanged;
+    return true;
   }
 
-  bool handleWrite(InstructionInfo* ii, AbstractState& state) {
-    breporter.checkNotCommittedBug(txVar, ii, state);
-    return false;
+  void doWrite(Variable* var, InstrInfo* ii, AbstractState& state) {
+    auto* instr = ii->getInstruction();
+    breporter.checkOutTxBug(txVar, ii, state);
+    breporter.checkCommitPairBug(var, ii, state);
+
+    breporter.addLastSeen(var, val, instr);
+  }
+
+  bool handleWrite(InstrInfo* ii, AbstractState& state) {
+    auto* var = ii->getVariable();
+    doWrite(var, ii, state);
+
+    for (auto* wvar : var->getWriteSet()) {
+      doWrite(wvar, ii, state);
+    }
+
+    return true;
   }
 
   bool handleTxBeg(InstructionInfo* ii, AbstractState& state) {
-    state[txVar] = LatVal::getBeginTx(state[txVar]);
+    auto& val = state[txVar];
+    val = LatVal::getBeginTx(val);
     return true;
   }
 
   bool handleTxEnd(InstructionInfo* ii, AbstractState& state) {
-    state[txVar] = LatVal::getEndTx(state[txVar]);
+    auto& val = state[txVar];
+    val = LatVal::getEndTx(val);
     return true;
   }
 
-  Units& units;
-  BugReporter& breporter;
+  Globals& globals;
+  BReporter& breporter;
   Variable* txVar;
 
 public:
-  Transfer(Module& M_, Units& units_, BugReporter& breporter_)
-      : units(units_), breporter(breporter_) {
+  Transfer(Module& M_, Globals& globals_, BReporter& breporter_)
+      : globals(globals_), breporter(breporter_) {
     auto& llvmContext = M_.getContext();
     auto* st = StructType::create(llvmContext, "TxVal");
     txVar = new Variable(st, 0);
   }
 
-  ~Transfer() { delete txVar; }
+  ~Transfer() {}
 
   void initLatticeValues(AbstractState& state) {
     // for tracking variables
@@ -89,7 +90,7 @@ public:
   bool handleInstruction(Instruction* i, AbstractState& state) {
     bool stateChanged = false;
 
-    auto* ii = units.variables.getInstructionInfo(i);
+    auto* ii = globals.locals.getInstrInfo(i);
     if (!ii)
       return stateChanged;
 
@@ -119,6 +120,6 @@ public:
 
     return stateChanged;
   }
-}; // namespace llvm
+};
 
 } // namespace llvm
