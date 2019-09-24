@@ -6,19 +6,19 @@ struct Dcl {
 
   void nvm_fnc correct() {
     data = 1;
-    pm_clflushopt(&data);
+    pm_flush(&data);
     pfence();
     valid = 1;
-    pm_clflushopt(&valid);
+    pm_flush(&valid);
     pfence();
   }
 };
 
 void nvm_fnc correct(Dcl* dcl) {
   dcl->data = 1;
-  pm_clflushopt(&dcl->data);
+  pm_flush(&dcl->data);
   pfence();
   dcl->valid = 1;
-  pm_clflushopt(&dcl->valid);
+  pm_flush(&dcl->valid);
   pfence();
 }
