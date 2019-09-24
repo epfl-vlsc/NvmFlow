@@ -34,7 +34,7 @@ template <typename Globals, typename BReporter> class Transfer {
 
   void doWrite(Variable* var, InstrInfo* ii, AbstractState& state) {
     breporter.checkOutTxBug(txVar, ii, state);
-    breporter.checkCommitPairBug(var, ii, state);
+    breporter.checkCommitBug(var, ii, state);
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
@@ -76,7 +76,8 @@ public:
 
   void initLatticeValues(AbstractState& state) {
     // for tracking variables
-    for (auto& var : globals.getVariables()) {
+    for (auto& varRef : globals.getVariables()) {
+      auto* var = (Variable*)&varRef;
       state[var] = Lattice::getInitLog();
     }
 

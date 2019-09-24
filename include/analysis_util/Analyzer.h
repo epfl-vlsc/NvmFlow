@@ -2,14 +2,14 @@
 
 #include "Common.h"
 #include "GlobalStore.h"
-//#include "StateMachine.h"
+#include "StateMachine.h"
 
 namespace llvm {
 
 template <typename Globals, typename Parser, typename State,
           typename Transition, typename BReporter>
 class Analyzer {
-  //using FlowAnalyzer = StateMachine<Globals, State, Transition, BReporter>;
+  using FlowAnalyzer = StateMachine<Globals, State, Transition, BReporter>;
 
   Module& M;
   Globals globals;
@@ -32,7 +32,7 @@ public:
       globals.printLocals(errs());
 #endif
 
-      //FlowAnalyzer(M, globals).analyze(f);
+      FlowAnalyzer(M, globals).analyze(f);
     }
   }
 

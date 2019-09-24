@@ -20,7 +20,7 @@ public:
   BugReporter(Globals& globals_, DfResults& dfResults_)
       : Base(globals_, dfResults_) {}
 
-  void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void checkDoubleLogBug(Variable* var, InstrInfo* ii, AbstractState& state) {
     if (this->isBugVar(var))
       return;
 
