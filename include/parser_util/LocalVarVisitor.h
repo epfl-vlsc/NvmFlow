@@ -41,7 +41,7 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
   }
 
   Value* visitCallInst(CallInst& I) {
-    if (NameFilter::isFlush(&I)) {
+    if (NameFilter::isVarCall(&I)) {
       auto* v = I.getOperand(0);
       return visit(*v);
     } else {

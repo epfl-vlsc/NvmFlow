@@ -7,14 +7,15 @@ namespace llvm {
 
 // add name to here and respective struct
 class NameFilter {
-  static constexpr const char* fncNames[] = {
-      "_Z6pfencev", "_Z6vfencev", "_Z8tx_beginv", "_Z6tx_endv", "_Z6tx_logPv"};
+  static constexpr const char* fncNames[] = {"_Z6pfencev", "_Z6vfencev",
+                                             "_Z8tx_beginv", "_Z6tx_endv"};
 
-  static constexpr const char* flushNames[] = {
-      "_Z8pm_flushPKv", "_Z13pm_flushfencePKv", "flush_range"};
+  static constexpr const char* varCalls[] = {
+      "_Z8pm_flushPKv", "_Z13pm_flushfencePKv", "flush_range",
+      "pmemobj_tx_add_range", "_Z6tx_logPv"};
 
 public:
-  static bool isFlush(CallInst* ci) {
+  static bool isVarCall(CallInst* ci) {
     auto* f = ci->getCalledFunction();
     if (!f)
       return false;
@@ -23,7 +24,7 @@ public:
     if (n.empty())
       return false;
 
-    for (auto name : flushNames) {
+    for (auto name : varCalls) {
       if (n.equals(name)) {
         return true;
       }
@@ -122,7 +123,9 @@ public:
   LoggingFunctions(const char* annot_) : NamedFunctions(annot_) {}
   LoggingFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("_Z6tx_logPv"); }
+  bool sameName(StringRef name) const {
+    return name.equals("_Z6tx_logPv") || name.equals("pmemobj_tx_add_range");
+  }
 
   const char* getName() const { return "tx_log"; }
 };

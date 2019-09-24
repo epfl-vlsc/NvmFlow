@@ -65,7 +65,7 @@ class InstrParser {
     if (auto* si = dyn_cast<StoreInst>(i)) {
       return true;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      return NameFilter::isFlush(ci);
+      return NameFilter::isVarCall(ci);
     }
 
     return false;
@@ -77,8 +77,8 @@ class InstrParser {
       return si->getPointerOperandType();
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       auto* opnd = ci->getArgOperand(0);
+      assert(isa<CastInst>(opnd));
       auto* castInst = dyn_cast<CastInst>(opnd);
-      assert(castInst);
       return castInst->getSrcTy();
     }
 
