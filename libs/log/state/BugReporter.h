@@ -64,7 +64,10 @@ public:
 
     auto& val = state[var];
     if (!val.inTx()) {
+      auto* iVar = ii->getVariable();
       this->addBugVar(var);
+      this->addBugVar(iVar);
+
 
       auto* accessedVar = ii->getVariable();
       auto* instr = ii->getInstruction();

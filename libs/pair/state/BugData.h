@@ -40,6 +40,20 @@ struct CommitDataBug : public BugData {
   }
 };
 
+
+struct WriteVarBug : public BugData {
+  std::string varName;
+  std::string srcLoc;
+
+  WriteVarBug(std::string varName_, std::string srcLoc_)
+      : varName(varName_), srcLoc(srcLoc_) {}
+
+  void print(raw_ostream& O) const {
+    O << "*) \tWrite to " + varName;
+    O << " before flushing at " + srcLoc + "\n";
+  }
+};
+
 struct DoubleFlushBug : public BugData {
   std::string varName;
   std::string srcLoc;

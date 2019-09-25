@@ -163,6 +163,10 @@ public:
            dclFlush.state == DclFlush::Write;
   }
 
+  bool isWriteCommit() const {
+    return dclCommit.state == DclCommit::Write;
+  }
+
   auto getName() const {
     return dclCommit.getName() + " " + dclFlush.getName();
   }

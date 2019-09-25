@@ -10,7 +10,15 @@ $(LL_DIR)/%.ll: $(SRC_DIR)/%.cpp
 	clang++ -S $(FINOPT) $(CPPFLAGS) -o $@ $@
 
 
-
+tx_begin();  
+  TX_ADD(node);
+  TX_ADD_FIELD(node, a);
+  TX_ADD_FIELD(node, b);
+  TX_ADD_FIELD(node, c);
+  D_RW(node)->a = 0;
+  D_RW(node)->b = 1;
+  D_RW(node)->c = TX_ZNEW(struct tree_map_node);
+  tx_end();
 
 #include "ExpPass.h"
 #include "Common.h"

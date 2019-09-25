@@ -44,13 +44,33 @@ public:
       this->addBugVar(var);
 
       auto* instr = ii->getInstruction();
-      auto* prevInstr = this->getLastSeen(var, val);
+      //todo optimize
+      auto searchVal = Lattice::getFlush(val, true);
+      auto* prevInstr = this->getLastSeen(var, searchVal);
 
       auto varName = var->getName();
       auto srcLoc = DbgInstr::getSourceLocation(instr);
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
       auto* bugData = new DoubleFlushBug(varName, srcLoc, prevLoc);
+      this->addBugData(bugData);
+    }
+  }
+
+  void checkWriteVarBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+    if (this->isBugVar(var))
+      return;
+
+    auto& val = state[var];
+    if (!val.isWriteCommit()) {
+      this->addBugVar(var);
+
+      auto* instr = ii->getInstruction();
+
+      auto varName = var->getName();
+      auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+      auto* bugData = new WriteVarBug(varName, srcLoc);
       this->addBugData(bugData);
     }
   }

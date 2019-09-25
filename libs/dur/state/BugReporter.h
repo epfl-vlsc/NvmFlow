@@ -29,9 +29,12 @@ public:
       this->addBugVar(var);
 
       auto* instr = ii->getInstruction();
-      auto* prevInstr = this->getLastSeen(var, val);
+      //todo optimize
+      auto searchVal = Lattice::getFlush(val, true);
+      auto* prevInstr = this->getLastSeen(var, searchVal);
 
-      auto varName = var->getName();
+      auto* varInfo = ii->getVarInfo();
+      auto varName = varInfo->getName();
       auto srcLoc = DbgInstr::getSourceLocation(instr);
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
