@@ -40,9 +40,9 @@ void nvm_fnc correct(TOID(struct tree_map_node) node) {
 void nvm_fnc commitBug(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop)
   if (cond()) {
-    D_RW(node)->b = 0;
+     TX_ADD(node);
   }
-  TX_ADD(node);
+ 
   D_RW(node)->a = 0;
   TX_END
 }
