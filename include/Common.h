@@ -92,12 +92,22 @@ auto getTypeName(Type* type) {
   return TypeNames[typeNo];
 }
 
-template <typename Inst>
-void assertInst(Value* v){
+template <typename Inst> void assertInst(Value* v) {
   bool isInst = isa<Inst>(v);
-  if(!isInst)
+  if (!isInst)
     errs() << "inst: " << *v << "\n";
   assert(isInst);
+}
+
+void assertField(StructType* st, int idx) {
+  if (!st)
+    report_fatal_error("not proper struct");
+
+  if (idx < 0) {
+    errs() << *st << " " << idx << "\n";
+  }
+
+  assert(st && idx >= 0);
 }
 
 template <typename Map> void assertInDs(Map& map, StringRef& key) {

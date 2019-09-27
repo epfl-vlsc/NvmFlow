@@ -245,7 +245,7 @@ public:
   }
 
   auto* getStructField(StructType* st, int idx) {
-    assert(st && idx >= 0);
+    assertField(st, idx);
     auto fieldIdxStr = StructField::getIdxName(st, idx);
     assertInDs(fieldIdxStrMap, fieldIdxStr);
     auto* sf = fieldIdxStrMap[fieldIdxStr];

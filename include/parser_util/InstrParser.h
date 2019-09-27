@@ -211,6 +211,11 @@ public:
     else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
       // field
       auto [st, idx] = getStructInfo(gepi);
+
+      // disable dynamic offsets
+      if (idx < 0)
+        return ParsedVariable();
+
       if (st && isa<StructType>(st)) {
         auto* structType = dyn_cast<StructType>(st);
         return ParsedVariable(opndVar, localVar, type, instCat, isPtr, isLocRef,

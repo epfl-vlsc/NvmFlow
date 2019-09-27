@@ -9,7 +9,7 @@ protected:
   int idx;
 
   StructFieldBase(StructType* st_, int idx_) : st(st_), idx(idx_) {
-    assert(st && idx >= 0);
+    assertField(st, idx);
   }
 
   virtual ~StructFieldBase() {}

@@ -54,7 +54,7 @@ struct ParsedVariable {
         vc(isPtr ? FieldPtr : FieldData), rc(isLocRef ? LocRef : VarRef),
         st(st_), idx(idx_), annotation(annotation_), opndRhs(opndRhs_) {
     assert(opndVar && localVar && type);
-    assert(st && idx >= 0);
+    assertField(st, idx);
   }
 
   static auto getInstCat(Instruction* i) {
@@ -137,7 +137,7 @@ struct ParsedVariable {
   }
 
   auto getStructInfo() const {
-    assert(st && idx >= 0);
+    assertField(st, idx);
     return std::pair(st, idx);
   }
 
