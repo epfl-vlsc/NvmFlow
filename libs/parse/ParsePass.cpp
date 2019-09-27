@@ -9,6 +9,7 @@
 #include "analysis_util/DfUtil.h"
 #include "parser_util/InstrParser.h"
 
+#include <algorithm>
 #include <cassert>
 #include <set>
 using namespace std;
@@ -18,15 +19,24 @@ void ParsePass::print(raw_ostream& OS, const Module* m) const {
   OS << "pass\n";
 }
 
+bool isSkipFunction(Function& F) {
+  static const char* skipFunctions[] = {"_ZL9TX_MEMCPYPvPKvm",
+                                        "_ZL9TX_MEMSETPvim"};
+  for (auto* c : skipFunctions) {
+    if (F.getName().equals(c))
+      return true;
+  }
+
+  return false;
+}
+
 bool ParsePass::runOnModule(Module& M) {
+
   for (auto& F : M) {
-    if (F.isIntrinsic() || F.isDeclaration())
+    if (F.isIntrinsic() || F.isDeclaration() || isSkipFunction(F))
       continue;
 
-    if (!F.getName().equals("_Z7correct18tree_map_node_toid14btree_map_toid"))
-      continue;
-
-    errs() << F.getName() << "\n";
+    errs() << "function:" << F.getName() << "\n";
     for (auto& I : instructions(F)) {
       auto pv = InstrParser::parseInstruction(&I);
 

@@ -6,38 +6,6 @@
 
 namespace llvm {
 
-Value* stripCasts(Value* v) {
-  assert(v);
-  while (true) {
-    if (auto* ci = dyn_cast<CastInst>(v)) {
-      v = ci->getOperand(0);
-    } else {
-      break;
-    }
-  }
-
-  return v;
-}
-
-Type* stripPointers(Type* t) {
-  assert(t && t->isPointerTy());
-  while (true) {
-    if (auto* pt = dyn_cast<PointerType>(t)) {
-      t = pt->getPointerElementType();
-    } else {
-      break;
-    }
-  }
-
-  return t;
-}
-
-Type* getPtrElementType(Type* t) {
-  assert(t && t->isPointerTy());
-  auto* pt = dyn_cast<PointerType>(t);
-  return pt->getPointerElementType();
-}
-
 struct DbgInstr {
   static auto getSourceLocation(Instruction* instruction,
                                 bool fullPath = false) {

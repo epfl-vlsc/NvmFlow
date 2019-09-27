@@ -6,9 +6,40 @@
 
 namespace llvm {
 
+Value* stripCasts(Value* v) {
+  assert(v);
+  while (true) {
+    if (auto* ci = dyn_cast<CastInst>(v)) {
+      v = ci->getOperand(0);
+    } else {
+      break;
+    }
+  }
+
+  return v;
+}
+
+Value* stripAggregate(Value* v) {
+  assert(v);
+  if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
+    auto *type = gepi->getSourceElementType();
+    if(type->isArrayTy()){
+      v = gepi->getOperand(0);
+    }
+  }
+
+  return v;
+}
+
+Type* getPtrElementType(Type* t) {
+  assert(t && t->isPointerTy());
+  auto* pt = dyn_cast<PointerType>(t);
+  return pt->getPointerElementType();
+}
+
 class InstrParser {
   static constexpr const StringRef EmptyRef;
-  
+
   static auto getStructInfo(GetElementPtrInst* gepi) {
     assert(gepi);
 
@@ -94,7 +125,7 @@ public:
       auto* opndRhs = si->getValueOperand();
       return std::pair(opndLhs, opndRhs);
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      //todo - currently ignore rhs of llvm.memcpy
+      // todo - currently ignore rhs of llvm.memcpy
       auto* opnd = ci->getArgOperand(0);
       return std::pair(opnd, nullptr);
     }
@@ -119,6 +150,9 @@ public:
 
     // skip cast
     auto* v = stripCasts(opndVar);
+
+    // skip array field
+    v = stripAggregate(v);
 
     // ref-------------------------------------------------
     if (auto* li = dyn_cast<LoadInst>(v)) {
