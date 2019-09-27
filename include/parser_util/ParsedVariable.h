@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
 
-#include "data_util/NamedFunctions.h"
+#include "data_util/NameFilter.h"
 
 namespace llvm {
 

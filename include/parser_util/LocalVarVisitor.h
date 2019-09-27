@@ -2,7 +2,7 @@
 #include "Common.h"
 
 #include "llvm/IR/InstVisitor.h"
-#include "data_util/NamedFunctions.h"
+#include "data_util/NameFilter.h"
 
 namespace llvm {
 
