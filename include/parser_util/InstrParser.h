@@ -116,12 +116,11 @@ class InstrParser {
         return arg->getType();
       } else if (auto* gepi = dyn_cast<GetElementPtrInst>(opnd)) {
         auto* gepiOpnd = gepi->getPointerOperand();
-        if (auto* li = dyn_cast<LoadInst>(gepiOpnd)) {
-          return li->getPointerOperandType();
-        }
-        errs() << "gepiopnd: " << *gepiOpnd << "\n";
+        return gepiOpnd->getType();
       } else if (auto* invokeInst = dyn_cast<InvokeInst>(opnd)) {
         return invokeInst->getType();
+      } else if (auto* callInst = dyn_cast<CallInst>(opnd)) {
+        return opnd->getType();
       }
 
       errs() << "opnd: " << *opnd << "\n";
