@@ -92,6 +92,14 @@ auto getTypeName(Type* type) {
   return TypeNames[typeNo];
 }
 
+template <typename Inst>
+void assertInst(Value* v){
+  bool isInst = isa<Inst>(v);
+  if(!isInst)
+    errs() << "inst: " << *v << "\n";
+  assert(isInst);
+}
+
 template <typename Map> void assertInDs(Map& map, StringRef& key) {
   if (!map.count(key)) {
     errs() << "Assert failed for " << key << "\n";

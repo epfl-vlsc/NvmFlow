@@ -22,8 +22,8 @@ Value* stripCasts(Value* v) {
 Value* stripAggregate(Value* v) {
   assert(v);
   if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
-    auto *type = gepi->getSourceElementType();
-    if(type->isArrayTy()){
+    auto* type = gepi->getSourceElementType();
+    if (type->isArrayTy()) {
       v = gepi->getOperand(0);
     }
   }
@@ -108,11 +108,26 @@ class InstrParser {
       return si->getPointerOperandType();
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       auto* opnd = ci->getArgOperand(0);
-      assert(isa<CastInst>(opnd));
-      auto* castInst = dyn_cast<CastInst>(opnd);
-      return castInst->getSrcTy();
+      if (auto* castInst = dyn_cast<CastInst>(opnd)) {
+        return castInst->getSrcTy();
+      } else if (auto* loadInst = dyn_cast<LoadInst>(opnd)) {
+        return loadInst->getPointerOperandType();
+      } else if (auto* arg = dyn_cast<Argument>(opnd)) {
+        return arg->getType();
+      } else if (auto* gepi = dyn_cast<GetElementPtrInst>(opnd)) {
+        auto* gepiOpnd = gepi->getPointerOperand();
+        if (auto* li = dyn_cast<LoadInst>(gepiOpnd)) {
+          return li->getPointerOperandType();
+        }
+        errs() << "gepiopnd: " << *gepiOpnd << "\n";
+      } else if (auto* invokeInst = dyn_cast<InvokeInst>(opnd)) {
+        return invokeInst->getType();
+      }
+
+      errs() << "opnd: " << *opnd << "\n";
     }
 
+    errs() << "inst: " << *i << "\n";
     report_fatal_error("wrong inst - type");
     return nullptr;
   }
