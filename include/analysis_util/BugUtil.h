@@ -2,6 +2,7 @@
 #include "Common.h"
 
 #include "DataflowResults.h"
+#include "LastSeen.h"
 
 namespace llvm {
 
@@ -16,9 +17,8 @@ public:
   using AbstractState = std::map<LatVar, LatVal>;
   using DfResults = DataflowResults<AbstractState>;
   using BugList = std::vector<BugData*>;
-  using VarState = std::pair<LatVar, LatVal>;
-  using LastSeen = std::map<VarState, Instruction*>;
   using SeenBugVars = std::set<LatVar>;
+  using LastLoc = LastSeen<LatVar, LatVal>;
 
 protected:
   Globals& globals;
@@ -26,7 +26,7 @@ protected:
   Function* topFunction;
 
   BugList bugList;
-  LastSeen lastSeen;
+  LastLoc lastSeen;
   SeenBugVars buggedVars;
 
   void clear() {
@@ -78,17 +78,15 @@ public:
   }
 
   void addLastSeen(LatVar var, LatVal val, Instruction* i) {
-    VarState state = {var, val};
-    lastSeen[state] = i;
+    lastSeen.addLastSeen(var, val, i);
   }
 
-  Instruction* getLastSeen(LatVar var, LatVal val) {
-    VarState state = {var, val};
-    if (lastSeen.count(state))
-      return lastSeen[state];
-    
-    report_fatal_error("not seen var val");
-    return nullptr;
+  Instruction* getLastCommit(LatVar var, LatVal val) {
+    return lastSeen.getLastCommit(var, val);
+  }
+
+  Instruction* getLastFlush(LatVar var, LatVal val) {
+    return lastSeen.getLastFlush(var, val);
   }
 
   std::string getFunctionName() const {

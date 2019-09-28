@@ -29,7 +29,7 @@ public:
       this->addBugVar(var);
 
       auto* instr = ii->getInstruction();
-      auto* prevInstr = this->getLastSeen(var, val);
+      auto* prevInstr = this->getLastFlush(var, val);
 
       auto varName = var->getName();
       auto srcLoc = DbgInstr::getSourceLocation(instr);
