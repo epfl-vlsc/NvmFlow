@@ -6,10 +6,6 @@
 namespace llvm {
 
 template <typename Globals> class DbgParser {
-  
-
-  
-
   void addUsedTypes(Function* func, std::set<Type*>& ptrTypes,
                     std::set<StructType*>& structTypes) {
     for (auto* f : globals.functions.getUnitFunctions(func)) {

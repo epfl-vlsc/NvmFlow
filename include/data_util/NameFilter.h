@@ -125,7 +125,10 @@ public:
   static bool isVarCall(CallInst* ci) {
     assert(ci);
     auto* func = ci->getCalledFunction();
-    assert(func);
+    if(!func){
+      return false;
+    }
+
     auto funcName = func->getName();
     bool varCall = isFlushFunction(funcName);
     varCall |= isFlushFenceFunction(funcName);
