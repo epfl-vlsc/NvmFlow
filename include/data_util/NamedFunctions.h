@@ -124,7 +124,7 @@ public:
   LoggingFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return NameFilter::isTxEndFunction(name);
+    return NameFilter::isLoggingFunction(name);
   }
 
   const char* getName() const { return "tx_log"; }

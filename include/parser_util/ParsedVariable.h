@@ -15,8 +15,6 @@ struct ParsedVariable {
                                           "NoneVar"};
   static constexpr const char* RCStr[] = {"VarRef", "LocRef"};
 
-  static constexpr const char* PersistentName = "_ZL14pmemobj_direct7pmemoid";
-
   // use opndVar for alias as well
 
   InsCat ic;
@@ -83,11 +81,7 @@ struct ParsedVariable {
 
   bool isPersistentVar() const {
     assert(localVar);
-    if (auto* ci = dyn_cast<CallInst>(localVar)) {
-      auto* f = ci->getCalledFunction();
-      if (f->getName().equals(PersistentName))
-        return true;
-    }
+    NameFilter::isPersistentVar(localVar);
     return false;
   }
 

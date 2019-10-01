@@ -98,11 +98,10 @@ public:
       break;
     default:
       report_fatal_error("not correct instruction");
-      return false;
     }
 
 #ifdef DBGMODE
-    errs() << "Analyze " << DbgInstr::getSourceLocation(i) << "\n";
+    errs() << "Analyze " << ii->getName() << "\n";
     if (stateChanged)
       printState(state);
 #endif

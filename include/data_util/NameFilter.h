@@ -7,16 +7,7 @@ namespace llvm {
 
 // add to var calls and the respective function
 class NameFilter {
-  static constexpr const char* varCalls[] = {
-      "_Z8pm_flushPKv",
-      "_Z13pm_flushfencePKv",
-      "flush_range",
-      "_Z11flush_rangePKvm",
-      "pmemobj_tx_add_range",
-      "_Z6tx_logPv",
-      "llvm.memcpy",
-      "llvm.memmove",
-      "_ZN7storageL14__pmem_persistEPvmi"};
+  static constexpr const char* PersistentName = "_ZL14pmemobj_direct7pmemoid";
 
   static constexpr const char* storeFunctions[] = {"llvm.memcpy",
                                                    "llvm.memmove"};
@@ -63,31 +54,45 @@ public:
     return contains(n, names, size);
   }
 
-  static bool isVarCall(CallInst* ci) {
-    return contains(ci, varCalls, sizeof(varCalls) / ElementSize);
+  static bool equals(StringRef n, const char* const* names, size_t size) {
+    if (n.empty())
+      return false;
+
+    for (size_t i = 0; i < size; ++i) {
+      auto* name = names[i];
+      if (n.equals(name)) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  static bool isStoreFunction(CallInst* ci) {
-    return contains(ci, storeFunctions, sizeof(storeFunctions) / ElementSize);
+  static bool equals(CallInst* ci, const char* const* names, size_t size) {
+    auto* f = ci->getCalledFunction();
+    if (!f)
+      return false;
+
+    auto n = f->getName();
+    return equals(n, names, size);
   }
 
   // named functions--------------------------
 
   static bool isPfenceFunction(StringRef& n) {
-    return contains(n, pfenceFunctions, sizeof(pfenceFunctions) / ElementSize);
+    return equals(n, pfenceFunctions, sizeof(pfenceFunctions) / ElementSize);
   }
 
   static bool isVfenceFunction(StringRef& n) {
-    return contains(n, vfenceFunctions, sizeof(vfenceFunctions) / ElementSize);
+    return equals(n, vfenceFunctions, sizeof(vfenceFunctions) / ElementSize);
   }
 
   static bool isFlushFunction(StringRef& n) {
-    return contains(n, flushFunctions, sizeof(flushFunctions) / ElementSize);
+    return equals(n, flushFunctions, sizeof(flushFunctions) / ElementSize);
   }
 
   static bool isFlushFenceFunction(StringRef& n) {
-    return contains(n, flushfenceFunctions,
-                    sizeof(flushfenceFunctions) / ElementSize);
+    return equals(n, flushfenceFunctions,
+                  sizeof(flushfenceFunctions) / ElementSize);
   }
 
   static bool isStoreFunction(StringRef& n) {
@@ -95,12 +100,42 @@ public:
   }
 
   static bool isTxEndFunction(StringRef& n) {
-    return contains(n, txEndFunctions, sizeof(txEndFunctions) / ElementSize);
+    return equals(n, txEndFunctions, sizeof(txEndFunctions) / ElementSize);
   }
 
   static bool isTxBeginFunction(StringRef& n) {
-    return contains(n, txBeginFunctions,
-                    sizeof(txBeginFunctions) / ElementSize);
+    return equals(n, txBeginFunctions, sizeof(txBeginFunctions) / ElementSize);
+  }
+
+  static bool isLoggingFunction(StringRef& n) {
+    return equals(n, loggingFunctions, sizeof(loggingFunctions) / ElementSize);
+  }
+
+  // parser functions
+  static bool isPersistentVar(Value* v) {
+    if (auto* ci = dyn_cast<CallInst>(v)) {
+      auto* f = ci->getCalledFunction();
+      if (f->getName().equals(PersistentName))
+        return true;
+    }
+
+    return false;
+  }
+
+  static bool isVarCall(CallInst* ci) {
+    assert(ci);
+    auto* func = ci->getCalledFunction();
+    assert(func);
+    auto funcName = func->getName();
+    bool varCall = isFlushFunction(funcName);
+    varCall |= isFlushFenceFunction(funcName);
+    varCall |= isStoreFunction(funcName);
+    varCall |= isLoggingFunction(funcName);
+    return varCall;
+  }
+
+  static bool isStoreFunction(CallInst* ci) {
+    return contains(ci, storeFunctions, sizeof(storeFunctions) / ElementSize);
   }
 };
 
