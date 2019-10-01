@@ -19,6 +19,9 @@ template <typename Globals> class DataParser {
     if (pv.isObjPtr()) {
       // objptr
       auto* type = pv.getObjType();
+      // todo optimize
+      if (isa<PointerType>(type))
+        type = getPtrElementType(type);
       auto* st = dyn_cast<StructType>(type);
       data = globals.locals.getVariable(st);
     } else if (pv.isField()) {

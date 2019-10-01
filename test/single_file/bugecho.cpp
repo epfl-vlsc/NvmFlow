@@ -63,7 +63,7 @@ struct kp_kv_master_struct {
 	sentinel() ds_state state;
 };
 
-int kp_kv_master_create(kp_kv_master **master, consistency_mode mode,
+int nvm_fnc kp_kv_master_create(kp_kv_master **master, consistency_mode mode,
 		size_t expected_max_keys, bool do_conflict_detection, bool use_nvm)
 {
 	int ret;

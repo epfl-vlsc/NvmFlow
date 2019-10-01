@@ -29,8 +29,11 @@ template <typename Globals> class VarFiller {
       for (auto* sf : globals.dbgInfo.getFieldMap(st)) {
         if (!globals.locals.inVariables(sf))
           continue;
-
+        
         auto* field = globals.locals.getVariable(sf);
+        if (globals.locals.inSentinels(field))
+          continue;
+
         var->addToFlushSet(field);
       }
     }
