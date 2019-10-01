@@ -1,11 +1,16 @@
-add_subdirectory(parse)
+#property checkers
 add_subdirectory(pair)
 add_subdirectory(log)
 add_subdirectory(dur)
-#add_subdirectorycons)
+
+#compilation checkers
+add_subdirectory(cons)
+add_subdirectory(simp)
+
+#experimental checkers
+add_subdirectory(parse)
 #add_subdirectory(exp)
 #add_subdirectory(alias)
-#add_subdirectory(simp)
 #add_subdirectory(dbg)
 
 
