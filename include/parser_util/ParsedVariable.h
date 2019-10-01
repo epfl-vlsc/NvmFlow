@@ -81,8 +81,7 @@ struct ParsedVariable {
 
   bool isPersistentVar() const {
     assert(localVar);
-    NameFilter::isPersistentVar(localVar);
-    return false;
+    return NameFilter::isPersistentVar(localVar);;
   }
 
   auto* getStructType() {
@@ -152,11 +151,13 @@ struct ParsedVariable {
 
   auto* getRhs() { return opndRhs; }
 
-  void print(raw_ostream& O) const {
+  void print(raw_ostream& O, bool newline = true) const {
     O << "|(" << ICStr[(int)ic];
     O << "," << VCStr[(int)vc];
     if (!isUsed()) {
       O << ")|";
+      if (newline)
+        O << "\n";
       return;
     }
 
@@ -173,6 +174,9 @@ struct ParsedVariable {
       O << " (" << annotation << ")";
 
     O << "|";
+
+    if (newline)
+      O << "\n";
   }
 };
 
