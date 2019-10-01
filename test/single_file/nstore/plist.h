@@ -12,7 +12,7 @@ template<typename V>
 class plist {
  public:
   struct node {
-    struct node* next;
+    dur_field struct node* next;
     V val;
   };
 

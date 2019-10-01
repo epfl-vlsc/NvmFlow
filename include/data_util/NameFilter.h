@@ -8,9 +8,15 @@ namespace llvm {
 // add to var calls and the respective function
 class NameFilter {
   static constexpr const char* varCalls[] = {
-      "_Z8pm_flushPKv",      "_Z13pm_flushfencePKv", "flush_range",
-      "_Z11flush_rangePKvm", "pmemobj_tx_add_range", "_Z6tx_logPv",
-      "llvm.memcpy",         "llvm.memmove"};
+      "_Z8pm_flushPKv",
+      "_Z13pm_flushfencePKv",
+      "flush_range",
+      "_Z11flush_rangePKvm",
+      "pmemobj_tx_add_range",
+      "_Z6tx_logPv",
+      "llvm.memcpy",
+      "llvm.memmove",
+      "_ZN7storageL14__pmem_persistEPvmi"};
 
   static constexpr const char* storeFunctions[] = {"llvm.memcpy",
                                                    "llvm.memmove"};
@@ -18,7 +24,8 @@ class NameFilter {
   static constexpr const char* flushFunctions[] = {"_Z8pm_flushPKv"};
 
   static constexpr const char* flushfenceFunctions[] = {
-      "_Z13pm_flushfencePKv", "flush_range", "_Z11flush_rangePKvm"};
+      "_Z13pm_flushfencePKv", "flush_range", "_Z11flush_rangePKvm",
+      "_ZN7storageL14__pmem_persistEPvmi"};
 
   static constexpr const char* pfenceFunctions[] = {"_Z6pfencev"};
 
@@ -28,7 +35,8 @@ class NameFilter {
 
   static constexpr const char* txEndFunctions[] = {"_Z6tx_endv"};
 
-  static constexpr const char* loggingFunctions[] = {"pmemobj_tx_add_range", "_Z6tx_logPv"};
+  static constexpr const char* loggingFunctions[] = {"pmemobj_tx_add_range",
+                                                     "_Z6tx_logPv"};
 
   static constexpr const size_t ElementSize = sizeof(const char*);
 
