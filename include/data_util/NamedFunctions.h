@@ -32,7 +32,7 @@ public:
     FunctionSet::print(O);
     O << "\n";
   }
-};
+}; // namespace llvm
 
 class StoreFunctions : public NamedFunctions {
 public:
@@ -40,7 +40,7 @@ public:
   StoreFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.contains("llvm.memcpy") || name.contains("llvm.memmove");
+    return NameFilter::isStoreFunction(name);
   }
 
   const char* getName() const { return "store"; }
@@ -51,7 +51,9 @@ public:
   PfenceFunctions(const char* annot_) : NamedFunctions(annot_) {}
   PfenceFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("_Z6pfencev"); }
+  bool sameName(StringRef name) const {
+    return NameFilter::isPfenceFunction(name);
+  }
 
   const char* getName() const { return "pfence"; }
 };
@@ -61,7 +63,9 @@ public:
   VfenceFunctions(const char* annot_) : NamedFunctions(annot_) {}
   VfenceFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("_Z6vfencev"); }
+  bool sameName(StringRef name) const {
+    return NameFilter::isVfenceFunction(name);
+  }
 
   const char* getName() const { return "vfence"; }
 };
@@ -71,7 +75,9 @@ public:
   FlushFunctions(const char* annot_) : NamedFunctions(annot_) {}
   FlushFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("_Z8pm_flushPKv"); }
+  bool sameName(StringRef name) const {
+    return NameFilter::isFlushFunction(name);
+  }
 
   const char* getName() const { return "flush"; }
 };
@@ -82,7 +88,7 @@ public:
   FlushFenceFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("_Z13pm_flushfencePKv") || name.equals("flush_range");
+    return NameFilter::isFlushFenceFunction(name);
   }
 
   const char* getName() const { return "flush fence"; }
@@ -93,7 +99,9 @@ public:
   TxBeginFunctions(const char* annot_) : NamedFunctions(annot_) {}
   TxBeginFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("_Z8tx_beginv"); }
+  bool sameName(StringRef name) const {
+    return NameFilter::isTxBeginFunction(name);
+  }
 
   const char* getName() const { return "tx_begin"; }
 };
@@ -103,7 +111,9 @@ public:
   TxEndFunctions(const char* annot_) : NamedFunctions(annot_) {}
   TxEndFunctions() : NamedFunctions(nullptr) {}
 
-  bool sameName(StringRef name) const { return name.equals("_Z6tx_endv"); }
+  bool sameName(StringRef name) const {
+    return NameFilter::isTxEndFunction(name);
+  }
 
   const char* getName() const { return "tx_end"; }
 };
@@ -114,7 +124,7 @@ public:
   LoggingFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return name.equals("_Z6tx_logPv") || name.equals("pmemobj_tx_add_range");
+    return NameFilter::isTxEndFunction(name);
   }
 
   const char* getName() const { return "tx_log"; }
