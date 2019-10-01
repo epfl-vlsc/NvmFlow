@@ -110,11 +110,16 @@ class DbgInfo {
   void addFieldDbgInfo(const DIType* T, int idx, StringRef& typeName) {
     // get debug info
     StringRef realName = T->getName();
-    assert(!realName.empty());
+    if (realName.empty())
+      return;
+
     StringRef fileName = T->getFilename();
-    assert(!fileName.empty());
+    if (fileName.empty())
+      return;
+
     unsigned lineNo = T->getLine();
-    assert(lineNo);
+    if (!lineNo)
+      return;
 
     // find element to add info
     auto strIdx = StructField::getIdxName(typeName, idx);

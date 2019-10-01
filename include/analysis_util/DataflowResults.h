@@ -35,7 +35,6 @@ public:
     auto& functionResults = allResults[context];
     auto* exitKey = Traversal::getFunctionExitKey(topFunction);
     auto& state = functionResults[exitKey];
-    assert(!state.empty());
     return state;
   }
 
