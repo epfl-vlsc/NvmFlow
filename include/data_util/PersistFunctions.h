@@ -26,7 +26,9 @@ public:
 
   bool isFlushFunction(Function* f) const { return flushFunctions.count(f); }
 
-  bool isFlushFenceFunction(Function* f) const { return flushFunctions.count(f); }
+  bool isFlushFenceFunction(Function* f) const {
+    return flushFenceFunctions.count(f);
+  }
 
   bool isAnyFlushFunction(Function* f) const {
     return flushFunctions.count(f) || flushFenceFunctions.count(f);
@@ -34,11 +36,11 @@ public:
 
   bool isAnyFlushFunction(Instruction* i) const {
     assert(i);
-    if(auto* ci = dyn_cast<CallInst>(i)){
+    if (auto* ci = dyn_cast<CallInst>(i)) {
       auto* f = ci->getCalledFunction();
       return isAnyFlushFunction(f);
     }
-    
+
     return false;
   }
 
