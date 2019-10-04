@@ -259,6 +259,8 @@ public:
 
   auto* getStructField(std::string& fieldNameStr) {
     assert(!fieldNameStr.empty());
+    if(!fieldNameStrMap.count(fieldNameStr))
+      report_fatal_error("wrong annotation");
     assertInDs(fieldNameStrMap, fieldNameStr);
     auto* sf = fieldNameStrMap[fieldNameStr];
     return sf;
