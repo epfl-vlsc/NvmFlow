@@ -42,9 +42,6 @@ template <typename Globals> class DbgParser {
         if (!pv.isUsed())
           continue;
 
-        pv.print(errs());
-        errs() << "\n";
-
         // ordering here matters
         if (pv.isAnnotated())
           addAnnotatedType(pv, ptrTypes, structTypes);
