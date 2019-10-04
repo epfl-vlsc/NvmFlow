@@ -1,21 +1,50 @@
 #!/bin/bash
 
-#inputs
-MODE=$1 #build, pair, dur, log
-TEST_NAME=$2 #under single file
+function contains() {
+    local n=$#
+    local value=${!n}
+    for ((i=1;i < $#;i++)) {
+        if [ "${!i}" == "${value}" ]; then
+            echo "y"
+            return 0
+        fi
+    }
+    echo "n"
+    return 1
+}
 
-#directories
-BASE_DIR=$(dirname $(realpath "$0"))
-BUILD_DIR="${BASE_DIR}/dfbuild"
-TEST_DIR="${BASE_DIR}/test"
-SINGLE_FILE_REPO=${TEST_DIR}/single_file
+#variables ---------------------------------------------------------------------------------------
+
+#inputs
+MODE=$1 #mode or checker
+TEST_NAME=$2 #test name
+
+TOOL_NAME=$MODE
 
 LLVM_BASE_DIR=~/llvm_compiler8
 COMPILER_DIR=${LLVM_BASE_DIR}/bin
 LLVM_DIR=${LLVM_BASE_DIR}/build/lib/cmake/llvm/
 
-#variables
-TOOL_NAME=$MODE
+BASE_DIR=$(dirname $(realpath "$0"))
+BUILD_DIR="${BASE_DIR}/dfbuild"
+
+#benchmark directories
+SINGLE_DIR="${BASE_DIR}/test/single_file"
+BENCH_DIR=${BASE_DIR}/../NvmBenchmarks
+
+CHECKERS=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse")
+
+BENCHMARKS=("echo" "nstore" "nvml" "pmfs" "pmgd" "splitfs")
+
+if [ $(contains "${BENCHMARKS[@]}" "$TEST_NAME") == "y" ] ;then
+	TEST_FILE=${BENCH_DIR}/benchmarks/${TEST_NAME}.bc
+	TEST_DIR=${BENCH_DIR}
+else
+	TEST_FILE=${SINGLE_DIR}/${TEST_NAME}.bc
+	TEST_DIR=${SINGLE_DIR}
+fi
+
+# functions ----------------------------------------------------------------------------------
 
 init_build(){
 	cd ${BASE_DIR}
@@ -44,62 +73,56 @@ run_fullbuild(){
     run_make
 }
 
-create_ir(){
-	cd ${SINGLE_FILE_REPO}
-	make all -j$(nproc)
-	cd ${BASE_DIR}
+#--debug-pass=Structure
+run_tool(){
+	opt -load $BUILD_DIR/lib/lib${TOOL_NAME}.so \
+	-${TOOL_NAME} ${TEST_FILE} > /dev/null
 }
 
-create_ll(){
-	cd ${SINGLE_FILE_REPO}
-	make ll -j$(nproc)
+create_ir(){
+	cd ${TEST_DIR}
+	if [ $(contains "${BENCHMARKS[@]}" "$TEST_NAME") == "y" ] ;then
+		make b${TEST_NAME}
+	else
+		make all -j$(nproc)
+	fi
 	cd ${BASE_DIR}
 }
 
 clean_ir(){
-	cd ${SINGLE_FILE_REPO}
-	make clean
+	cd ${TEST_DIR}
+	if [ $(contains "${BENCHMARKS[@]}" "$TEST_NAME") == "y" ] ;then
+		make c${TEST_NAME}
+	else
+		make clean
+	fi
 	cd ${BASE_DIR}
 }
 
-#--debug-pass=Structure
-run_tool(){
-		opt \
--load $BUILD_DIR/lib/lib${TOOL_NAME}.so -${TOOL_NAME} \
-${SINGLE_FILE_REPO}/${TEST_NAME}.bc > /dev/null
-}
-
-checkers=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse")
-
-function contains() {
-    local n=$#
-    local value=${!n}
-    for ((i=1;i < $#;i++)) {
-        if [ "${!i}" == "${value}" ]; then
-            echo "y"
-            return 0
-        fi
-    }
-    echo "n"
-    return 1
-}
-
-#commands----------------------------------------------------
-if [ $(contains "${checkers[@]}" "$MODE") == "y" ] ;then
+run_checker(){
 	create_ir
 	run_make
 	run_tool
+}
+
+test_all(){
+	create_ir
+}
+
+#commands----------------------------------------------------
+if [ $(contains "${CHECKERS[@]}" "$MODE") == "y" ] ;then
+	run_checker
 elif [ "$MODE" == "make" ] ;then
 	run_make
 elif [ "$MODE" == "build" ] ;then
-  run_fullbuild
+  	run_fullbuild
 elif [ "$MODE" == "ir" ] ;then
 	create_ir
-elif [ "$MODE" == "ll" ] ;then
-	create_ll
-elif [ "$MODE" == "rem_ir" ] ;then
+elif [ "$MODE" == "remir" ] ;then
 	clean_ir
+elif [ "$MODE" == "test" ] ;then
+	test_all
 else
-	echo "pair, dur, log, make, build, ir, rem_ir"
+	echo "pair, dur, log, make, build, ir, remir"
 fi
 #commands----------------------------------------------------
