@@ -9,100 +9,115 @@ namespace llvm {
 template <typename Globals> class ValidParser {
   using InstrType = typename InstrInfo::InstrType;
 
-  void addVar(Instruction* i, InstrType instrType) {
-    auto pv = InstrParser::parseInstruction(i);
-    if (!pv.isUsed())
-      return;
-
-    if (!pv.isAnnotated())
-      return;
-
-    // get annotation
-    auto annot = pv.getAnnotation();
-    if (!AnnotParser::isValidAnnotation(annot))
-      return;
-
-    // valid
-    assert(pv.isField());
-    auto [st, idx] = pv.getStructInfo();
-    auto* validSf = globals.dbgInfo.getStructField(st, idx);
-    auto* valid = globals.locals.addVariable(validSf);
-    globals.locals.addSentinel(valid);
-
-    // obj
-    auto* obj = globals.locals.addVariable(st);
-
-    // data
-    auto [parsedAnnot, useDcl] = AnnotParser::parseAnnotation(annot);
-    auto* data = (Variable*)nullptr;
-    if (!parsedAnnot.empty()) {
-      // data
-      auto* dataSf = globals.dbgInfo.getStructField(parsedAnnot);
-      data = globals.locals.addVariable(dataSf);
-    } else {
-      // obj
-      data = obj;
-    }
-
-    // pair
-    globals.locals.addPair(data, valid, useDcl);
-
-    // ii
-    globals.locals.addInstrInfo(i, instrType, valid, pv);
-  }
-
-  void addWrite(StoreInst* si) { addVar(si, InstrType::WriteInstr); }
-
-  void addFlush(CallInst* ci, InstrType instrType) { addVar(ci, instrType); }
-
-  void addInstrInfo(CallInst* ci, InstrType instrType) {
-    auto pv = ParsedVariable();
-    globals.locals.addInstrInfo(ci, instrType, nullptr, pv);
-  }
-
-  void addCall(CallInst* ci) {
+  auto getCallInstrType(CallInst* ci) const {
     auto* callee = ci->getCalledFunction();
 
-    if (globals.functions.isSkippedFunction(callee)) {
-      return;
-    } else if (globals.functions.isPfenceFunction(callee)) {
-      addInstrInfo(ci, InstrInfo::PfenceInstr);
+    if (globals.functions.isPfenceFunction(callee)) {
+      return InstrType::PfenceInstr;
     } else if (globals.functions.isVfenceFunction(callee)) {
-      addInstrInfo(ci, InstrInfo::VfenceInstr);
+      return InstrType::VfenceInstr;
     } else if (globals.functions.isFlushFunction(callee)) {
-      addFlush(ci, InstrInfo::FlushInstr);
+      return InstrType::FlushInstr;
     } else if (globals.functions.isFlushFenceFunction(callee)) {
-      addFlush(ci, InstrInfo::FlushFenceInstr);
+      return InstrType::FlushFenceInstr;
+    } else if (globals.functions.isStoreFunction(callee)) {
+      return InstrType::WriteInstr;
+    } else if (globals.functions.isSkippedFunction(callee)) {
+      return InstrType::None;
     } else {
-      addInstrInfo(ci, InstrInfo::IpInstr);
+      return InstrType::IpInstr;
     }
   }
 
-  void addI(Instruction* i) {
+  auto getInstrType(Instruction* i) const {
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      addWrite(si);
+      return InstrType::WriteInstr;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      addCall(ci);
+      return getCallInstrType(ci);
     }
+
+    return InstrType::None;
   }
 
-  void addValids(Function* func) {
+  void addInstrInfo(Function* func) {
+    std::set<StructType*> seenSts;
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
-        addI(&I);
+        // get instruction type
+        auto instrType = getInstrType(&I);
+
+        if (!InstrInfo::isUsedInstr(instrType))
+          continue;
+
+        // check non variable based parsing
+        if (InstrInfo::isNonVarInstr(instrType)) {
+          globals.locals.addInstrInfo(&I, instrType, nullptr, ParsedVariable());
+          continue;
+        }
+
+        // parse variable based
+        auto pv = InstrParser::parseInstruction(&I);
+        if (!pv.isUsed() || !pv.isAnnotated() || !pv.isField())
+          continue;
+
+        // check annotation
+        auto annot = pv.getAnnotation();
+        if (!AnnotParser::isValidAnnotation(annot))
+          continue;
+
+        // check tracked types
+        auto* st = pv.getObjStructType();
+        if (!st || !globals.dbgInfo.isUsedStructType(st))
+          continue;
+
+        Variable* objVar = nullptr;
+        // obj
+        if (!seenSts.count(st)) {
+          objVar = globals.locals.addVariable(st);
+          seenSts.insert(st);
+        } else {
+          objVar = globals.locals.getVariable(st);
+        }
+
+        // valid
+        auto [st2, idx] = pv.getStructInfo();
+        assert(st2 == st);
+        auto* sf = globals.dbgInfo.getStructField(st, idx);
+        Variable* valid = globals.locals.addVariable(sf);
+
+        // data
+        Variable* data = nullptr;
+        auto [parsedAnnot, useDcl] = AnnotParser::parseAnnotation(annot);
+        if (!parsedAnnot.empty()) {
+          // data
+          auto* dataSf = globals.dbgInfo.getStructField(parsedAnnot);
+          data = globals.locals.addVariable(dataSf);
+        } else {
+          // use obj
+          data = objVar;
+        }
+
+        // pair
+        assert(valid && data);
+        globals.locals.addPair(data, valid, useDcl);
+
+        // ii
+        globals.locals.addInstrInfo(&I, instrType, valid, pv);
       }
+    }
+  }
+
+  void addValids() {
+    for (auto* f : globals.functions.getAnalyzedFunctions()) {
+      globals.setActiveFunction(f);
+      addInstrInfo(f);
     }
   }
 
   Globals& globals;
 
 public:
-  ValidParser(Globals& globals_) : globals(globals_) {
-    for (auto* f : globals.functions.getAnalyzedFunctions()) {
-      globals.setActiveFunction(f);
-      addValids(f);
-    }
-  }
+  ValidParser(Globals& globals_) : globals(globals_) { addValids(); }
 };
 
 } // namespace llvm
