@@ -4,8 +4,8 @@
 namespace llvm {
 
 struct DclCommit {
-  enum State { Write, Flush, Fence, Unseen };
-  static const constexpr char* Str[] = {"Write", "Flush", "Fence", "Unseen"};
+  enum State { Write, Unseen, Flush, Fence };
+  static const constexpr char* Str[] = {"Write", "Unseen", "Flush", "Fence"};
 
   State state;
 
@@ -36,8 +36,8 @@ struct DclCommit {
 };
 
 struct DclFlush {
-  enum State { Flush, Write, Unseen };
-  static const constexpr char* Str[] = {"Flush", "Write", "Unseen"};
+  enum State { Flush, Unseen, Write };
+  static const constexpr char* Str[] = {"Flush", "Unseen", "Write"};
 
   State state;
 
@@ -68,8 +68,8 @@ struct DclFlush {
 };
 
 struct SclCommit {
-  enum State { Write, Fence, Unseen };
-  static const constexpr char* Str[] = {"Write", "Fence", "Unseen"};
+  enum State { Write, Unseen, Fence };
+  static const constexpr char* Str[] = {"Write", "Unseen", "Fence"};
 
   State state;
 
