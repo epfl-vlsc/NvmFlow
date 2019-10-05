@@ -30,16 +30,6 @@ struct DurObj {
     valid = data;
   }
 
-  void nvm_fnc writeObj() {
-    auto* data = new Data();
-    data->data = 5;
-
-    pm_flushfence(data);
-    data->data = 5;
-
-    valid = data;
-  }
-
   void nvm_fnc branchFlush(Data* ptr) {
     if (ptr->data == 1)
       pm_flushfence(ptr);
@@ -65,8 +55,15 @@ struct DurInt {
   }
 
   void nvm_fnc branchFlush(int* ptr) {
-    if (*valid == 1)
+    if (cond())
       pm_flushfence(ptr);
+    valid = ptr;
+  }
+
+  void nvm_fnc doubleFlush(int* ptr) {
+    if (cond())
+      pm_flushfence(ptr);
+    pm_flushfence(ptr);
     valid = ptr;
   }
 };
