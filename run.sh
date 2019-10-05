@@ -19,8 +19,6 @@ function contains() {
 MODE=$1 #mode or checker
 TEST_NAME=$2 #test name
 
-TOOL_NAME=$MODE
-
 LLVM_BASE_DIR=~/llvm_compiler8
 COMPILER_DIR=${LLVM_BASE_DIR}/bin
 LLVM_DIR=${LLVM_BASE_DIR}/build/lib/cmake/llvm/
@@ -32,19 +30,24 @@ BUILD_DIR="${BASE_DIR}/dfbuild"
 SINGLE_DIR="${BASE_DIR}/test/single_file"
 BENCH_DIR=${BASE_DIR}/../NvmBenchmarks
 
-CHECKERS=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse")
+CHECKERS=("pair" "dur" "log")
+
+ALL_CHECKERS=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse")
 
 BENCHMARKS=("echo" "nstore" "nvml" "pmfs" "pmgd" "splitfs")
 
-if [ $(contains "${BENCHMARKS[@]}" "$TEST_NAME") == "y" ] ;then
-	TEST_FILE=${BENCH_DIR}/benchmarks/${TEST_NAME}.bc
-	TEST_DIR=${BENCH_DIR}
-else
-	TEST_FILE=${SINGLE_DIR}/${TEST_NAME}.bc
-	TEST_DIR=${SINGLE_DIR}
-fi
-
 # functions ----------------------------------------------------------------------------------
+
+init_test(){
+	TOOL_NAME=$MODE
+	if [ $(contains "${BENCHMARKS[@]}" "$TEST_NAME") == "y" ] ;then
+		TEST_FILE=${BENCH_DIR}/benchmarks/${TEST_NAME}.bc
+		TEST_DIR=${BENCH_DIR}
+	else
+		TEST_FILE=${SINGLE_DIR}/${TEST_NAME}.bc
+		TEST_DIR=${SINGLE_DIR}
+	fi
+}
 
 init_build(){
 	cd ${BASE_DIR}
@@ -105,24 +108,41 @@ run_checker(){
 	run_tool
 }
 
-test_all(){
-	create_ir
+run_tests(){
+	TEMP_FILE=temp.txt
+	TEST_TYPES=("prop" "unit")
+	for TT in "${TEST_TYPES[@]}"; do
+		for CHK in "${CHECKERS[@]}"; do
+			MODE=${CHK}
+			TEST_NAME="${TT}${CHK}"
+			echo ${MODE} ${TEST_NAME}
+			run &> ${TEMP_FILE}
+			cat ${TEMP_FILE} | grep bugs
+		done
+	done
+	rm ${TEMP_FILE}
+}
+
+run(){
+	init_test
+	if [ $(contains "${ALL_CHECKERS[@]}" "$MODE") == "y" ] ;then
+		run_checker
+	elif [ "$MODE" == "make" ] ;then
+		run_make
+	elif [ "$MODE" == "build" ] ;then
+		run_fullbuild
+	elif [ "$MODE" == "ir" ] ;then
+		create_ir
+	elif [ "$MODE" == "remir" ] ;then
+		clean_ir
+	elif [ "$MODE" == "test" ] ;then
+		run_tests
+	elif [ "$MODE" == "check" ] ;then
+		run_tests
+	else
+		echo "pair, dur, log, make, build, ir, remir, test, check"
+	fi
 }
 
 #commands----------------------------------------------------
-if [ $(contains "${CHECKERS[@]}" "$MODE") == "y" ] ;then
-	run_checker
-elif [ "$MODE" == "make" ] ;then
-	run_make
-elif [ "$MODE" == "build" ] ;then
-  	run_fullbuild
-elif [ "$MODE" == "ir" ] ;then
-	create_ir
-elif [ "$MODE" == "remir" ] ;then
-	clean_ir
-elif [ "$MODE" == "test" ] ;then
-	test_all
-else
-	echo "pair, dur, log, make, build, ir, remir"
-fi
-#commands----------------------------------------------------
+run
