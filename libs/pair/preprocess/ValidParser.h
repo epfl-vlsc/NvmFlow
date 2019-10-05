@@ -81,8 +81,10 @@ template <typename Globals> class ValidParser {
 
         // valid
         auto [st2, idx] = pv.getStructInfo();
-        if(st != st2)
+        if (st != st2) {
+          errs() << *st << " " << *st2 << "\n";
           report_fatal_error("not the same type - valid");
+        }
         auto* sf = globals.dbgInfo.getStructField(st, idx);
         Variable* valid = globals.locals.addVariable(sf);
         globals.locals.addSentinel(valid);

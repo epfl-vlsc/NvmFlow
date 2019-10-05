@@ -63,8 +63,11 @@ template <typename Globals> class DataParser {
         if (pv.isField()) {
           //field
           auto [st2, idx] = pv.getStructInfo();
-          if (st != st2)
+          if (st != st2){
+            errs() << *st << " " << *st2 << "\n";
             report_fatal_error("not the same type - data");
+          }
+            
           auto* dataSf = globals.dbgInfo.getStructField(st, idx);
           if (globals.locals.inVariables(dataSf)) {
             // field

@@ -101,7 +101,7 @@ public:
   Variable* getVariable(Variable& var) {
     assert(activeUnit);
     auto& vars = activeUnit->vars;
-    assert(vars.count(var));
+    assertInDs(vars, var);
     auto varIt = vars.find(var);
     assert(varIt != vars.end());
     auto varPtr = (Variable*)&(*varIt);

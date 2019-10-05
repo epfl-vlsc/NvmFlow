@@ -1,5 +1,4 @@
 #include "annot.h"
-
 struct Obj {
   int data;
   sentinel() int valid;
@@ -94,18 +93,19 @@ void nvm_fnc objRecursion(Obj* dcl) {
     dcl->valid = 1;
   }
 }
-/*
+
 struct Chain {
   int data;
-  sentinel(Dcl::data) int valid;
-  sentinel(Dcl::valid) int valid2;
+  sentinel(Chain::data) int valid;
+  sentinel(Chain::valid) int valid2;
 
   void nvm_fnc correct() {
     data = 1;
-    vfence();
+    pm_flushfence(&data);
     valid = 1;
     pm_flushfence(&valid);
     valid2 = 1;
+    pm_flushfence(&valid2);
   }
 
   void nvm_fnc wrongCircular() {
@@ -118,7 +118,7 @@ struct Chain {
 
   void nvm_fnc fenceNotFlushedData() {
     data = 1;
-    pfence();
+    pm_flushfence(&data);
     valid = 1;
     valid2 = 1;
   }
@@ -133,7 +133,7 @@ struct Chain {
   }
 };
 
-struct Dcl {
+struct Objdcl {
   struct Obj{int v;};
 
   int data;
@@ -141,10 +141,10 @@ struct Dcl {
 
   void nvm_fnc correct() {
     data = 1;
-    pm_clflushopt(this);
+    pm_flush(this);
     pfence();
     valid = {1};
-    pm_clflushopt(&valid);
+    pm_flush(&valid);
     pfence();
   }
 
@@ -152,46 +152,50 @@ struct Dcl {
     data = 1;
     pfence();
     valid = {1};
+    pm_flushfence(&valid);
   }
 
   void nvm_fnc doubleFlush() {
     data = 1;
-    pm_clflush(this);
+    pm_flushfence(this);
     valid = {1};
-    pm_clflush(this);
+    pm_flushfence(this);
   }
 
   void nvm_fnc doubleLoopFlush() {
-    while (valid == 1){
+    data = 1;
+    while (cond()){
       data = 1;
-      pm_clflush(this);
+      pm_flushfence(this);
     }
-    pm_clflush(this);  
+    pm_flushfence(this);
+    valid = {1};
+    pm_flushfence(&valid);
   }
 
   void nvm_fnc writeUncommittedData() {
     data = 1;
-    pm_clflushopt(this);
+    pm_flush(this);
     data = 1;
     pfence();
-    valid = 1;
+    valid = {1};
   }
 
   void nvm_fnc correctBranch(bool useNvm) {
     data = 1;
     if (useNvm) {
-      pm_clflushopt(this);
+      pm_flush(this);
       pfence();
     }
-    valid = 1;
+    valid = {1};
   }
 
   void nvm_fnc branchNoFence(bool useNvm) {
     data = 1;
     if (useNvm) {
-      pm_clflushopt(this);
+      pm_flush(this);
     }
-    valid = 1;
+    valid = {1};
   }
 
   void correctWriteData() { data = 1; }
@@ -199,17 +203,16 @@ struct Dcl {
   void nvm_fnc wrongIp(bool useNvm) {
     correctWriteData();
     if (useNvm) {
-      pm_clflushopt(this);
+      pm_flush(this);
     }
-    valid = 1;
+    valid = {1};
   }
 
   void skip_fnc skip() {
     data = 1;
-    pm_clflushopt(this);
-    valid = 1;
+    pm_flush(this);
+    valid = {1};
     pfence();
-    valid = 1;
+    valid = {1};
   }
 };
-*/
