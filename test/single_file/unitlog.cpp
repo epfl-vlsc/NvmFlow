@@ -71,7 +71,10 @@ void condLog(TOID(struct tree_map_node) node) {
 }
 
 void nvm_fnc ipaMissLog(TOID(struct tree_map_node) node) {
-  TX_BEGIN(pop) { condLog(node); }
+  TX_BEGIN(pop) { 
+    condLog(node); 
+    D_RW(node)->a = 0;
+  }
   TX_END
 }
 

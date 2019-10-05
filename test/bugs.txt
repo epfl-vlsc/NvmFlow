@@ -1,0 +1,57 @@
+pair proppair
+0 bugs in correct
+1 bugs in commitPairBug
+1 bugs in commitDataBug
+1 bugs in writeFirstBug
+1 bugs in doubleFlush
+1 bugs in volatileSentinelBug
+dur propdur
+0 bugs in correct
+1 bugs in doubleFlush
+1 bugs in commitPtr
+log proplog
+0 bugs in correct
+1 bugs in commitBug
+1 bugs in doubleLogBug
+1 bugs in outTxBug
+pair unitpair
+2 bugs in doubleFlush
+0 bugs in correct
+0 bugs in correctBranch
+1 bugs in fenceNotFlushedData
+1 bugs in fenceNotFlushedData
+2 bugs in doubleFlush
+1 bugs in doubleLoopFlush
+1 bugs in writeUncommittedData
+1 bugs in writeUncommittedData
+1 bugs in correctBranch
+1 bugs in branchNoFence
+0 bugs in correctBranchNoFence
+0 bugs in correctIp
+2 bugs in doubleFlush
+1 bugs in objRecursion
+0 bugs in correct
+2 bugs in wrongCircular
+0 bugs in correct
+1 bugs in fenceNotFlushedData
+1 bugs in doubleLoopFlush
+1 bugs in wrongIp
+dur unitdur
+0 bugs in correct
+1 bugs in fenceNotFlushedData
+0 bugs in correctParam
+1 bugs in fenceNotFlushedData
+0 bugs in correctParam
+0 bugs in correctObj
+1 bugs in branchFlush
+0 bugs in correct
+1 bugs in branchFlush
+1 bugs in doubleFlush
+log unitlog
+1 bugs in doubleLogBug
+0 bugs in correct
+4 bugs in doubleLoop
+1 bugs in outTxBug
+1 bugs in ipaMissLog
+1 bugs in recurse
+1 bugs in recurseMain

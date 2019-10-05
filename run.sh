@@ -123,6 +123,14 @@ run_tests(){
 	rm ${TEMP_FILE}
 }
 
+check_tests(){
+	BUG_FILE="bugs.txt"
+	TRUTH_FILE="${BASE_DIR}/test/bugs.txt"
+	run_tests &> ${BUG_FILE}
+	diff ${BUG_FILE} ${TRUTH_FILE}
+	rm -r ${BUG_FILE}
+}
+
 run(){
 	init_test
 	if [ $(contains "${ALL_CHECKERS[@]}" "$MODE") == "y" ] ;then
@@ -138,7 +146,7 @@ run(){
 	elif [ "$MODE" == "test" ] ;then
 		run_tests
 	elif [ "$MODE" == "check" ] ;then
-		run_tests
+		check_tests
 	else
 		echo "pair, dur, log, make, build, ir, remir, test, check"
 	fi
