@@ -32,7 +32,9 @@ public:
       globals.printLocals(errs());
 #endif
 
+#ifdef DATAFLOW
       FlowAnalyzer(M, globals).analyze(f);
+#endif
     }
   }
 

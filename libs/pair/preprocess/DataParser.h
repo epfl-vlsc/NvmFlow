@@ -9,81 +9,93 @@ namespace llvm {
 template <typename Globals> class DataParser {
   using InstrType = typename InstrInfo::InstrType;
 
-  void addVar(Instruction* i, InstrType instrType) {
-    auto pv = InstrParser::parseInstruction(i, globals.dbgInfo);
-    if (!pv.isUsed())
-      return;
-
-    auto* data = (Variable*)nullptr;
-
-    if (pv.isObjPtr()) {
-      // objptr
-      auto* type = pv.getObjType();
-      // todo optimize
-      if (isa<PointerType>(type))
-        type = getPtrElementType(type);
-      auto* st = dyn_cast<StructType>(type);
-      data = globals.locals.getVariable(st);
-    } else if (pv.isField()) {
-      // data
-      auto [st, idx] = pv.getStructInfo();
-
-      auto* dataSf = globals.dbgInfo.getStructField(st, idx);
-
-      if (globals.locals.inVariables(dataSf)) {
-        // field
-        data = globals.locals.getVariable(dataSf);
-      } else {
-        // objptr
-        data = globals.locals.getVariable(st);
-      }
-    }
-
-    globals.locals.addInstrInfo(i, instrType, data, pv);
-  }
-
-  void addWrite(StoreInst* si) { addVar(si, InstrInfo::WriteInstr); }
-
-  void addFlush(CallInst* ci, InstrType instrType) { addVar(ci, instrType); }
-
-  void addCall(CallInst* ci) {
+  auto getCallInstrType(CallInst* ci) const {
     auto* callee = ci->getCalledFunction();
 
-    if (globals.functions.isSkippedFunction(callee)) {
-      return;
+    if (globals.functions.isPfenceFunction(callee)) {
+      return InstrType::PfenceInstr;
+    } else if (globals.functions.isVfenceFunction(callee)) {
+      return InstrType::VfenceInstr;
     } else if (globals.functions.isFlushFunction(callee)) {
-      addFlush(ci, InstrInfo::FlushInstr);
+      return InstrType::FlushInstr;
     } else if (globals.functions.isFlushFenceFunction(callee)) {
-      addFlush(ci, InstrInfo::FlushFenceInstr);
+      return InstrType::FlushFenceInstr;
+    } else if (globals.functions.isStoreFunction(callee)) {
+      return InstrType::WriteInstr;
+    } else if (globals.functions.isSkippedFunction(callee)) {
+      return InstrType::None;
+    } else {
+      return InstrType::IpInstr;
     }
   }
 
-  void addI(Instruction* i) {
+  auto getInstrType(Instruction* i) const {
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      addWrite(si);
+      return InstrType::WriteInstr;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      addCall(ci);
+      return getCallInstrType(ci);
     }
+
+    return InstrType::None;
   }
 
-  void addDatas(Function* func) {
+  void addInstrInfo(Function* func) {
+    std::set<StructType*> seenSts;
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
-        if (!globals.locals.isUsedInstruction(&I))
-          addI(&I);
+        // get instruction type
+        auto instrType = getInstrType(&I);
+
+        if (!InstrInfo::isUsedInstr(instrType))
+          continue;
+
+        // parse variable based
+        auto pv = InstrParser::parseInstruction(&I);
+        if (!pv.isUsed())
+          continue;
+
+        // check tracked types
+        auto* st = pv.getObjStructType();
+        if (!st || !globals.dbgInfo.isUsedStructType(st))
+          continue;
+
+        Variable* data = nullptr;
+        if (pv.isField()) {
+          //field
+          auto [st2, idx] = pv.getStructInfo();
+          if (st != st2)
+            report_fatal_error("not the same type - data");
+          auto* dataSf = globals.dbgInfo.getStructField(st, idx);
+          if (globals.locals.inVariables(dataSf)) {
+            // field
+            data = globals.locals.getVariable(dataSf);
+          } else {
+            // objptr
+            data = globals.locals.getVariable(st);
+          }
+        } else if (pv.isObjPtr()) {
+          // obj
+          data = globals.locals.getVariable(st);
+        } else {
+          report_fatal_error("not possible - either data or ptr");
+        }
+
+        globals.locals.addInstrInfo(&I, instrType, data, pv);
       }
+    }
+  }
+
+  void addDatas() {
+    for (auto* f : globals.functions.getAnalyzedFunctions()) {
+      globals.setActiveFunction(f);
+      addInstrInfo(f);
     }
   }
 
   Globals& globals;
 
 public:
-  DataParser(Globals& globals_) : globals(globals_) {
-    for (auto* f : globals.functions.getAnalyzedFunctions()) {
-      globals.setActiveFunction(f);
-      addDatas(f);
-    }
-  }
+  DataParser(Globals& globals_) : globals(globals_) { addDatas(); }
 };
 
 } // namespace llvm

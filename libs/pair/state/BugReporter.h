@@ -102,8 +102,8 @@ public:
       }
 
       if (otherVal.isUnseen() && pair->isSentinel(var)) {
-        this->addBugVar(var);
-        this->addBugVar(otherVar);
+        //this->addBugVar(var);
+        //this->addBugVar(otherVar);
 
         auto* instr = ii->getInstruction();
 

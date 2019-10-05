@@ -2,6 +2,7 @@
 
 #include "util/Headers.h"
 
+#define DATAFLOW
 #define DBGMODE
 
 namespace llvm {
