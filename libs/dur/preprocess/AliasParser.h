@@ -25,6 +25,8 @@ template <typename Globals> class AliasParser {
       return InstrType::FlushInstr;
     } else if (globals.functions.isFlushFenceFunction(callee)) {
       return InstrType::FlushFenceInstr;
+    } else if (globals.functions.isStoreFunction(callee)) {
+      return InstrType::WriteInstr;
     } else {
       return InstrType::IpInstr;
     }
