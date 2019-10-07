@@ -36,8 +36,8 @@ struct DclCommit {
 };
 
 struct DclFlush {
-  enum State { Flush, Unseen, Write };
-  static const constexpr char* Str[] = {"Flush", "Unseen", "Write"};
+  enum State { Flush, Write, Unseen };
+  static const constexpr char* Str[] = {"Flush", "Write", "Unseen"};
 
   State state;
 
