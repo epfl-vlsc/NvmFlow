@@ -32,6 +32,8 @@ template <typename Globals> class VarParser {
       return InstrType::WriteInstr;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       return getCallInstrType(ci);
+    } else if (auto* ii = dyn_cast<InvokeInst>(i)) {
+      return InstrType::IpInstr;
     }
 
     return InstrType::None;
