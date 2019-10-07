@@ -63,6 +63,7 @@ public:
   auto getName() const {
     std::string name;
     name.reserve(50);
+    name += st->getName().str() + "->";
     name += fieldName.str();
     return name;
   }
