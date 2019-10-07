@@ -79,9 +79,11 @@ struct ParsedVariable {
 
   bool isLocRef() const { return rc == LocRef; }
 
+  bool isWriteInst() const { return StoreIns == ic; }
+
   bool isPersistentVar() const {
     assert(localVar);
-    return NameFilter::isPersistentVar(localVar);;
+    return NameFilter::isPersistentVar(localVar);
   }
 
   auto* getStructType() {
