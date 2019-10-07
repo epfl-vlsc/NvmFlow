@@ -3,6 +3,38 @@
 
 namespace llvm {
 
+std::string stripTemplateStr(StringRef& typeName) {
+  // todo not cfg parsing
+  static constexpr const char* Lsep = "<";
+  static constexpr const char* Rsep = ">";
+  static constexpr const size_t Last = std::string::npos;
+
+  auto typeStr = typeName.str();
+  size_t lp = 0, rp = 0;
+  bool isTemplated = true;
+  do {
+    lp = typeStr.find(Lsep);
+    rp = typeStr.find(Rsep);
+    isTemplated = (lp != Last && rp != Last);
+    if (isTemplated)
+      typeStr = typeStr.substr(0, lp) + typeStr.substr(rp + 1, Last);
+  } while (isTemplated);
+
+  return typeStr;
+}
+
+std::string stripStructStr(StructType* st) {
+  static constexpr const char* CSEP = ".";
+
+  auto stName = st->getName();
+  auto clsAnnotName = stripTemplateStr(stName);
+
+  size_t skipChars = clsAnnotName.find(CSEP);
+  auto clsName = clsAnnotName.substr(skipChars + 1);
+
+  return clsName;
+}
+
 class StructFieldBase {
 protected:
   StructType* st;
@@ -29,12 +61,6 @@ public:
 };
 
 class StructField : public StructFieldBase {
-  static auto stripStructStr(StructType* st_) {
-    auto fullClsName = st_->getName().str();
-    auto clsName = fullClsName.substr(fullClsName.find(".") + 1);
-    return clsName;
-  }
-
   Type* fieldType;
 
   StringRef fieldName;
@@ -69,29 +95,6 @@ public:
   }
 
   void print(raw_ostream& O) const { O << getName(); }
-
-  auto getIdxName() const {
-    std::string name;
-    name.reserve(150);
-    auto clsName = stripStructStr(st);
-    name += clsName + "::" + std::to_string(idx);
-    return name;
-  }
-
-  static auto getIdxName(StringRef& typeName, int idx_) {
-    std::string name;
-    name.reserve(150);
-    name += typeName.str() + "::" + std::to_string(idx_);
-    return name;
-  }
-
-  static auto getIdxName(StructType* st_, int idx) {
-    std::string name;
-    name.reserve(150);
-    auto clsName = stripStructStr(st_);
-    name += clsName + "::" + std::to_string(idx);
-    return name;
-  }
 
   auto getStrName() const {
     std::string name;

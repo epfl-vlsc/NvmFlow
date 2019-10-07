@@ -107,7 +107,7 @@ class DbgInfo {
     }
   }
 
-  void addFieldDbgInfo(const DIType* T, int idx, StringRef& typeName) {
+  void addFieldDbgInfo(const DIType* T, StructField* sf) {
     // get debug info
     StringRef realName = T->getName();
     if (realName.empty())
@@ -121,28 +121,50 @@ class DbgInfo {
     if (!lineNo)
       return;
 
-    // find element to add info
-    auto strIdx = StructField::getIdxName(typeName, idx);
+    sf->addDbgInfo(realName, fileName, lineNo);
+    auto fieldName = sf->getStrName();
+    fieldStrMap[fieldName] = sf;
+  }
 
-    if (!fieldIdxStrMap.count(strIdx))
-      return;
-
-    if (auto* field = fieldIdxStrMap[strIdx]) {
-      field->addDbgInfo(realName, fileName, lineNo);
-      auto nameStr = field->getStrName();
-      fieldNameStrMap[nameStr] = field;
+  size_t countFields(const DICompositeType* ST) {
+    DINodeArray elements = ST->getElements();
+    size_t size = 0;
+    for (auto element : elements) {
+      if (auto* E = dyn_cast<DIType>(element)) {
+        size++;
+      }
     }
+    return size;
+  }
+
+  StructType* findSt(const DICompositeType* ST) {
+    auto typeName = ST->getName();
+    auto typeStr = stripTemplateStr(typeName);
+    size_t numFields = countFields(ST);
+
+    for (auto& [st, fields] : fieldMap) {
+      bool sameSize = (numFields == fields.size());
+      bool similarType = st->getName().contains(typeStr);
+      if (similarType && sameSize)
+        return st;
+    }
+    return nullptr;
   }
 
   void addFieldDbgInfo(const DICompositeType* ST) {
-    StringRef typeName = ST->getName();
     DINodeArray elements = ST->getElements();
+
+    auto* st = findSt(ST);
+    if (!st)
+      return;
+
     int idx = 0;
     for (auto element : elements) {
       // get field
       if (auto* E = dyn_cast<DIType>(element)) {
         // get field data
-        addFieldDbgInfo(E, idx, typeName);
+        auto* sf = getStructField(st, idx);
+        addFieldDbgInfo(E, sf);
       }
       ++idx;
     }
@@ -171,9 +193,6 @@ class DbgInfo {
   void addInitFieldInfo(StructType* st, int idx, Type* ft) {
     auto* field = addField(st, idx, ft);
     fieldMap[st].push_back(field);
-
-    auto idxName = field->getIdxName();
-    fieldIdxStrMap[idxName] = field;
   }
 
   void addFieldTypeInfo(std::set<StructType*>& structTypes) {
@@ -213,8 +232,7 @@ class DbgInfo {
   // variable infos
   std::set<StructField> fields;
   std::map<StructType*, std::vector<StructField*>> fieldMap;
-  std::map<std::string, StructField*> fieldIdxStrMap;
-  std::map<std::string, StructField*> fieldNameStrMap;
+  std::map<std::string, StructField*> fieldStrMap;
 
   // type infos
   std::set<Type*> trackedTypes;
@@ -249,20 +267,21 @@ public:
     addLocalVariables(funcSet);
   }
 
-  auto* getStructField(StructType* st, int idx) {
+  StructField* getStructField(StructType* st, int idx) {
     assertField(st, idx);
-    auto fieldIdxStr = StructField::getIdxName(st, idx);
-    assertInDs(fieldIdxStrMap, fieldIdxStr);
-    auto* sf = fieldIdxStrMap[fieldIdxStr];
-    return sf;
+    assertInDs(fieldMap, st);
+    auto& fields = fieldMap[st];
+    assert(idx < fields.size());
+    auto* field = fields[idx];
+    return field;
   }
 
-  auto* getStructField(std::string& fieldNameStr) {
-    assert(!fieldNameStr.empty());
-    if(!fieldNameStrMap.count(fieldNameStr))
+  StructField* getStructField(std::string& fieldStr) {
+    assert(!fieldStr.empty());
+    if (!fieldStrMap.count(fieldStr))
       report_fatal_error("wrong annotation");
-    assertInDs(fieldNameStrMap, fieldNameStr);
-    auto* sf = fieldNameStrMap[fieldNameStr];
+    assertInDs(fieldStrMap, fieldStr);
+    auto* sf = fieldStrMap[fieldStr];
     return sf;
   }
 
@@ -309,8 +328,16 @@ public:
         O << c << ")" << field->getName() << " ";
         c++;
       }
-      O << "\n\n";
+      O << "\n";
     }
+    O << "\n\n";
+
+    O << "Fields\n";
+    O << "------\n";
+    for (auto& [str, _] : fieldStrMap) {
+      O << "(" << str << "), ";
+    }
+    O << "\n";
 
     O << "Local Variable names sample\n";
     O << "---------------------------\n";
