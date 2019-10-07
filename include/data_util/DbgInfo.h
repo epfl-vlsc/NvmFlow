@@ -152,12 +152,19 @@ class DbgInfo {
   }
 
   void addFieldDbgInfo(const DICompositeType* ST) {
-    DINodeArray elements = ST->getElements();
+    // check typename
+    auto typeName = ST->getName();
+    if (typeName.empty()) {
+      return;
+    }
 
+    // find st
     auto* st = findSt(ST);
     if (!st)
       return;
 
+    // process elements
+    DINodeArray elements = ST->getElements();
     int idx = 0;
     for (auto element : elements) {
       // get field
@@ -173,10 +180,6 @@ class DbgInfo {
   void addFieldDbgInfo() {
     for (const DIType* T : finder.types()) {
       if (auto* ST = dyn_cast<DICompositeType>(T)) {
-        StringRef typeName = ST->getName();
-        if (typeName.empty()) {
-          continue;
-        }
         addFieldDbgInfo(ST);
       }
     }

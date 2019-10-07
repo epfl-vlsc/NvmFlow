@@ -12,13 +12,15 @@ std::string stripTemplateStr(StringRef& typeName) {
   auto typeStr = typeName.str();
   size_t lp = 0, rp = 0;
   bool isTemplated = true;
+  int c = 2;
   do {
     lp = typeStr.find(Lsep);
     rp = typeStr.find(Rsep);
     isTemplated = (lp != Last && rp != Last);
     if (isTemplated)
       typeStr = typeStr.substr(0, lp) + typeStr.substr(rp + 1, Last);
-  } while (isTemplated);
+    c--;
+  } while (isTemplated && c > 0);
 
   return typeStr;
 }
