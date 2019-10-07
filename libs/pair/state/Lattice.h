@@ -64,7 +64,8 @@ public:
   }
 
   bool isFinal() const {
-    return dclCommit.state == DclCommit::Fence &&
+    return (dclCommit.state == DclCommit::Fence ||
+            dclCommit.state == DclCommit::Unseen) &&
            dclFlush.state == DclFlush::Flush;
   }
 
