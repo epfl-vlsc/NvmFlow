@@ -28,4 +28,4 @@ extern void no_inline tx_begin(void *pop);
 extern void no_inline tx_begin();
 extern void no_inline tx_end();
 
-extern bool cond();
+extern int cond();
