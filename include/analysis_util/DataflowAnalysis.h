@@ -91,7 +91,7 @@ template <typename StateMachine> class DataflowAnalysis {
     }
   }
 
-  bool analyzeCall(CallInst* ci, AbstractState& state, Function* caller,
+  bool analyzeCall(CallBase* ci, AbstractState& state, Function* caller,
                    const Context& context) {
     Context newContext(context, ci);
     Function* callee = ci->getCalledFunction();
@@ -150,7 +150,7 @@ template <typename StateMachine> class DataflowAnalysis {
                    const Context& context) {
 
     if (stateMachine.isIpInstruction(i)) {
-      auto* ci = dyn_cast<CallInst>(i);
+      auto* ci = dyn_cast<CallBase>(i);
       return analyzeCall(ci, state, caller, context);
     } else {
       return applyTransfer(i, state);

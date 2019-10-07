@@ -34,6 +34,8 @@ template <typename Globals> class DataParser {
       return InstrType::WriteInstr;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       return getCallInstrType(ci);
+    } else if (auto* ii = dyn_cast<InvokeInst>(i)) {
+      return InstrType::IpInstr;
     }
 
     return InstrType::None;
@@ -47,6 +49,10 @@ template <typename Globals> class DataParser {
         auto instrType = getInstrType(&I);
 
         if (!InstrInfo::isUsedInstr(instrType))
+          continue;
+
+        // check if instruction registered before
+        if (!globals.locals.getInstrInfo(&I))
           continue;
 
         // parse variable based

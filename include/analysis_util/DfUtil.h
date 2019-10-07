@@ -25,7 +25,7 @@ public:
   bool empty() const { return worklist.empty(); }
 };
 
-const char* getCIStr(CallInst* ci) {
+const char* getCIStr(CallBase* ci) {
   if (ci) {
     auto* f = ci->getCalledFunction();
     // data may not be a null terminating ptr
@@ -36,12 +36,12 @@ const char* getCIStr(CallInst* ci) {
 }
 
 class Context {
-  CallInst* caller;
-  CallInst* callee;
+  CallBase* caller;
+  CallBase* callee;
 
 public:
   Context() : caller(nullptr), callee(nullptr) {}
-  Context(const Context& X, CallInst* Callee) {
+  Context(const Context& X, CallBase* Callee) {
     caller = X.callee;
     callee = Callee;
   }

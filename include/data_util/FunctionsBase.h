@@ -28,7 +28,7 @@ public:
     visited.insert(f);
 
     for (auto& I : instructions(*f)) {
-      if (auto* ci = dyn_cast<CallInst>(&I)) {
+      if (auto* ci = dyn_cast<CallBase>(&I)) {
         auto* callee = ci->getCalledFunction();
         bool doIp = !visited.count(callee) && !skipFunction(callee);
         if (doIp) {
