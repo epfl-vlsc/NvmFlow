@@ -15,9 +15,9 @@ class NameFilter {
   static constexpr const char* flushFunctions[] = {"_Z8pm_flushPKv"};
 
   static constexpr const char* flushfenceFunctions[] = {
-      "_Z13pm_flushfencePKv", "flush_range", "_Z11flush_rangePKvm",
-      "_ZN7storageL14__pmem_persistEPvmi", "persist_obj",
-      "pmfs_flush_buffer.312"};
+      "_Z13pm_flushfencePKv", "flush_range",
+      "_Z11flush_rangePKvm",  "_ZN7storageL14__pmem_persistEPvmi",
+      "persist_obj",          "pmfs_flush_buffer.312"};
 
   static constexpr const char* pfenceFunctions[] = {"_Z6pfencev"};
 
@@ -61,10 +61,9 @@ public:
 
     for (size_t i = 0; i < size; ++i) {
       auto* name = names[i];
-      errs() << name << " ";
       if (n.equals(name)) {
         return true;
-      }errs() << "\n";
+      }
     }
     return false;
   }
@@ -136,8 +135,6 @@ public:
     varCall |= isFlushFenceFunction(funcName);
     varCall |= isStoreFunction(funcName);
     varCall |= isLoggingFunction(funcName);
-
-    errs() << "check var call" << funcName << (int)isFlushFenceFunction(funcName) << "\n";
     return varCall;
   }
 
