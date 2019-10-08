@@ -84,6 +84,8 @@ template <typename Globals> class DataParser {
           data = globals.locals.getVariable(stFieldType);
           globals.locals.addInstrInfo(&I, instrType, data, pv);
           continue;
+        } else if (!globals.dbgInfo.isUsedStructType(st)) {
+          continue;
         }
 
         if (pv.isField()) {
