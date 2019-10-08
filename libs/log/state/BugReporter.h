@@ -21,18 +21,19 @@ public:
       : Base(globals_, dfResults_) {}
 
   void checkDoubleLogBug(Variable* var, InstrInfo* ii, AbstractState& state) {
-    if (this->isBugVar(var))
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+    if (this->isBugLoc(srcLoc))
       return;
 
     auto& val = state[var];
     if (val.isLogged()) {
-      this->addBugVar(var);
+      this->addBugLoc(srcLoc);
 
-      auto* instr = ii->getInstruction();
       auto* prevInstr = this->getLastFlush(var, val);
-
       auto varName = var->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
+
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
       auto* bugData = new DoubleLogBug(varName, srcLoc, prevLoc);
@@ -41,17 +42,17 @@ public:
   }
 
   void checkCommitBug(Variable* var, InstrInfo* ii, AbstractState& state) {
-    if (this->isBugVar(var))
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+    if (this->isBugLoc(srcLoc))
       return;
 
     auto& val = state[var];
     if (!val.isLog()) {
-      this->addBugVar(var);
-
-      auto* instr = ii->getInstruction();
+      this->addBugLoc(srcLoc);
 
       auto varName = var->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
 
       auto* bugData = new CommitBug(varName, srcLoc);
       this->addBugData(bugData);
@@ -59,21 +60,19 @@ public:
   }
 
   void checkOutTxBug(Variable* var, InstrInfo* ii, AbstractState& state) {
-    if (this->isBugVar(var))
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+    if (this->isBugLoc(srcLoc))
       return;
 
     auto& val = state[var];
     if (!val.inTx()) {
-      auto* iVar = ii->getVariable();
-      this->addBugVar(var);
-      this->addBugVar(iVar);
-
+      this->addBugLoc(srcLoc);
 
       auto* accessedVar = ii->getVariable();
-      auto* instr = ii->getInstruction();
-
       auto varName = accessedVar->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
+      
 
       auto* bugData = new OutTxBug(varName, srcLoc);
       this->addBugData(bugData);
