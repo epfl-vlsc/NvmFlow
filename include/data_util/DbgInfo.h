@@ -65,7 +65,7 @@ class DbgInfo {
   }
 
   void addFunctionNames(FunctionSet& funcSet) {
-    std::set<std::string> funcSetNames;
+    std::unordered_set<std::string> funcSetNames;
     for (auto& F : M) {
       if (!funcSet.count(&F))
         continue;
@@ -229,7 +229,7 @@ class DbgInfo {
   DebugInfoFinder finder;
 
   // function names: mangled->real
-  std::set<std::string> demangledFunctions;
+  std::unordered_set<std::string> demangledFunctions;
   std::map<std::string, std::string> functionNames;
 
   // variable infos
