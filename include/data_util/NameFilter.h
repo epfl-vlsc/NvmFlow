@@ -23,12 +23,11 @@ class NameFilter {
 
   static constexpr const char* vfenceFunctions[] = {"_Z6vfencev"};
 
-  static constexpr const char* txBeginFunctions[] = {"_Z8tx_beginv"};
+  static constexpr const char* txBeginFunctions[] = {"tx_begin"};
 
-  static constexpr const char* txEndFunctions[] = {"_Z6tx_endv"};
+  static constexpr const char* txEndFunctions[] = {"tx_end"};
 
-  static constexpr const char* loggingFunctions[] = {"pmemobj_tx_add_range",
-                                                     "_Z6tx_logPv"};
+  static constexpr const char* loggingFunctions[] = {"tx_log"};
 
   static constexpr const size_t ElementSize = sizeof(const char*);
 
