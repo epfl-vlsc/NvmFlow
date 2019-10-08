@@ -52,7 +52,7 @@ template <typename Globals> class DataParser {
           continue;
 
         // check if instruction registered before
-        if (!globals.locals.getInstrInfo(&I))
+        if (globals.locals.getInstrInfo(&I))
           continue;
 
         // parse variable based
