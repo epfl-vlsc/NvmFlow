@@ -62,13 +62,30 @@ template <typename Globals> class DataParser {
 
         // check tracked types
         auto* st = pv.getObjStructType();
-        if (!st || !globals.dbgInfo.isUsedStructType(st))
+        if (!st)
           continue;
 
+        // write to objptr does not change anything
         if (pv.isWriteInst() && pv.isObjPtr())
           continue;
 
         Variable* data = nullptr;
+
+        if (!globals.dbgInfo.isUsedStructType(st) && pv.isCallInst()) {
+          // flush field that is objptr
+          auto* fieldType = pv.getFieldElementType();
+          auto* stFieldType = dyn_cast<StructType>(fieldType);
+          if (!stFieldType)
+            continue;
+
+          if (!globals.dbgInfo.isUsedStructType(stFieldType))
+            continue;
+
+          data = globals.locals.getVariable(stFieldType);
+          globals.locals.addInstrInfo(&I, instrType, data, pv);
+          continue;
+        }
+
         if (pv.isField()) {
           // field
           auto [st2, idx] = pv.getStructInfo();

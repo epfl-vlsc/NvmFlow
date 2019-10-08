@@ -81,6 +81,8 @@ struct ParsedVariable {
 
   bool isWriteInst() const { return StoreIns == ic; }
 
+  bool isCallInst() const { return CallIns == ic; }
+
   bool isPersistentVar() const {
     assert(localVar);
     return NameFilter::isPersistentVar(localVar);
@@ -114,6 +116,16 @@ struct ParsedVariable {
     }
 
     return nullptr;
+  }
+
+  Type* getFieldElementType() {
+    if (auto* ptrType = dyn_cast<PointerType>(type)) {
+      auto* objType = ptrType->getPointerElementType();
+      assert(objType);
+      return objType;
+    }
+
+    return type;
   }
 
   Type* getObjType() const {

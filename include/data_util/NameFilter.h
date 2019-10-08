@@ -16,7 +16,8 @@ class NameFilter {
 
   static constexpr const char* flushfenceFunctions[] = {
       "_Z13pm_flushfencePKv", "flush_range", "_Z11flush_rangePKvm",
-      "_ZN7storageL14__pmem_persistEPvmi"};
+      "_ZN7storageL14__pmem_persistEPvmi",
+      "persist_obj, pmfs_flush_buffer.312"};
 
   static constexpr const char* pfenceFunctions[] = {"_Z6pfencev"};
 
@@ -125,7 +126,7 @@ public:
   static bool isVarCall(CallInst* ci) {
     assert(ci);
     auto* func = ci->getCalledFunction();
-    if(!func){
+    if (!func) {
       return false;
     }
 

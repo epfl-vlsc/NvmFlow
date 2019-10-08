@@ -16,15 +16,16 @@ class Analyzer {
 
 public:
   Analyzer(Module& M_, AAResults& AAR_) : M(M_), globals(M_, AAR_) {
+    errs() << "Parse\n";
+    errs() << "-----\n";
     parse();
 
+    errs() << "Dataflow Analysis\n";
+    errs() << "-----------------\n";
     dataflow();
   }
 
   void dataflow() {
-    errs() << "Dataflow Analysis\n";
-    errs() << "-----------------\n";
-
     for (auto* f : globals.getAnalyzedFunctions()) {
       globals.setActiveFunction(f);
 
