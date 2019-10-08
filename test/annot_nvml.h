@@ -1,4 +1,3 @@
-#pragma once
 #undef TX_BEGIN
 #undef TX_ONABORT
 #undef TX_END
