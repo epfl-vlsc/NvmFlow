@@ -7,7 +7,7 @@ namespace llvm {
 
 // add to var calls and the respective function
 class NameFilter {
-  static constexpr const char* PersistentName = "_ZL14pmemobj_direct7pmemoid";
+  static constexpr const char* PersistentName = "pmemobj_direct";
 
   static constexpr const char* storeFunctions[] = {"llvm.memcpy",
                                                    "llvm.memmove"};
@@ -116,7 +116,7 @@ public:
   static bool isPersistentVar(Value* v) {
     if (auto* ci = dyn_cast<CallInst>(v)) {
       auto* f = ci->getCalledFunction();
-      if (f->getName().equals(PersistentName))
+      if (f->getName().contains(PersistentName))
         return true;
     }
 
