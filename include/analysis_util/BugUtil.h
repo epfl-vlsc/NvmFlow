@@ -18,6 +18,7 @@ public:
   using DfResults = DataflowResults<AbstractState>;
   using BugList = std::vector<BugData*>;
   using SeenBugVars = std::set<LatVar>;
+  using SeenBugLocs = std::unordered_set<std::string>;
   using LastLoc = LastSeen<LatVar, LatVal>;
 
 protected:
@@ -28,6 +29,7 @@ protected:
   BugList bugList;
   LastLoc lastSeen;
   SeenBugVars buggedVars;
+  SeenBugLocs buggedLocs;
 
   void clear() {
     dfResults.clear();
@@ -36,6 +38,7 @@ protected:
     bugList.clear();
     lastSeen.clear();
     buggedVars.clear();
+    buggedLocs.clear();
   }
 
   void printTitle(raw_ostream& O) const {
@@ -95,9 +98,13 @@ public:
 
   void addBugData(BugData* bugData) { bugList.push_back(bugData); }
 
-  bool isBugVar(LatVar var) { return buggedVars.count(var); }
+  bool isBugVar(LatVar var) const { return buggedVars.count(var); }
 
   void addBugVar(LatVar var) { buggedVars.insert(var); }
+
+  bool isBugLoc(std::string& loc) const { return buggedLocs.count(loc); }
+
+  void addBugLoc(std::string& loc) { buggedLocs.insert(loc); }
 };
 
 } // namespace llvm
