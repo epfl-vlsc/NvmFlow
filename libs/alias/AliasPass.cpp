@@ -98,6 +98,8 @@ bool AliasPass::runOnModule(Module& M) {
       if (!pv.isUsed())
         continue;
 
+      pv.print(errs());
+
       auto* lhs = pv.getOpndVar();
       auto* lv = pv.getLocalVar();
       ag.insert(lhs, lv);
@@ -108,22 +110,6 @@ bool AliasPass::runOnModule(Module& M) {
     }
   }
   ag.print(errs());
-
-  for (auto& F : M) {
-    for (auto& I : instructions(F)) {
-      auto pv = InstrParser::parseInstruction(&I);
-      if (!pv.isUsed())
-        continue;
-
-      auto* lhs = pv.getOpndVar();
-      int setNo = ag.getAliasSetNo(lhs);
-      errs() << *lhs << " " << setNo << "\n";
-      if (auto* rhs = pv.getRhs()) {
-        int setNo = ag.getAliasSetNo(rhs);
-        errs() << *rhs << " " << setNo << "\n";
-      }
-    }
-  }
 
   return false;
 }

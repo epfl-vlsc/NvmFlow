@@ -9,8 +9,8 @@ add_subdirectory(simp)
 
 #experimental checkers
 add_subdirectory(parse)
+add_subdirectory(alias)
 #add_subdirectory(exp)
-#add_subdirectory(alias)
 #add_subdirectory(dbg)
 
 

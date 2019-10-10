@@ -1,5 +1,6 @@
 #include "annot.h"
 
+/*
 struct Dur {
   struct Data {
     int data;
@@ -36,3 +37,31 @@ struct Dur {
     next = ptr;
   }
 };
+*/
+
+struct node{
+  int data;
+  node* next;
+};
+
+struct tree{
+  node* root;
+  int size;
+};
+
+
+void zed(tree* t, node* n){
+  pm_flushfence(&t);
+  pm_flushfence(t);
+  pm_flushfence(&t->root);
+  pm_flushfence(t->root);
+  pm_flushfence(&n->next);
+  pm_flushfence(n->next);
+
+  t->size = 1;
+  t->root = n;
+  *t->root = *n;
+  n->data = 1;
+  n->next = n;
+  *n->next = *n;
+}
