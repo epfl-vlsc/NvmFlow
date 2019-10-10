@@ -7,44 +7,12 @@
 namespace llvm {
 
 template <typename Globals> class VarParser {
-  using InstrType = typename InstrInfo::InstrType;
-
-  auto getCallInstrType(CallInst* ci) const {
-    auto* callee = ci->getCalledFunction();
-
-    if (globals.functions.isLoggingFunction(callee)) {
-      return InstrType::LoggingInstr;
-    } else if (globals.functions.isTxBeginFunction(callee)) {
-      return InstrType::TxBegInstr;
-    } else if (globals.functions.isTxEndFunction(callee)) {
-      return InstrType::TxEndInstr;
-    } else if (globals.functions.isStoreFunction(callee)) {
-      return InstrType::WriteInstr;
-    } else if (globals.functions.isSkippedFunction(callee)) {
-      return InstrType::None;
-    } else {
-      return InstrType::IpInstr;
-    }
-  }
-
-  auto getInstrType(Instruction* i) const {
-    if (auto* si = dyn_cast<StoreInst>(i)) {
-      return InstrType::WriteInstr;
-    } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      return getCallInstrType(ci);
-    } else if (auto* ii = dyn_cast<InvokeInst>(i)) {
-      return InstrType::IpInstr;
-    }
-
-    return InstrType::None;
-  }
-
   void addInstrInfo(Function* func) {
     std::set<StructType*> seenSts;
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
         // get instruction type
-        auto instrType = getInstrType(&I);
+        auto instrType = InstrInfo::getInstrType(&I, globals);
 
         if (!InstrInfo::isUsedInstr(instrType))
           continue;

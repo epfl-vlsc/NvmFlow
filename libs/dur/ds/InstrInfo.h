@@ -55,9 +55,7 @@ struct InstrInfo {
     return lhsAlias;
   }
 
-  bool hasVariableRhs() const{
-    return rhsAlias != nullptr;
-  }
+  bool hasVariableRhs() const { return rhsAlias != nullptr; }
 
   auto* getVariableRhs() {
     assert(rhsAlias);
@@ -104,6 +102,35 @@ struct InstrInfo {
   }
 
   static bool isWriteInstr(InstrType it) { return it == WriteInstr; }
+
+  template <typename Globals>
+  static auto getInstrType(Instruction* i, Globals& globals) {
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      return WriteInstr;
+    } else if (auto* ii = dyn_cast<InvokeInst>(i)) {
+      return IpInstr;
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      auto* callee = ci->getCalledFunction();
+
+      if (globals.functions.isPfenceFunction(callee)) {
+        return PfenceInstr;
+      } else if (globals.functions.isVfenceFunction(callee)) {
+        return VfenceInstr;
+      } else if (globals.functions.isFlushFunction(callee)) {
+        return FlushInstr;
+      } else if (globals.functions.isFlushFenceFunction(callee)) {
+        return FlushFenceInstr;
+      } else if (globals.functions.isStoreFunction(callee)) {
+        return WriteInstr;
+      } else if (globals.functions.isSkippedFunction(callee)) {
+        return None;
+      } else {
+        return IpInstr;
+      }
+    }
+
+    return None;
+  }
 };
 
 } // namespace llvm

@@ -7,46 +7,12 @@
 namespace llvm {
 
 template <typename Globals> class ValidParser {
-  using InstrType = typename InstrInfo::InstrType;
-
-  auto getCallInstrType(CallInst* ci) const {
-    auto* callee = ci->getCalledFunction();
-
-    if (globals.functions.isPfenceFunction(callee)) {
-      return InstrType::PfenceInstr;
-    } else if (globals.functions.isVfenceFunction(callee)) {
-      return InstrType::VfenceInstr;
-    } else if (globals.functions.isFlushFunction(callee)) {
-      return InstrType::FlushInstr;
-    } else if (globals.functions.isFlushFenceFunction(callee)) {
-      return InstrType::FlushFenceInstr;
-    } else if (globals.functions.isStoreFunction(callee)) {
-      return InstrType::WriteInstr;
-    } else if (globals.functions.isSkippedFunction(callee)) {
-      return InstrType::None;
-    } else {
-      return InstrType::IpInstr;
-    }
-  }
-
-  auto getInstrType(Instruction* i) const {
-    if (auto* si = dyn_cast<StoreInst>(i)) {
-      return InstrType::WriteInstr;
-    } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      return getCallInstrType(ci);
-    } else if (auto* ii = dyn_cast<InvokeInst>(i)) {
-      return InstrType::IpInstr;
-    }
-
-    return InstrType::None;
-  }
-
   void addInstrInfo(Function* func) {
     std::set<StructType*> seenSts;
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
         // get instruction type
-        auto instrType = getInstrType(&I);
+        auto instrType = InstrInfo::getInstrType(&I, globals);
 
         if (!InstrInfo::isUsedInstr(instrType))
           continue;
