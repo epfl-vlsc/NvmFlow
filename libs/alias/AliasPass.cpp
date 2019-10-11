@@ -1,11 +1,11 @@
-
-
 #include "AliasPass.h"
 #include "Common.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 #include "llvm/Analysis/CFLSteensAliasAnalysis.h"
+
+#include "llvm/Analysis/AliasSetTracker.h"
 
 #include "analysis_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
@@ -85,11 +85,65 @@ std::set<Value*> vals;
   }
 */
 
-bool AliasPass::runOnModule(Module& M) {
-  AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
-  auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
-  AAR.addAAResult(cflResult);
+void runAliasAnders(Module& M, CFLAndersAAResult& CFLAAR) {
+  errs() << "anders group-------------------\n";
+  std::set<Value*> values;
 
+  for (auto& F : M) {
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed())
+        continue;
+
+      auto* lhs = pv.getOpndVar();
+      values.insert(lhs);
+      if (auto* rhs = pv.getRhs()) {
+        values.insert(rhs);
+      }
+    }
+  }
+
+  std::set<Value*> seen;
+  for (auto* v1 : values) {
+    for (auto* v2 : values) {
+      if (seen.count(v2))
+        continue;
+
+      auto* i1 = dyn_cast<Instruction>(v1);
+      auto* i2 = dyn_cast<Instruction>(v2);
+      if (!i1 || !i2)
+        continue;
+
+      auto m1 = MemoryLocation(v1, 8);
+      auto m2 = MemoryLocation(v2, 8);
+      auto res = CFLAAR.alias(m1, m2);
+      errs() << res << " " << DbgInstr::getSourceLocation(i1) << " "
+             << DbgInstr::getSourceLocation(i2) << "\n";
+    }
+    seen.insert(v1);
+  }
+  errs() << "-------------------------------\n";
+}
+
+void runAliasSetTracker(Module& M, AAResults& AAR) {
+  errs() << "alias set tracker--------------\n";
+  AliasSetTracker ast(AAR);
+
+  for (auto& F : M) {
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed() || !pv.isWriteInst())
+        continue;
+
+      ast.add(&I);
+    }
+  }
+  ast.print(errs());
+  errs() << "-------------------------------\n";
+}
+
+void runAliasGroup(Module& M, AAResults& AAR) {
+  errs() << "alias group--------------------\n";
   AliasGroups ag(AAR);
 
   for (auto& F : M) {
@@ -98,18 +152,27 @@ bool AliasPass::runOnModule(Module& M) {
       if (!pv.isUsed())
         continue;
 
-      pv.print(errs());
-
       auto* lhs = pv.getOpndVar();
-      auto* lv = pv.getLocalVar();
-      ag.insert(lhs, lv);
-
+      // auto* lv = pv.getLocalVar();
+      ag.insert(lhs);
       if (auto* rhs = pv.getRhs()) {
         ag.insert(rhs);
       }
     }
   }
   ag.print(errs());
+  errs() << "-------------------------------\n";
+}
+
+bool AliasPass::runOnModule(Module& M) {
+  AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+  //auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+  auto& cflResult = getAnalysis<CFLSteensAAWrapperPass>().getResult();
+  AAR.addAAResult(cflResult);
+
+  runAliasGroup(M, AAR);
+  runAliasSetTracker(M, AAR);
+  //runAliasAnders(M, cflResult);
 
   return false;
 }
@@ -117,6 +180,7 @@ bool AliasPass::runOnModule(Module& M) {
 void AliasPass::getAnalysisUsage(AnalysisUsage& AU) const {
   AU.addRequired<TargetLibraryInfoWrapperPass>();
   AU.addRequired<CFLAndersAAWrapperPass>();
+  AU.addRequired<CFLSteensAAWrapperPass>();
 
   AU.setPreservesAll();
 }

@@ -26,7 +26,7 @@ struct AliasGroups {
 
   static bool isInvalidNo(int no) { return no == InvalidSetNo; }
 
-  //skip alias checking for local variables that are on the stack
+  // skip alias checking for local variables that are on the stack
   void insert(Value* v, Value* lv) {
     if (localCat.count(lv)) {
       int setNo = localCat[lv];
@@ -71,7 +71,12 @@ struct AliasGroups {
     O << "Alias Groups\n";
     O << "------------\n";
     for (auto& [val, setNo] : valueCat) {
-      O << "(" << *val << "," << setNo << ")\n";
+      O << "(";
+      if (auto* i = dyn_cast<Instruction>(val))
+        O << DbgInstr::getSourceLocation(i);
+      else
+        O << *val;
+      O << "," << setNo << ")\n";
     }
   }
 
