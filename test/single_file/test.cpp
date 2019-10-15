@@ -12,6 +12,7 @@ struct node{
 };
 
 struct tree{
+  node** z;
   node* root;
   long size;
   bool arr[8];
@@ -24,24 +25,25 @@ void alllhs(tree* t){
   pm_flushfence(&(*p)->data);
   pm_flushfence(&(*p)->field);
   pm_flushfence((*p)->next);
-  pm_flushfence((*p)->next);
-  pm_flushfence(p);
   pm_flushfence(&p);
   pm_flushfence(&t);
   pm_flushfence(t);
   pm_flushfence(&t->root);
   pm_flushfence(t->root);
   pm_flushfence(&t->size);
+  pm_flushfence(&t->arr[2]);
   pm_flushfence(&n);
   pm_flushfence(n);
   pm_flushfence(&n->next);
   pm_flushfence(n->next);
-
+  
+  *p = new node;
   t = new tree;
   *t = *(new tree);
   t->root = new node;
   *t->root = *(new node);
   t->size = 1;
+  t->arr[2] = 1;
   n = new node;
   *n = *(new node);
   n->next = new node;

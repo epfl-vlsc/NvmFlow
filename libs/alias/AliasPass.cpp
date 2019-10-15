@@ -94,12 +94,6 @@ void runAliasAnders(Module& M, CFLAndersAAResult& CFLAAR) {
       auto pv = InstrParser::parseInstruction(&I);
       if (!pv.isUsed())
         continue;
-
-      auto* lhs = pv.getOpndVar();
-      values.insert(lhs);
-      if (auto* rhs = pv.getRhs()) {
-        values.insert(rhs);
-      }
     }
   }
 
@@ -125,23 +119,6 @@ void runAliasAnders(Module& M, CFLAndersAAResult& CFLAAR) {
   errs() << "-------------------------------\n";
 }
 
-void runAliasSetTracker(Module& M, AAResults& AAR) {
-  errs() << "alias set tracker--------------\n";
-  AliasSetTracker ast(AAR);
-
-  for (auto& F : M) {
-    for (auto& I : instructions(F)) {
-      auto pv = InstrParser::parseInstruction(&I);
-      if (!pv.isUsed() || !pv.isWriteInst())
-        continue;
-
-      ast.add(&I);
-    }
-  }
-  ast.print(errs());
-  errs() << "-------------------------------\n";
-}
-
 void runAliasGroup(Module& M, AAResults& AAR) {
   errs() << "alias group--------------------\n";
   AliasGroups ag(AAR);
@@ -151,28 +128,126 @@ void runAliasGroup(Module& M, AAResults& AAR) {
       auto pv = InstrParser::parseInstruction(&I);
       if (!pv.isUsed())
         continue;
+    }
+  }
 
-      auto* lhs = pv.getOpndVar();
-      // auto* lv = pv.getLocalVar();
-      ag.insert(lhs);
-      if (auto* rhs = pv.getRhs()) {
-        ag.insert(rhs);
+  ag.print(errs());
+  errs() << "-------------------------------\n";
+}
+
+void runAliasSetTracker(Module& M, AAResults& AAR) {
+  errs() << "alias set tracker--------------\n";
+  AliasSetTracker ast(AAR);
+
+  int added = 0;
+  int total = 0;
+  for (auto& F : M) {
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed())
+        continue;
+
+      // memcpy
+      if (auto* ci = dyn_cast<CallInst>(&I)) {
+        total++;
+
+        auto* v = ci->getOperand(0);
+        if (auto* i = dyn_cast<Instruction>(v)) {
+          ast.add(i);
+          added++;
+        } else {
+          report_fatal_error("cry1");
+        }
+      } else if (auto* si = dyn_cast<StoreInst>(&I)) {
+        total++;
+
+        auto* v = si->getPointerOperand();
+        if (auto* i = dyn_cast<Instruction>(v)) {
+          ast.add(i);
+          added++;
+        } else {
+          report_fatal_error("cry2");
+        }
+
+        v = si->getValueOperand();
+        auto* type = v->getType();
+        if (!type->isPointerTy())
+          continue;
+
+        total++;
+
+        if (auto* i = dyn_cast<Instruction>(v)) {
+          ast.add(i);
+          added++;
+        } else {
+          // report_fatal_error("cry3");
+          pv.print(errs());
+          errs() << "cry3: " << *v << "\n";
+        }
+      } else {
+        report_fatal_error("farcry");
       }
     }
   }
-  ag.print(errs());
+  errs() << "total " << total << " added " << added << "\n";
+  ast.print(errs());
+  errs() << "-------------------------------\n";
+}
+
+void runAlias(Module& M, AAResults& AAR) {
+  errs() << "anders group-------------------\n";
+  std::set<Value*> values;
+
+  for (auto& F : M) {
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed())
+        continue;
+      
+    }
+  }
+
+  std::set<Value*> seen;
+  for (auto* v1 : values) {
+    for (auto* v2 : values) {
+      if (seen.count(v2))
+        continue;
+
+      auto res = AAR.alias(v1, v2);
+      errs() << res << " " << *v1 << " " << *v2 << "\n";
+    }
+    seen.insert(v1);
+  }
+  errs() << "-------------------------------\n";
+}
+
+void printPV(Module& M) {
+  errs() << "pv-----------------------------\n";
+
+  for (auto& F : M) {
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseInstruction(&I);
+      if (!pv.isUsed())
+        continue;
+
+      pv.print(errs());
+    }
+  }
+
   errs() << "-------------------------------\n";
 }
 
 bool AliasPass::runOnModule(Module& M) {
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
-  //auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+  // auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   auto& cflResult = getAnalysis<CFLSteensAAWrapperPass>().getResult();
   AAR.addAAResult(cflResult);
 
-  runAliasGroup(M, AAR);
-  runAliasSetTracker(M, AAR);
-  //runAliasAnders(M, cflResult);
+  printPV(M);
+  //runAlias(M, AAR);
+  // runAliasGroup(M, AAR);
+  // runAliasSetTracker(M, AAR);
+  // runAliasAnders(M, cflResult);
 
   return false;
 }
