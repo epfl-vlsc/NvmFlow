@@ -74,22 +74,13 @@ class InstrParser {
     return emptyStr;
   }
 
-  static bool usesPtr(Value* opnd) {
-    // assume islocref is false
-    auto* type = opnd->getType();
-    auto* ptrType = dyn_cast<PointerType>(type);
-    assert(ptrType);
-    auto* eType = ptrType->getPointerElementType();
-    return eType->isPointerTy();
-  }
-
-  static Value* getLocalVar(Instruction* i) {
+  static Value* getObj(Instruction* i) {
     assert(i);
     LocalVarVisitor lvv;
-    auto* localVar = lvv.visit(*i);
+    auto* obj = lvv.visit(*i);
 
-    assert(localVar);
-    return localVar;
+    assert(obj);
+    return obj;
   }
 
   static bool isUsed(Instruction* i) {
@@ -102,7 +93,7 @@ class InstrParser {
     return false;
   }
 
-  static Type* getOpndType(Instruction* i) {
+  static Type* getType(Instruction* i) {
     assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
       return si->getPointerOperandType();
@@ -131,39 +122,34 @@ class InstrParser {
     return nullptr;
   }
 
-public:
-  static std::pair<Value*, Value*> getOpndVar(Instruction* i) {
+  static Value* getOpnd(Instruction* i) {
     assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      auto* opndLhs = si->getPointerOperand();
-      auto* opndRhs = si->getValueOperand();
-      return std::pair(opndLhs, opndRhs);
+      return si->getPointerOperand();
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      // todo - currently ignore rhs of llvm.memcpy
-      auto* opnd = ci->getArgOperand(0);
-      return std::pair(opnd, nullptr);
+      return ci->getArgOperand(0);
     }
 
     report_fatal_error("wrong inst - opnd");
-    return std::pair(nullptr, nullptr);
+    return nullptr;
   }
 
+public:
   static auto parseInstruction(Instruction* i) {
     if (!isUsed(i))
       return ParsedVariable();
 
-    auto instCat = ParsedVariable::getInstCat(i);
-    auto [opndVar, opndRhs] = getOpndVar(i);
-    auto* localVar = getLocalVar(i);
-    auto* type = getOpndType(i);
+    // var infos
+    auto* obj = getObj(i);
+    auto* opnd = getOpnd(i);
+    auto* type = getType(i);
 
     // fill parsed variable----------------------------------
-    bool isPtr = false;    ////////
     bool isLocRef = false; //////
     StringRef annotation = EmptyRef;
 
     // skip cast
-    auto* v = stripCasts(opndVar);
+    auto* v = stripCasts(opnd);
 
     // skip array field
     v = stripAggregate(v);
@@ -173,10 +159,6 @@ public:
       // use location
       v = li->getPointerOperand();
       isLocRef = true;
-      isPtr = true;
-    } else {
-      // use variable
-      isPtr = usesPtr(opndVar);
     }
 
     // skip cast------------------------------------------
@@ -194,19 +176,17 @@ public:
     // fix type and locref---------------------------------
     if (isa<CallInst>(v) || isa<Argument>(v)) {
       isLocRef = true;
-      isPtr = true;
     }
 
     if (!isLocRef)
       type = getPtrElementType(type);
 
-    // fix type for varRef---------------------------------------------
-    if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v)) {
-      // objptr
-      return ParsedVariable(opndVar, localVar, type, instCat, isLocRef,
-                            opndRhs);
+    // obj---------------------------------------------
+    if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v) || isa<LoadInst>(v)) {
+      return ParsedVariable(i, obj, opnd, type, isLocRef);
     }
-    // check field/objptr
+
+    // field-------------------------------------------
     else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
       // field
       auto [st, idx] = getStructInfo(gepi);
@@ -217,40 +197,14 @@ public:
 
       if (st && isa<StructType>(st)) {
         auto* structType = dyn_cast<StructType>(st);
-        return ParsedVariable(opndVar, localVar, type, instCat, isPtr, isLocRef,
-                              structType, idx, annotation, opndRhs);
+        return ParsedVariable(i, obj, opnd, type, isLocRef, structType, idx,
+                              annotation);
       }
     }
 
     // not essential
     return ParsedVariable();
   }
-
-  template <typename StructTypes>
-  static auto parseInstruction(Instruction* i, StructTypes& sts) {
-    auto pv = parseInstruction(i);
-    if (!pv.isUsed())
-      return pv;
-
-    StructType* st = nullptr;
-    if (pv.isObjPtr()) {
-      auto* type = pv.getObjElementType();
-      while (type && type->isPointerTy()) {
-        auto* ptr = dyn_cast<PointerType>(type);
-        type = ptr->getPointerElementType();
-      }
-      st = dyn_cast<StructType>(type);
-    } else if (pv.isField()) {
-      st = pv.getStructType();
-    }
-
-    // check if it is used type
-    if (sts.isUsedStructType(st)) {
-      return pv;
-    }
-
-    return ParsedVariable();
-  }
-}; // namespace llvm
+};
 
 } // namespace llvm
