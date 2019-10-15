@@ -1,67 +1,49 @@
 #include "annot.h"
 
-/*
-struct Dur {
-  struct Data {
-    int data;
-  };
-  dur_field Data* next;
-
-  void nvm_fnc correct() {
-    auto* ptr = new Data{5};
-    pm_flush(ptr);
-    pfence();
-    next = ptr;
-  }
-
-  void nvm_fnc commitPtr() {
-    auto* ptr = new Data{5};
-    if (cond())
-      pm_flushfence(ptr);
-
-    next = ptr;
-  }
-
-  void nvm_fnc commitModifyPtr() {
-    auto* ptr = new Data{5};
-    pm_flushfence(ptr);
-    ptr->data = 4;
-    next = ptr;
-  }
-
-  void nvm_fnc doubleFlush() {
-    auto* ptr = new Data{5};
-    if (cond())
-      pm_flushfence(ptr);
-    pm_flushfence(ptr);
-    next = ptr;
-  }
+struct Field{
+  int a;
+  int b;
 };
-*/
 
 struct node{
-  int data;
-  node* next;
+  long data;
+  Field field;
+  dur_field node* next;
 };
 
 struct tree{
   node* root;
-  int size;
+  long size;
+  bool arr[8];
 };
 
-
-void zed(tree* t, node* n){
+void alllhs(tree* t){
+  node* n = t->root;
+  node** p = &n;
+  pm_flushfence(*p);
+  pm_flushfence(&(*p)->data);
+  pm_flushfence(&(*p)->field);
+  pm_flushfence((*p)->next);
+  pm_flushfence((*p)->next);
+  pm_flushfence(p);
+  pm_flushfence(&p);
   pm_flushfence(&t);
   pm_flushfence(t);
   pm_flushfence(&t->root);
   pm_flushfence(t->root);
+  pm_flushfence(&t->size);
+  pm_flushfence(&n);
+  pm_flushfence(n);
   pm_flushfence(&n->next);
   pm_flushfence(n->next);
 
+  t = new tree;
+  *t = *(new tree);
+  t->root = new node;
+  *t->root = *(new node);
   t->size = 1;
-  t->root = n;
-  *t->root = *n;
-  n->data = 1;
-  n->next = n;
-  *n->next = *n;
+  n = new node;
+  *n = *(new node);
+  n->next = new node;
+  *n->next = *(new node);
 }

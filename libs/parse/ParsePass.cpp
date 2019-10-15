@@ -30,10 +30,26 @@ bool isSkipFunction(Function& F) {
   return false;
 }
 
-bool ParsePass::runOnModule(Module& M) {
+bool takeFunction(Function& F) {
+  static const char* takeFunctions[] = {//"_Z3rhsP4tree",
+                                        "_Z6alllhsP4tree",
+                                        //"_Z4dptrPP4node",
+                                        //"_Z4simpP4tree"
+                                        };
+  for (auto* c : takeFunctions) {
+    if (F.getName().equals(c))
+      return true;
+  }
 
+  return false;
+}
+
+bool ParsePass::runOnModule(Module& M) {
   for (auto& F : M) {
     if (F.isIntrinsic() || F.isDeclaration() || isSkipFunction(F))
+      continue;
+
+    if (!takeFunction(F))
       continue;
 
     errs() << "function:" << F.getName() << "\n";
@@ -42,7 +58,6 @@ bool ParsePass::runOnModule(Module& M) {
 
       if (pv.isUsed()) {
         pv.print(errs());
-        errs() << "\n";
         errs() << I << "\n";
       }
     }
