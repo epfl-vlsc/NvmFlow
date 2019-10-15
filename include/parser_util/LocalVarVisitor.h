@@ -1,8 +1,8 @@
 #pragma once
 #include "Common.h"
 
-#include "llvm/IR/InstVisitor.h"
 #include "data_util/NameFilter.h"
+#include "llvm/IR/InstVisitor.h"
 
 namespace llvm {
 
@@ -77,6 +77,31 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
     errs() << "value:" << V << "\n";
     report_fatal_error("parse fail - not supported");
     return nullptr;
+  }
+};
+
+struct ObjFinder {
+
+  static bool checkValidObj(Value* obj) {
+    bool isValidObj = isa<CallInst>(obj) || isa<InvokeInst>(obj) ||
+                      isa<AllocaInst>(obj) || isa<PHINode>(obj) ||
+                      isa<Argument>(obj) || isa<GlobalVariable>(obj) ||
+                      dyn_cast<Constant>(obj);
+    if (!isValidObj) {
+      errs() << "obj is not valid: " << *obj
+             << " value id:" << obj->getValueID() << "\n";
+    }
+
+    return isValidObj;
+  }
+
+  static Value* findObj(Instruction* i) {
+    assert(i);
+    LocalVarVisitor lvv;
+    auto* obj = lvv.visit(*i);
+
+    assert(obj && checkValidObj(obj));
+    return obj;
   }
 };
 

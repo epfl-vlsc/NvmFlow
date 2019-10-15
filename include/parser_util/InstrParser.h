@@ -75,19 +75,24 @@ class InstrParser {
   }
 
   static Value* getObj(Instruction* i) {
-    assert(i);
-    LocalVarVisitor lvv;
-    auto* obj = lvv.visit(*i);
-
-    assert(obj);
-    return obj;
+    return ObjFinder::findObj(i);
   }
 
-  static bool isUsed(Instruction* i) {
+  static bool isUsedLhs(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
       return true;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       return NameFilter::isVarCall(ci);
+    }
+
+    return false;
+  }
+
+  static bool isUsedRhs(Instruction* i) {
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      return true;
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      return NameFilter::isStoreFunction(ci);
     }
 
     return false;
@@ -122,10 +127,13 @@ class InstrParser {
     return nullptr;
   }
 
-  static Value* getOpnd(Instruction* i) {
+  static Value* getOpnd(Instruction* i, bool lhs = true) {
     assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      return si->getPointerOperand();
+      if (lhs)
+        return si->getPointerOperand();
+      else
+        return si->getValueOperand();
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       return ci->getArgOperand(0);
     }
@@ -135,8 +143,8 @@ class InstrParser {
   }
 
 public:
-  static auto parseInstruction(Instruction* i) {
-    if (!isUsed(i))
+  static auto parseLhsVar(Instruction* i) {
+    if (!isUsedLhs(i))
       return ParsedVariable();
 
     // var infos
@@ -182,7 +190,8 @@ public:
       type = getPtrElementType(type);
 
     // obj---------------------------------------------
-    if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v) || isa<LoadInst>(v)) {
+    if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v) ||
+        isa<LoadInst>(v)) {
       return ParsedVariable(i, obj, opnd, type, isLocRef);
     }
 
@@ -201,6 +210,19 @@ public:
                               annotation);
       }
     }
+
+    // not essential
+    return ParsedVariable();
+  }
+
+  static auto parseRhsVar(Instruction* i) {
+    if (!isUsedRhs(i))
+      return ParsedVariable();
+
+    errs() << *i << "\n";
+    auto* obj = getObj(i);
+    auto* opnd = getOpnd(i);
+    auto* type = getType(i);
 
     // not essential
     return ParsedVariable();

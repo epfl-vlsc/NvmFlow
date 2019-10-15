@@ -1,14 +1,16 @@
 #include "annot.h"
 
-struct Field{
+struct ob{
   int a;
   int b;
 };
 
 struct node{
   long data;
-  Field field;
+  ob field;
   dur_field node* next;
+  node* next2;
+  int* arr[3];
 };
 
 struct tree{
@@ -18,34 +20,33 @@ struct tree{
   bool arr[8];
 };
 
-void alllhs(tree* t){
-  node* n = t->root;
-  node** p = &n;
-  pm_flushfence(*p);
-  pm_flushfence(&(*p)->data);
-  pm_flushfence(&(*p)->field);
-  pm_flushfence((*p)->next);
-  pm_flushfence(&p);
-  pm_flushfence(&t);
-  pm_flushfence(t);
-  pm_flushfence(&t->root);
-  pm_flushfence(t->root);
-  pm_flushfence(&t->size);
-  pm_flushfence(&t->arr[2]);
-  pm_flushfence(&n);
-  pm_flushfence(n);
-  pm_flushfence(&n->next);
-  pm_flushfence(n->next);
+volatile tree *x;
+volatile node *y;
+volatile node **z;
+
+void allrhs(tree* t, node* n){
+  node** p = (node**)n;
+ 
+
+  x = t;
+  x = nullptr;
+  *(tree*)x = *t;
+  x->root = t->root;
+  *x->root = *t->root;
+  x->size = t->size;
+  x->arr[1] = t->arr[1];
+
+  y = n;
+  *(node*)y = *n;
+  y->next = n->next;
+  *y->next = *n->next;
+  y->next2 = n->next2;
+  *y->next2 = *n->next2;
+  y->data = n->data;
+  y->arr[2] = n->arr[2];
+
+  y = *p;
+  z = (volatile node**)p;
+  z = (volatile node**)&n;
   
-  *p = new node;
-  t = new tree;
-  *t = *(new tree);
-  t->root = new node;
-  *t->root = *(new node);
-  t->size = 1;
-  t->arr[2] = 1;
-  n = new node;
-  *n = *(new node);
-  n->next = new node;
-  *n->next = *(new node);
 }
