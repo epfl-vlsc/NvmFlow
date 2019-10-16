@@ -24,7 +24,7 @@ template <typename Globals> class VarParser {
         }
 
         // parse variable based
-        auto pv = InstrParser::parseInstruction(&I);
+        auto pv = InstrParser::parseVarLhs(&I);
         if (!pv.isUsed() || !pv.isPersistentVar())
           continue;
 

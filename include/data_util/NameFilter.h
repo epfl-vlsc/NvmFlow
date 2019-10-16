@@ -100,15 +100,15 @@ public:
   }
 
   static bool isTxEndFunction(StringRef& n) {
-    return equals(n, txEndFunctions, sizeof(txEndFunctions) / ElementSize);
+    return contains(n, txEndFunctions, sizeof(txEndFunctions) / ElementSize);
   }
 
   static bool isTxBeginFunction(StringRef& n) {
-    return equals(n, txBeginFunctions, sizeof(txBeginFunctions) / ElementSize);
+    return contains(n, txBeginFunctions, sizeof(txBeginFunctions) / ElementSize);
   }
 
   static bool isLoggingFunction(StringRef& n) {
-    return equals(n, loggingFunctions, sizeof(loggingFunctions) / ElementSize);
+    return contains(n, loggingFunctions, sizeof(loggingFunctions) / ElementSize);
   }
 
   // parser functions
