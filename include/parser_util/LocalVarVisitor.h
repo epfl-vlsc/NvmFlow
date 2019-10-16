@@ -81,7 +81,6 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
 };
 
 struct ObjFinder {
-
   static bool checkValidObj(Value* obj) {
     bool isValidObj = isa<CallInst>(obj) || isa<InvokeInst>(obj) ||
                       isa<AllocaInst>(obj) || isa<PHINode>(obj) ||

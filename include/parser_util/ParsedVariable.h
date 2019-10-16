@@ -11,7 +11,7 @@ struct ParsedVariable {
   enum RefCat { VarRef, LocRef }; // access variable or location pointed by it
 
   static constexpr const char* ICStr[] = {"StoreIns", "CallIns", "None"};
-  static constexpr const char* VCStr[] = {"Field", "Obj", "Null" "None"};
+  static constexpr const char* VCStr[] = {"Field", "Obj", "Null", "None"};
   static constexpr const char* RCStr[] = {"Var", "Loc"};
 
   // use obj for alias as well
@@ -52,10 +52,9 @@ struct ParsedVariable {
   }
 
   // nullptr
-  ParsedVariable(Instruction* i)
-      : obj(nullptr), opnd(nullptr), type(nullptr), ic(getInstCat(i)), vc(NullVar),
-        rc(LocRef), st(nullptr), idx(-1) {
-  }
+  ParsedVariable(Instruction* i, Value* obj_, Value* opnd_, Type* type_)
+      : obj(obj_), opnd(opnd_), type(type_), ic(getInstCat(i)), vc(NullVar),
+        rc(LocRef), st(nullptr), idx(-1) {}
 
   InsCat getInstCat(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {

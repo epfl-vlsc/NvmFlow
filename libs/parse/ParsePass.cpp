@@ -62,20 +62,19 @@ bool ParsePass::runOnModule(Module& M) {
     if (F.isIntrinsic() || F.isDeclaration() || isSkipFunction(F))
       continue;
 
-    /*
-    if (!takeFunction(F))
-      continue;
-    */
-
     errs() << "function:" << F.getName() << "\n";
     for (auto& I : instructions(F)) {
-      auto pvLhs = InstrParser::parseLhsVar(&I);
+      errs() << I << "\n";
+      auto pvLhs = InstrParser::parseVarLhs(&I);
       if (!pvLhs.isUsed())
         continue;
+      errs() << "lhs\n";
 
-      auto pvRhs = InstrParser::parseRhsVar(&I);
+      auto pvRhs = InstrParser::parseVarRhs(&I);
       if (!pvRhs.isUsed())
         continue;
+      errs() << "rhs\t\t";
+      pvRhs.print(errs());
     }
   }
 

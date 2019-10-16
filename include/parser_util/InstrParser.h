@@ -19,6 +19,21 @@ Value* stripCasts(Value* v) {
   return v;
 }
 
+Value* stripCastsLoads(Value* v) {
+  assert(v);
+  while (true) {
+    if (auto* ci = dyn_cast<CastInst>(v)) {
+      v = ci->getOperand(0);
+    } else if (auto* li = dyn_cast<LoadInst>(v)) {
+      v = li->getPointerOperand();
+    } else {
+      break;
+    }
+  }
+
+  return v;
+}
+
 Value* stripAggregate(Value* v) {
   assert(v);
   if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
@@ -74,9 +89,7 @@ class InstrParser {
     return emptyStr;
   }
 
-  static Value* getObj(Instruction* i) {
-    return ObjFinder::findObj(i);
-  }
+  static Value* getObj(Instruction* i) { return ObjFinder::findObj(i); }
 
   static bool isUsedLhs(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
@@ -98,7 +111,7 @@ class InstrParser {
     return false;
   }
 
-  static Type* getType(Instruction* i) {
+  static Type* getTypeLhs(Instruction* i) {
     assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
       return si->getPointerOperandType();
@@ -127,6 +140,28 @@ class InstrParser {
     return nullptr;
   }
 
+  static std::pair<Type*, bool> getTypeLocRhs(Instruction* i) {
+    if (auto* si = dyn_cast<StoreInst>(i)) {
+      auto* opnd = si->getValueOperand();
+      auto* type = opnd->getType();
+      return std::pair(type, false);
+    } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      if (NameFilter::isStoreFunction(ci)) {
+        auto* opnd = ci->getArgOperand(1);
+        if (auto* castInst = dyn_cast<CastInst>(opnd)) {
+          auto* type = castInst->getSrcTy();
+          return std::pair(type, true);
+        }
+
+        errs() << "opnd: " << *opnd << "\n";
+      }
+    }
+
+    errs() << "inst: " << *i << "\n";
+    report_fatal_error("wrong inst - type");
+    return std::pair<Type*, bool>(nullptr, false);
+  }
+
   static Value* getOpnd(Instruction* i, bool lhs = true) {
     assert(i);
     if (auto* si = dyn_cast<StoreInst>(i)) {
@@ -135,6 +170,10 @@ class InstrParser {
       else
         return si->getValueOperand();
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
+      // memcpy rhs
+      if (!lhs && NameFilter::isStoreFunction(ci))
+        return ci->getArgOperand(1);
+
       return ci->getArgOperand(0);
     }
 
@@ -143,14 +182,14 @@ class InstrParser {
   }
 
 public:
-  static auto parseLhsVar(Instruction* i) {
+  static auto parseVarLhs(Instruction* i) {
     if (!isUsedLhs(i))
       return ParsedVariable();
 
     // var infos
     auto* obj = getObj(i);
     auto* opnd = getOpnd(i);
-    auto* type = getType(i);
+    auto* type = getTypeLhs(i);
 
     // fill parsed variable----------------------------------
     bool isLocRef = false; //////
@@ -215,14 +254,63 @@ public:
     return ParsedVariable();
   }
 
-  static auto parseRhsVar(Instruction* i) {
+  static auto parseVarRhs(Instruction* i) {
     if (!isUsedRhs(i))
       return ParsedVariable();
 
-    errs() << *i << "\n";
     auto* obj = getObj(i);
-    auto* opnd = getOpnd(i);
-    auto* type = getType(i);
+    auto* opnd = getOpnd(i, false);
+    auto [type, isLocRef] = getTypeLocRhs(i);
+    if (!type->isPointerTy())
+      return ParsedVariable();
+
+    //nullptr
+    if(auto* cpn = dyn_cast<ConstantPointerNull>(opnd)){
+      return ParsedVariable(i, obj, opnd, type);
+    }
+
+    // fill parsed variable------------------------------
+    StringRef annotation = EmptyRef;
+
+    // skip cast
+    auto* v = stripCastsLoads(opnd);
+
+    // skip array field----------------------------------
+    v = stripAggregate(v);
+
+    // skip cast------------------------------------------
+    v = stripCastsLoads(v);
+
+    // check annotation----------------------------------
+    if (auto* ii = dyn_cast<IntrinsicInst>(v)) {
+      annotation = getAnnotation(ii);
+      v = ii->getOperand(0);
+    }
+
+    // skip cast------------------------------------------
+    v = stripCastsLoads(v);
+
+    // obj---------------------------------------------
+    if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v) ||
+        isa<LoadInst>(v)) {
+      return ParsedVariable(i, obj, opnd, type, isLocRef);
+    }
+
+    // field-------------------------------------------
+    else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
+      // field
+      auto [st, idx] = getStructInfo(gepi);
+
+      // disable dynamic offsets
+      if (idx < 0)
+        return ParsedVariable();
+
+      if (st && isa<StructType>(st)) {
+        auto* structType = dyn_cast<StructType>(st);
+        return ParsedVariable(i, obj, opnd, type, isLocRef, structType, idx,
+                              annotation);
+      }
+    }
 
     // not essential
     return ParsedVariable();
