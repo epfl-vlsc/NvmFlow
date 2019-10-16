@@ -55,24 +55,6 @@ public:
     }
   }
 
-  void checkWriteVarBug(Variable* var, InstrInfo* ii, AbstractState& state) {
-    if (this->isBugVar(var))
-      return;
-
-    auto& val = state[var];
-    if (!val.isWriteCommit()) {
-      this->addBugVar(var);
-
-      auto* instr = ii->getInstruction();
-
-      auto varName = var->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
-
-      auto* bugData = new WriteVarBug(varName, srcLoc);
-      this->addBugData(bugData);
-    }
-  }
-
   void checkCommitPairBug(Variable* var, InstrInfo* ii, AbstractState& state) {
     if (this->isBugVar(var))
       return;
@@ -98,20 +80,6 @@ public:
         auto prevLoc = DbgInstr::getSourceLocation(otherInst);
 
         auto* bugData = new CommitPairBug(varName, prevName, srcLoc, prevLoc);
-        this->addBugData(bugData);
-      }
-
-      if (otherVal.isUnseen() && pair->isSentinel(var)) {
-        this->addBugVar(var);
-        this->addBugVar(otherVar);
-
-        auto* instr = ii->getInstruction();
-
-        auto varName = var->getName();
-        auto prevName = otherVar->getName();
-        auto srcLoc = DbgInstr::getSourceLocation(instr);
-
-        auto* bugData = new CommitDataBug(varName, prevName, srcLoc);
         this->addBugData(bugData);
       }
     }

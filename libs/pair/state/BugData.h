@@ -24,35 +24,6 @@ struct CommitPairBug : public BugData {
   }
 };
 
-struct CommitDataBug : public BugData {
-  std::string varName;
-  std::string prevName;
-  std::string srcLoc;
-
-  CommitDataBug(std::string varName_, std::string prevName_,
-                std::string srcLoc_)
-      : varName(varName_), prevName(prevName_), srcLoc(srcLoc_) {}
-
-  void print(raw_ostream& O) const {
-    O << "Type 2) For " + varName;
-    O << " at " + srcLoc + "\n";
-    O << "\tCommit " + prevName + "\n";
-  }
-};
-
-struct WriteVarBug : public BugData {
-  std::string varName;
-  std::string srcLoc;
-
-  WriteVarBug(std::string varName_, std::string srcLoc_)
-      : varName(varName_), srcLoc(srcLoc_) {}
-
-  void print(raw_ostream& O) const {
-    O << "Type 3) \tWrite to " + varName;
-    O << " before flushing at " + srcLoc + "\n";
-  }
-};
-
 struct DoubleFlushBug : public BugData {
   std::string varName;
   std::string srcLoc;
@@ -63,7 +34,7 @@ struct DoubleFlushBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_) {}
 
   void print(raw_ostream& O) const {
-    O << "Type 4) Double flush " + varName;
+    O << "Type 2) Double flush " + varName;
     O << " at " + srcLoc + "\n";
     O << "\tFlushed before at " + prevLoc + "\n";
   }
@@ -77,7 +48,7 @@ struct VolatileSentinelBug : public BugData {
       : varName(varName_), funcName(funcName_) {}
 
   void print(raw_ostream& O) const {
-    O << "Type 5) Commit " + varName;
+    O << "Type 3) Commit " + varName;
     O << " at the end of " + funcName + "\n";
   }
 };

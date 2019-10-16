@@ -28,7 +28,6 @@ template <typename Globals, typename BReporter> class Transfer {
                bool useFence) {
     auto* instr = ii->getInstruction();
     breporter.checkDoubleFlushBug(var, ii, state);
-    breporter.checkWriteVarBug(var, ii, state);
 
     auto& val = state[var];
 

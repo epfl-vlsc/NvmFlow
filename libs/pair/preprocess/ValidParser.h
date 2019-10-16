@@ -24,7 +24,7 @@ template <typename Globals> class ValidParser {
         }
 
         // parse variable based
-        auto pv = InstrParser::parseInstruction(&I);
+        auto pv = InstrParser::parseVarLhs(&I);
         if (!pv.isUsed() || !pv.isAnnotated() || !pv.isField())
           continue;
 

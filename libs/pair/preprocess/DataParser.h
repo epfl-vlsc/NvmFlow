@@ -22,7 +22,7 @@ template <typename Globals> class DataParser {
           continue;
 
         // parse variable based
-        auto pv = InstrParser::parseInstruction(&I);
+        auto pv = InstrParser::parseVarLhs(&I);
         if (!pv.isUsed())
           continue;
 
@@ -32,7 +32,7 @@ template <typename Globals> class DataParser {
           continue;
 
         // write to objptr does not change anything
-        if (pv.isWriteInst() && pv.isObjPtr())
+        if (pv.isStoreInst() && pv.isObj())
           continue;
 
         Variable* data = nullptr;
@@ -70,7 +70,7 @@ template <typename Globals> class DataParser {
             // objptr
             data = globals.locals.getVariable(st);
           }
-        } else if (pv.isObjPtr()) {
+        } else if (pv.isObj()) {
           // obj
           data = globals.locals.getVariable(st);
         } else {

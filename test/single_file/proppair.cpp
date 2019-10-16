@@ -18,19 +18,6 @@ struct Dcl {
     pm_flushfence(&valid);
   }
 
-  void nvm_fnc commitDataBug() {
-    valid = 1;
-    pm_flushfence(&valid);
-    data = 1;
-    pm_flushfence(&data);
-  }
-
-  void nvm_fnc writeFirstBug() {
-    pm_flushfence(&data);
-    valid = 1;
-    pm_flushfence(&valid);
-  }
-
   void nvm_fnc doubleFlush() {
     data = 1;
     if (cond())
