@@ -25,7 +25,7 @@ template <typename Globals> class AliasParser {
         }
 
         // parse variable based
-        auto pv = InstrParser::parseInstruction(&I);
+        auto pv = InstrParser::parse(&I);
         if (!pv.isUsed())
           continue;
 

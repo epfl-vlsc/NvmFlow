@@ -1,7 +1,7 @@
 #property checkers
-add_subdirectory(pair)
-add_subdirectory(log)
-add_subdirectory(dur)
+#add_subdirectory(pair)
+#add_subdirectory(log)
+#add_subdirectory(dur)
 
 #compilation checkers
 add_subdirectory(cons)

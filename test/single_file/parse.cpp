@@ -10,6 +10,7 @@ struct node{
   ob field;
   dur_field node* next;
   node* next2;
+  int* arr[3];
 };
 
 struct tree{

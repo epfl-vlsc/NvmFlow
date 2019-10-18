@@ -1,52 +1,46 @@
 #include "annot.h"
 
-struct ob{
-  int a;
-  int b;
+struct Data {
+  int data;
+  Data* next;
 };
 
-struct node{
-  long data;
-  ob field;
-  dur_field node* next;
-  node* next2;
-  int* arr[3];
+struct DurObj {
+  dur_field Data* valid;
+
+  void nvm_fnc correct() {
+    auto* ptr = new Data();
+    pm_flush(ptr);
+    pfence();
+    valid = ptr;
+  }
+
+  void nvm_fnc fenceNotFlushedData(Data* ptr) { valid = ptr; }
+
+  void nvm_fnc correctParam(Data* ptr) {
+    pm_flushfence(ptr);
+    valid = ptr;
+  }
+
+  void nvm_fnc correctObj() {
+    auto* data = new Data();
+    data->data = 5;
+
+    pm_flushfence(data);
+    valid = data;
+  }
+
+  void nvm_fnc wrongObj() {
+    auto* data = new Data();
+    pm_flushfence(data);
+    data->data = 5;
+    valid = data;
+  }
+
+  void nvm_fnc branchFlush(Data* ptr) {
+    if (ptr->data == 1)
+      pm_flushfence(ptr);
+    valid = ptr;
+  }
 };
 
-struct tree{
-  node** z;
-  node* root;
-  long size;
-  bool arr[8];
-};
-
-volatile tree *x;
-volatile node *y;
-volatile node **z;
-
-void allrhs(tree* t, node* n){
-  node** p = (node**)n;
- 
-
-  x = t;
-  x = nullptr;
-  *(tree*)x = *t;
-  x->root = t->root;
-  *x->root = *t->root;
-  x->size = t->size;
-  x->arr[1] = t->arr[1];
-
-  y = n;
-  *(node*)y = *n;
-  y->next = n->next;
-  *y->next = *n->next;
-  y->next2 = n->next2;
-  *y->next2 = *n->next2;
-  y->data = n->data;
-  y->arr[2] = n->arr[2];
-
-  y = *p;
-  z = (volatile node**)p;
-  z = (volatile node**)&n;
-  
-}

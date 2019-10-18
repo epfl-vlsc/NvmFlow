@@ -30,6 +30,13 @@ struct DurObj {
     valid = data;
   }
 
+  void nvm_fnc wrongObj() {
+    auto* data = new Data();
+    pm_flushfence(data);
+    data->data = 5;
+    valid = data;
+  }
+
   void nvm_fnc branchFlush(Data* ptr) {
     if (ptr->data == 1)
       pm_flushfence(ptr);

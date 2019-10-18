@@ -69,6 +69,7 @@ bool ParsePass::runOnModule(Module& M) {
       if (!pvLhs.isUsed())
         continue;
       errs() << "lhs\n";
+      pvLhs.print(errs());
 
       auto pvRhs = InstrParser::parseVarRhs(&I);
       if (!pvRhs.isUsed())
