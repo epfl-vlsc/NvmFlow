@@ -20,19 +20,45 @@ void AliasPass::print(raw_ostream& OS, const Module* m) const {
   OS << "pass\n";
 }
 
-void aa(Module& M, AAResults& AAR) {
+struct AA {
+  std::set<Value*> values;
+  AliasGroups ag;
 
-  for (auto& F : M) {
-    
+  AA(Module& M, AAResults& AAR) : ag(AAR) {
+    auto& F = *M.getFunction("main");
+    traverse(F);
+    ag.print(errs());
+  }
+
+  void traverse(Function& F) {
+    errs() << F.getName() << "\n";
     for (auto& I : instructions(F)) {
       auto pv = InstrParser::parseVarLhs(&I);
-      if (!pv.isUsed())
-        continue;
+      if (pv.isUsed()) {
+        pv.print(errs());
+        auto* obj = pv.getObj();
+        auto* opnd = pv.getOpnd();
 
-      pv.print(errs());
+        values.insert(obj);
+        values.insert(opnd);
+
+        ag.insert(opnd);
+      } else if (auto* ci = dyn_cast<CallInst>(&I)) {
+        auto* f = ci->getCalledFunction();
+        if (f->isDeclaration() || f->isIntrinsic())
+          continue;
+
+        traverse(*f);
+      }
     }
   }
-}
+
+  void analyze(AAResults& AAR) {
+    for (Value* v1 : values)
+      for (Value* v2 : values)
+        errs() << AAR.alias(v1, v2) << " " << *v1 << " " << *v2 << "\n";
+  }
+};
 
 bool AliasPass::runOnModule(Module& M) {
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
@@ -40,7 +66,7 @@ bool AliasPass::runOnModule(Module& M) {
   auto& cflResult = getAnalysis<CFLSteensAAWrapperPass>().getResult();
   AAR.addAAResult(cflResult);
 
-  aa(M, AAR);
+  AA a(M, AAR);
   // printPV(M);
   // runAlias(M, AAR);
   // runAliasGroup(M, AAR);

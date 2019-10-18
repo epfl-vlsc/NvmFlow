@@ -9,6 +9,9 @@ void f(int* c){
 int main(){
     int* a = new int;
     int *b = new int;
+    
+    *a = 4;
+    *b = 6;
 
     f(a);
 
