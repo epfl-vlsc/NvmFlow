@@ -22,7 +22,7 @@ public:
 
     errs() << "Dataflow Analysis\n";
     errs() << "-----------------\n";
-    //dataflow();
+    dataflow();
   }
 
   void dataflow() {

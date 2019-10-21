@@ -57,19 +57,19 @@ struct InstrInfo {
     return instr;
   }
 
-  auto getName() const {
+  void print(raw_ostream& O) const{
     assert(instr);
-    std::string name;
-    name.reserve(100);
-    name += Strs[(int)instrType];
+    
+    O << Strs[(int)instrType];
 
     auto sl = DbgInstr::getSourceLocation(instr);
     if (!sl.empty())
-      name += " " + sl;
+      O << " " << sl;
 
     if (var)
-      name += " " + var->getName();
-    return name;
+      O << " " << var->getName();
+    
+    O << "\n";
   }
 
   bool isUsedInstr() const { return instrType != None; }

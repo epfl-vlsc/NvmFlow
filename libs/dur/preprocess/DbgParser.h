@@ -51,6 +51,17 @@ template <typename Globals> class DbgParser {
     }
   }
 
+  void fillStructTypes(std::set<Type*>& ptrTypes,
+                       std::set<StructType*>& structTypes) {
+    for (auto* p : ptrTypes) {
+      errs() << "p" << *p << "\n";
+      auto* t = stripPointers(p);
+      if (auto* st = dyn_cast<StructType>(t)) {
+        structTypes.insert(st);
+      }
+    }
+  }
+
   void addAllUsedTypes() {
     std::set<Type*> ptrTypes;
     std::set<StructType*> structTypes;
@@ -59,6 +70,8 @@ template <typename Globals> class DbgParser {
       globals.setActiveFunction(f);
       addUsedTypes(f, ptrTypes, structTypes);
     }
+
+    fillStructTypes(ptrTypes, structTypes);
 
     // add to global dbg info
     auto& funcSet = globals.functions.getAllAnalyzedFunctions();

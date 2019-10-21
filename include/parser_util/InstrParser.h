@@ -47,6 +47,16 @@ Value* stripAggregate(Value* v) {
   return v;
 }
 
+Type* stripPointers(Type* t) {
+  assert(t);
+  while (t && t->isPointerTy()) {
+    auto* pt = dyn_cast<PointerType>(t);
+    return pt->getPointerElementType();
+    t = pt;
+  }
+  return t;
+}
+
 Type* getPtrElementType(Type* t) {
   assert(t && t->isPointerTy());
   auto* pt = dyn_cast<PointerType>(t);

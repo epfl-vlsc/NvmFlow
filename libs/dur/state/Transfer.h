@@ -26,12 +26,11 @@ template <typename Globals, typename BReporter> class Transfer {
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
     auto* instr = ii->getInstruction();
-    auto* var = ii->getVariable();
+    auto* var = ii->getVariableLhs();
 
     breporter.checkDoubleFlushBug(var, ii, state);
 
     auto& val = state[var];
-
     val = Lattice::getFlush(val, useFence);
 
     breporter.addLastSeen(var, val, instr);
@@ -41,10 +40,10 @@ template <typename Globals, typename BReporter> class Transfer {
 
   bool handleWrite(InstrInfo* ii, AbstractState& state) {
     auto* instr = ii->getInstruction();
+    auto* var = ii->getVariableLhs();
 
     breporter.checkCommitPtrBug(ii, state);
 
-    auto* var = ii->getVariable();
     auto& val = state[var];
     val = Lattice::getWrite(val);
 
@@ -98,7 +97,9 @@ public:
     }
 
 #ifdef DBGMODE
-    errs() << "Analyze " << ii->getName() << "\n";
+    errs() << "Analyze ";
+    ii->print(errs());
+
     if (stateChanged)
       printState(state);
 #endif

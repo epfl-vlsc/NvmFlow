@@ -59,6 +59,14 @@ struct InstrInfo {
     return aliasRhs;
   }
 
+  auto& getParsedVarLhs() {
+    return pvLhs;
+  }
+
+  auto& getParsedVarRhs() {
+    return pvRhs;
+  }
+
   auto* getInstruction() {
     assert(instr);
     return instr;
@@ -74,8 +82,8 @@ struct InstrInfo {
 
     O << "\t";
     pvLhs.print(O, false);
-    O << "\t";
-    pvRhs.print(O, false);
+    //O << "\t";
+    //pvRhs.print(O, false);
     O << "\n";
   }
 

@@ -21,18 +21,21 @@ public:
       : Base(globals_, dfResults_) {}
 
   void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state) {
-    if (this->isBugVar(var))
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+    if (this->isBugVar(var) || this->isBugLoc(srcLoc))
       return;
 
     auto& val = state[var];
     if (val.isFlushed()) {
       this->addBugVar(var);
+      this->addBugLoc(srcLoc);
 
       auto* instr = ii->getInstruction();
       auto* prevInstr = this->getLastFlush(var, val);
 
-      auto* varInfo = ii->getVarInfo();
-      auto varName = varInfo->getName();
+      auto varName = var->getName();
       auto srcLoc = DbgInstr::getSourceLocation(instr);
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
@@ -42,10 +45,10 @@ public:
   }
 
   void checkCommitPtrBug(InstrInfo* ii, AbstractState& state) {
-    auto* varInfo = ii->getVarInfo();
-    if (!varInfo->isAnnotated() || !ii->hasVariableRhs())
+    auto pv = ii->getParsedVarLhs();
+    if(!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated())
       return;
-
+    
     auto* var = ii->getVariableRhs();
     if (this->isBugVar(var))
       return;
@@ -56,7 +59,7 @@ public:
 
       auto* instr = ii->getInstruction();
 
-      auto varName = varInfo->getName();
+      auto varName = var->getName();
       auto srcLoc = DbgInstr::getSourceLocation(instr);
 
       auto* bugData = new CommitPtrBug(varName, srcLoc);
