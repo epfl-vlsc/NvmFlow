@@ -29,14 +29,16 @@ struct ParsedVariable {
   int idx;
   StringRef ann;
 
+  bool lhs;
+
   // none
-  ParsedVariable() : ic(NoneIns), vc(NoneVar) {}
+  ParsedVariable(bool lhs_ = true) : ic(NoneIns), vc(NoneVar), lhs(lhs_) {}
 
   // objptr
   ParsedVariable(Instruction* i, Value* obj_, Value* opnd_, Type* type_,
-                 bool isLocRef)
+                 bool isLocRef, bool lhs_ = true)
       : obj(obj_), opnd(opnd_), type(type_), ic(getInstCat(i)), vc(ObjVar),
-        rc(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1) {
+        rc(isLocRef ? LocRef : VarRef), st(nullptr), idx(-1), lhs(lhs_) {
     assert(obj && opnd && type);
     auto* objType = obj->getType();
     assert(objType->isPointerTy());
@@ -44,9 +46,11 @@ struct ParsedVariable {
 
   // field
   ParsedVariable(Instruction* i, Value* obj_, Value* opnd_, Type* type_,
-                 bool isLocRef, StructType* st_, int idx_, StringRef ann_)
+                 bool isLocRef, StructType* st_, int idx_, StringRef ann_,
+                 bool lhs_ = true)
       : obj(obj_), opnd(opnd_), type(type_), ic(getInstCat(i)), vc(FieldVar),
-        rc(isLocRef ? LocRef : VarRef), st(st_), idx(idx_), ann(ann_) {
+        rc(isLocRef ? LocRef : VarRef), st(st_), idx(idx_), ann(ann_),
+        lhs(lhs_) {
     assert(obj && opnd && type);
     assertField(st, idx);
   }
@@ -54,7 +58,7 @@ struct ParsedVariable {
   // nullptr
   ParsedVariable(Instruction* i, Value* obj_, Value* opnd_, Type* type_)
       : obj(obj_), opnd(opnd_), type(type_), ic(getInstCat(i)), vc(NullVar),
-        rc(LocRef), st(nullptr), idx(-1) {}
+        rc(LocRef), st(nullptr), idx(-1), lhs(false) {}
 
   InsCat getInstCat(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
@@ -159,13 +163,30 @@ struct ParsedVariable {
   }
 
   auto* getObj() {
-    assert(obj);
+    assertValue(obj);
     return obj;
   }
 
   auto* getOpnd() {
-    assert(opnd);
+    assertValue(opnd);
     return opnd;
+  }
+
+  auto* getAlias() {
+    if (isVarRef() && lhs) {
+      return getObj();
+    } else {
+      return getOpnd();
+    }
+  }
+
+  void assertValue(Value* v) const{
+    if(!v){
+      print(errs());
+      errs() << *v << "\n";
+      report_fatal_error("Failed value");
+    }
+    assert(v);
   }
 
   void print(raw_ostream& O, bool newline = true) const {
@@ -181,6 +202,11 @@ struct ParsedVariable {
       << RCStr[(int)rc];
     if (isPtr())
       O << ",Ptr";
+    if (lhs)
+      O << ",lhs";
+    else
+      O << ",rhs";
+
     O << ")";
 
     // obj part

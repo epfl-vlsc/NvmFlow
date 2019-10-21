@@ -5,7 +5,7 @@
 #include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 #include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 
-#include "analysis_util/AliasGroups.h"
+#include "parser_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
 #include "parser_util/InstrParser.h"
 
@@ -67,16 +67,16 @@ bool ParsePass::runOnModule(Module& M) {
       auto pvLhs = InstrParser::parseVarLhs(&I);
       if (!pvLhs.isUsed())
         continue;
-      errs() << "lhs\n";
       pvLhs.print(errs());
+
+      errs() << I << "\n";
 
       auto pvRhs = InstrParser::parseVarRhs(&I);
       if (!pvRhs.isUsed())
         continue;
-      errs() << "rhs\t\t";
       pvRhs.print(errs());
 
-      errs() << I << "\n";
+      
     }
   }
 

@@ -1,14 +1,56 @@
 #pragma once
 #include "Common.h"
 
-#include "analysis_util/AliasGroups.h"
 #include "ds/InstrInfo.h"
+#include "parser_util/AliasGroups.h"
 #include "parser_util/InstrParser.h"
 
 namespace llvm {
 
 template <typename Globals> class AliasParser {
   static constexpr const char* DurableField = "DurableField";
+
+  bool isTrackedVar(ParsedVariable& pv) {
+    if (!pv.isUsed())
+      return false;
+
+    StructField* sf = nullptr;
+    if (pv.isField()) {
+      auto [st, idx] = pv.getStructInfo();
+
+      if (!globals.dbgInfo.isUsedStructType(st))
+        return false;
+
+      sf = globals.dbgInfo.getStructField(st, idx);
+    }
+
+    // field not tracked and type not tracked
+    auto* type = pv.getType();
+    if (!sf && !globals.dbgInfo.isTrackedType(type))
+      return false;
+
+    return true;
+  }
+
+  auto getParsedVarRhs(Instruction* i, bool annotated) {
+    if (annotated)
+      return InstrParser::parseVarRhs(i);
+    return InstrParser::parseEmpty();
+  }
+
+  bool isAnnotated(ParsedVariable& pv) const {
+    return pv.isAnnotated() && pv.getAnnotation().equals(DurableField);
+  }
+
+  Variable* getVariableRhs(ParsedVariable& pvRhs, AliasGroups& ag) {
+    if (!ag.isValidAlias(pvRhs)) {
+      return nullptr;
+    }
+
+    int rhsSetNo = ag.getAliasSetNo(pvRhs);
+    auto* rhs = globals.locals.getVariable(rhsSetNo);
+    return rhs;
+  }
 
   void addInstrInfo(FunctionSet& funcSet, AliasGroups& ag) {
     for (auto* f : funcSet) {
@@ -20,67 +62,28 @@ template <typename Globals> class AliasParser {
 
         // check non variable based parsing
         if (InstrInfo::isNonVarInstr(instrType)) {
-          globals.locals.addInstrInfo(&I, instrType, nullptr, nullptr, nullptr);
+          auto pv = ParsedVariable();
+          auto pvRhs = ParsedVariable(false);
+          globals.locals.addInstrInfo(&I, instrType, nullptr, nullptr, pv,
+                                      pvRhs);
           continue;
         }
 
         // parse variable based
-        auto pv = InstrParser::parse(&I);
-        if (!pv.isUsed())
+        auto pv = InstrParser::parseVarLhs(&I);
+        if (!isTrackedVar(pv))
           continue;
 
-        // check tracked types
-        auto* type = pv.getType();
-        if (!globals.dbgInfo.isTrackedType(type))
-          continue;
+        // lhs---------------------------------------------
+        int lhsSetNo = ag.getAliasSetNo(pv);
+        auto* lhs = globals.locals.getVariable(lhsSetNo);
 
-        // variable info
-        StructField* sf = nullptr;
-
-        if (pv.isField()) {
-          auto [st, idx] = pv.getStructInfo();
-
-          if (!globals.dbgInfo.isUsedStructType(st))
-            continue;
-
-          sf = globals.dbgInfo.getStructField(st, idx);
-        }
-
-        // annotated
-        bool annotated =
-            pv.isAnnotated() && pv.getAnnotation().equals(DurableField);
-
-        // find local name
-        auto* lv = pv.getLocalVar();
-        // todo need to handle phi
-        auto* diVar = globals.dbgInfo.getDILocalVariable(lv);
-        std::string localName = (diVar) ? diVar->getName().str() : "";
-
-        auto* lhsAlias = pv.getOpndVar();
-        auto* rhsAlias = pv.getRhs();
-
-        auto var = VarInfo::getVarInfo(pv, sf, annotated, localName);
-
-        // create var info
-        auto* varInfo = globals.locals.addVarInfo(var);
-
-        // add aliases
-        Variable* rhsVar = nullptr;
-
-        int lhsNo = ag.getAliasSetNo(lhsAlias);
-        auto* lhsVar = globals.locals.getAliasSet(lhsNo);
-        globals.locals.addAlias(lhsAlias, lhsVar);
-
-        if (rhsAlias) {
-          int rhsNo = ag.getAliasSetNo(rhsAlias);
-          if (!AliasGroups::isInvalidNo(rhsNo)) {
-            rhsVar = globals.locals.getAliasSet(rhsNo);
-            globals.locals.addAlias(rhsAlias, rhsVar);
-          }
-        }
+        // rhs--------------------------------------------
+        auto pvRhs = getParsedVarRhs(&I, isAnnotated(pv));
+        auto* rhs = getVariableRhs(pvRhs, ag);
 
         // add var based instruction
-        globals.locals.addInstrInfo(&I, instrType, varInfo, lhsVar, rhsVar);
+        globals.locals.addInstrInfo(&I, instrType, lhs, rhs, pv, pvRhs);
       }
     }
   }
@@ -90,45 +93,25 @@ template <typename Globals> class AliasParser {
       for (auto& I : instructions(*f)) {
         // get instruction type
         auto instrType = InstrInfo::getInstrType(&I, globals);
-        if (!InstrInfo::isUsedInstr(instrType))
+        if (!InstrInfo::isVarInstr(instrType))
           continue;
 
-        // check non variable based parsing
-        if (InstrInfo::isNonVarInstr(instrType)) {
-          continue;
-        }
-
-        // parse variable based
-        auto pv = InstrParser::parseInstruction(&I);
-        if (!pv.isUsed())
+        // lhs-----------------------------------
+        auto pv = InstrParser::parseVarLhs(&I);
+        if (!isTrackedVar(pv))
           continue;
 
-        // check tracked types
-        auto* type = pv.getType();
-        if (!globals.dbgInfo.isTrackedType(type))
+        ag.insert(pv);
+
+        // rhs-------------------------------------
+        bool isAnnot = isAnnotated(pv);
+        if (!isAnnot)
           continue;
 
-        if (pv.isField()) {
-          auto [st, idx] = pv.getStructInfo();
-
-          if (!globals.dbgInfo.isUsedStructType(st))
-            continue;
-        }
-
-        // create alias sets
-        auto* lhsAlias = pv.getOpndVar();
-
-        if (pv.isObjPtr()) {
-          auto* lv = pv.getLocalVar();
-          ag.insert(lhsAlias, lv);
-        } else {
-          ag.insert(lhsAlias);
-        }
-
-        auto* rhsAlias = pv.getRhs();
-        if (rhsAlias) {
-          ag.insert(rhsAlias);
-        }
+        auto pvRhs = getParsedVarRhs(&I, isAnnot);
+        if (!pvRhs.isUsed())
+          continue;
+        ag.insert(pvRhs);
       }
     }
 
@@ -146,7 +129,7 @@ template <typename Globals> class AliasParser {
 
       AliasGroups ag(AAR);
       createAliasSets(funcSet, ag);
-      addInstrInfo(funcSet, ag);
+      // addInstrInfo(funcSet, ag);
     }
   }
 

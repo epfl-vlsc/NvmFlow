@@ -1,6 +1,8 @@
 #pragma once
 #include "Common.h"
 
+#include "ParsedVariable.h"
+
 namespace llvm {
 
 struct AliasGroups {
@@ -24,25 +26,29 @@ struct AliasGroups {
     return InvalidSetNo;
   }
 
-  static bool isInvalidNo(int no) { return no == InvalidSetNo; }
+  bool isValidAlias(ParsedVariable& pv) {
+    auto* v = pv.getAlias();
+    auto aliasSetNo = getAliasSetNo(v);
 
-  // skip alias checking for local variables that are on the stack
-  void insert(Value* v, Value* lv) {
-    if (localCat.count(lv)) {
-      int setNo = localCat[lv];
-      addToAliasSet(setNo, v);
-    } else {
-      aliasSets.push_back(AliasSet());
-      int setNo = aliasSets.size() - 1;
-      localCat[lv] = setNo;
-      addToAliasSet(setNo, v);
-    }
+    return aliasSetNo != InvalidSetNo;
   }
+
+  int getAliasSetNo(ParsedVariable& pv) {
+    auto* v = pv.getAlias();
+    return getAliasSetNo(v);
+  }
+
+  static bool isInvalidNo(int no) { return no == InvalidSetNo; }
 
   void addToAliasSet(int setNo, Value* v) {
     auto& aliasSet = aliasSets[setNo];
     aliasSet.push_back(v);
     valueCat[v] = setNo;
+  }
+
+  void insert(ParsedVariable& pv) {
+    auto* v = pv.getAlias();
+    insert(v);
   }
 
   void insert(Value* v) {

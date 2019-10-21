@@ -38,7 +38,7 @@ template <typename Globals> class DbgParser {
     for (auto* f : globals.functions.getUnitFunctions(func)) {
       for (auto& I : instructions(*f)) {
         // parse instr
-        auto pv = InstrParser::parseInstruction(&I);
+        auto pv = InstrParser::parseVarLhs(&I);
         if (!pv.isUsed())
           continue;
 

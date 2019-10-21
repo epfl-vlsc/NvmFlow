@@ -20,17 +20,19 @@ struct InstrInfo {
       "write", "flush", "flushfence", "vfence", "pfence", "ip", "none"};
   Instruction* instr;
   InstrType instrType;
-  VarInfo* varInfo;
 
-  Variable* lhsAlias;
-  Variable* rhsAlias;
+  Variable* aliasLhs;
+  Variable* aliasRhs;
+
+  ParsedVariable pvLhs;
+  ParsedVariable pvRhs;
 
   InstrInfo() : instrType(None) {}
 
-  InstrInfo(Instruction* instr_, InstrType instrType_, VarInfo* varInfo_,
-            Variable* lhsAlias_, Variable* rhsAlias_)
-      : instr(instr_), instrType(instrType_), varInfo(varInfo_),
-        lhsAlias(lhsAlias_), rhsAlias(rhsAlias_) {
+  InstrInfo(Instruction* instr_, InstrType instrType_, Variable* aliasLhs_,
+            Variable* aliasRhs_, ParsedVariable& pvLhs_, ParsedVariable& pvRhs_)
+      : instr(instr_), instrType(instrType_), aliasLhs(aliasLhs_),
+        aliasRhs(aliasRhs_), pvLhs(pvLhs_), pvRhs(pvRhs_) {
     assert(instr);
     assert(instrType != None);
   }
@@ -45,31 +47,21 @@ struct InstrInfo {
     return instrType == IpInstr;
   }
 
-  auto* getVarInfo() {
-    assert(varInfo);
-    return varInfo;
+  auto* getVariableLhs() {
+    assert(aliasLhs);
+    return aliasLhs;
   }
 
-  auto* getVariable() {
-    assert(lhsAlias);
-    return lhsAlias;
-  }
-
-  bool hasVariableRhs() const { return rhsAlias != nullptr; }
+  bool hasVariableRhs() const { return pvRhs.isUsed() && aliasRhs; }
 
   auto* getVariableRhs() {
-    assert(rhsAlias);
-    return rhsAlias;
+    assert(aliasRhs);
+    return aliasRhs;
   }
 
   auto* getInstruction() {
     assert(instr);
     return instr;
-  }
-
-  std::string getSrcLoc() const {
-    assert(instr);
-    return DbgInstr::getSourceLocation(instr);
   }
 
   auto getName() const {
@@ -99,6 +91,10 @@ struct InstrInfo {
 
   static bool isNonVarInstr(InstrType it) {
     return it == PfenceInstr || it == IpInstr;
+  }
+
+  static bool isVarInstr(InstrType it) {
+    return it == WriteInstr || isFlushBasedInstr(it);
   }
 
   static bool isWriteInstr(InstrType it) { return it == WriteInstr; }

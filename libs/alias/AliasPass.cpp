@@ -7,7 +7,7 @@
 
 #include "llvm/Analysis/AliasSetTracker.h"
 
-#include "analysis_util/AliasGroups.h"
+#include "parser_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
 #include "parser_util/InstrParser.h"
 
@@ -27,6 +27,7 @@ struct AA {
   AA(Module& M, AAResults& AAR) : ag(AAR) {
     auto& F = *M.getFunction("main");
     traverse(F);
+    analyze(AAR);
     ag.print(errs());
   }
 
@@ -43,6 +44,7 @@ struct AA {
         values.insert(opnd);
 
         ag.insert(opnd);
+        ag.insert(obj);
       } else if (auto* ci = dyn_cast<CallInst>(&I)) {
         auto* f = ci->getCalledFunction();
         if (f->isDeclaration() || f->isIntrinsic())
@@ -54,6 +56,7 @@ struct AA {
   }
 
   void analyze(AAResults& AAR) {
+    errs() << "Analyze\n";
     for (Value* v1 : values)
       for (Value* v2 : values)
         errs() << AAR.alias(v1, v2) << " " << *v1 << " " << *v2 << "\n";

@@ -14,12 +14,6 @@ struct UnitInfo {
   // lattice variables
   std::set<Variable> vars;
 
-  // var infos
-  std::set<VarInfo> varInfos;
-
-  // aliases
-  std::map<Value*, Variable*> aliases;
-
   // info gathered for instruction
   std::map<Instruction*, InstrInfo> iiMap;
 
@@ -61,30 +55,12 @@ public:
     return varPtr;
   }
 
-  Variable* getAliasSet(int i) {
-    return getVariable(i);
-  }
-
-  VarInfo* addVarInfo(VarInfo& var) {
-    assert(activeUnit);
-    auto& vars = activeUnit->varInfos;
-    auto [varsIt, _] = vars.insert(var);
-    assert(varsIt != vars.end());
-    auto* varPtr = (VarInfo*)&(*varsIt);
-    return varPtr;
-  }
-
-  void addAlias(Value* alias, Variable* var) {
-    assert(activeUnit);
-    auto& aliases = activeUnit->aliases;
-    aliases[alias] = var;
-  }
-
-  void addInstrInfo(Instruction* i, InstrType instrType, VarInfo* var,
-                    Variable* lhs, Variable* rhs) {
+  void addInstrInfo(Instruction* i, InstrType instrType, Variable* lhs,
+                    Variable* rhs, ParsedVariable& pvLhs,
+                    ParsedVariable& pvRhs) {
     assert(activeUnit);
     auto& iiMap = activeUnit->iiMap;
-    auto ii = InstrInfo(i, instrType, var, lhs, rhs);
+    auto ii = InstrInfo(i, instrType, lhs, rhs, pvLhs, pvRhs);
 
     iiMap[i] = ii;
   }
@@ -149,11 +125,6 @@ void UnitInfo::print(raw_ostream& O) const {
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
     O << "\t" << ii.getName() << "\n";
-  }
-
-  O << "alias samples:---\n";
-  for (auto& [val, aliasSet] : aliases) {
-    O << "(" << *val << "," << aliasSet->getName() << ")\n";
   }
 }
 

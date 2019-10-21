@@ -224,20 +224,20 @@ public:
 
   static auto parseVarRhs(Instruction* i) {
     if (!isUsedRhs(i))
-      return ParsedVariable();
+      return ParsedVariable(false);
 
     auto* obj = getObj(i);
     auto* opnd = getOpnd(i, false);
     auto* type = getTypeRhs(i);
     auto isLocRef = getLocRhs(i);
 
-    //not interested if not pointer
+    // not interested if not pointer
     if (!type->isPointerTy())
-      return ParsedVariable();
+      return ParsedVariable(false);
 
     // nullptr
     if (auto* cpn = dyn_cast<ConstantPointerNull>(opnd)) {
-      return ParsedVariable(i, obj, opnd, type);
+      return ParsedVariable(i, obj, opnd, type, false);
     }
 
     // fill parsed variable------------------------------
@@ -264,7 +264,7 @@ public:
     // obj---------------------------------------------
     if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v) ||
         isa<LoadInst>(v)) {
-      return ParsedVariable(i, obj, opnd, type, isLocRef);
+      return ParsedVariable(i, obj, opnd, type, isLocRef, false);
     }
 
     // field-------------------------------------------
@@ -274,15 +274,20 @@ public:
 
       // disable dynamic offsets
       if (idx < 0)
-        return ParsedVariable();
+        return ParsedVariable(false);
 
       if (st && isa<StructType>(st)) {
         auto* structType = dyn_cast<StructType>(st);
         return ParsedVariable(i, obj, opnd, type, isLocRef, structType, idx,
-                              annotation);
+                              annotation, false);
       }
     }
 
+    // not essential
+    return ParsedVariable(false);
+  }
+
+  static auto parseEmpty() {
     // not essential
     return ParsedVariable();
   }
