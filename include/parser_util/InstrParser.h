@@ -3,6 +3,7 @@
 #include "ParsedVariable.h"
 
 #include "LocalVarVisitor.h"
+#include "TypeVisitor.h"
 
 namespace llvm {
 
@@ -111,55 +112,22 @@ class InstrParser {
     return false;
   }
 
-  static Type* getTypeLhs(Instruction* i) {
-    assert(i);
+  static Type* getTypeLhs(Instruction* i) { return TypeFinder::findTypeLhs(i); }
+
+  static Type* getTypeRhs(Instruction* i) { return TypeFinder::findTypeRhs(i); }
+
+  static bool getLocRhs(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
-      return si->getPointerOperandType();
-    } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      auto* opnd = ci->getArgOperand(0);
-      if (auto* castInst = dyn_cast<CastInst>(opnd)) {
-        return castInst->getSrcTy();
-      } else if (auto* loadInst = dyn_cast<LoadInst>(opnd)) {
-        return loadInst->getPointerOperandType();
-      } else if (auto* arg = dyn_cast<Argument>(opnd)) {
-        return arg->getType();
-      } else if (auto* gepi = dyn_cast<GetElementPtrInst>(opnd)) {
-        auto* gepiOpnd = gepi->getPointerOperand();
-        return gepiOpnd->getType();
-      } else if (auto* invokeInst = dyn_cast<InvokeInst>(opnd)) {
-        return invokeInst->getType();
-      } else if (auto* callInst = dyn_cast<CallInst>(opnd)) {
-        return opnd->getType();
-      }
-
-      errs() << "opnd: " << *opnd << "\n";
-    }
-
-    errs() << "inst: " << *i << "\n";
-    report_fatal_error("wrong inst - type");
-    return nullptr;
-  }
-
-  static std::pair<Type*, bool> getTypeLocRhs(Instruction* i) {
-    if (auto* si = dyn_cast<StoreInst>(i)) {
-      auto* opnd = si->getValueOperand();
-      auto* type = opnd->getType();
-      return std::pair(type, false);
+      return false;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       if (NameFilter::isStoreFunction(ci)) {
-        auto* opnd = ci->getArgOperand(1);
-        if (auto* castInst = dyn_cast<CastInst>(opnd)) {
-          auto* type = castInst->getSrcTy();
-          return std::pair(type, true);
-        }
-
-        errs() << "opnd: " << *opnd << "\n";
+        return true;
       }
     }
 
-    errs() << "inst: " << *i << "\n";
-    report_fatal_error("wrong inst - type");
-    return std::pair<Type*, bool>(nullptr, false);
+    errs() << "instr:" << *i << "\n";
+    report_fatal_error("rhs loc parse fail - not supported");
+    return false;
   }
 
   static Value* getOpnd(Instruction* i, bool lhs = true) {
@@ -260,12 +228,15 @@ public:
 
     auto* obj = getObj(i);
     auto* opnd = getOpnd(i, false);
-    auto [type, isLocRef] = getTypeLocRhs(i);
+    auto* type = getTypeRhs(i);
+    auto isLocRef = getLocRhs(i);
+
+    //not interested if not pointer
     if (!type->isPointerTy())
       return ParsedVariable();
 
-    //nullptr
-    if(auto* cpn = dyn_cast<ConstantPointerNull>(opnd)){
+    // nullptr
+    if (auto* cpn = dyn_cast<ConstantPointerNull>(opnd)) {
       return ParsedVariable(i, obj, opnd, type);
     }
 

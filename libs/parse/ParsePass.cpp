@@ -64,7 +64,6 @@ bool ParsePass::runOnModule(Module& M) {
 
     errs() << "function:" << F.getName() << "\n";
     for (auto& I : instructions(F)) {
-      errs() << I << "\n";
       auto pvLhs = InstrParser::parseVarLhs(&I);
       if (!pvLhs.isUsed())
         continue;
@@ -76,6 +75,8 @@ bool ParsePass::runOnModule(Module& M) {
         continue;
       errs() << "rhs\t\t";
       pvRhs.print(errs());
+
+      errs() << I << "\n";
     }
   }
 

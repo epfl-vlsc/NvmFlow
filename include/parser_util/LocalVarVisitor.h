@@ -85,7 +85,7 @@ struct ObjFinder {
     bool isValidObj = isa<CallInst>(obj) || isa<InvokeInst>(obj) ||
                       isa<AllocaInst>(obj) || isa<PHINode>(obj) ||
                       isa<Argument>(obj) || isa<GlobalVariable>(obj) ||
-                      dyn_cast<Constant>(obj);
+                      isa<Constant>(obj);
     if (!isValidObj) {
       errs() << "obj is not valid: " << *obj
              << " value id:" << obj->getValueID() << "\n";
