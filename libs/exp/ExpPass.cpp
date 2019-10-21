@@ -16,7 +16,7 @@
 
 #include "parser_util/InstrParser.h"
 
-#include "analysis_util/AliasGroups.h"
+#include "parser_util/AliasGroups.h"
 //#include "llvm/Analysis/AliasSetTracker.h"
 
 #include <cassert>

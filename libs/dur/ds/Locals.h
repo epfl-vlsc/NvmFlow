@@ -124,7 +124,8 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
-    O << "\t" << ii.getName() << "\n";
+    O << "\t";
+    ii.print(O);
   }
 }
 

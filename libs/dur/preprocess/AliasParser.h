@@ -10,26 +10,18 @@ namespace llvm {
 template <typename Globals> class AliasParser {
   static constexpr const char* DurableField = "DurableField";
 
-  bool isTrackedVar(ParsedVariable& pv) {
+  bool isSkipPv(ParsedVariable& pv) {
     if (!pv.isUsed())
-      return false;
+      return true;
 
-    StructField* sf = nullptr;
     if (pv.isField()) {
       auto [st, idx] = pv.getStructInfo();
 
-      if (!globals.dbgInfo.isUsedStructType(st))
-        return false;
-
-      sf = globals.dbgInfo.getStructField(st, idx);
+      return !globals.dbgInfo.isUsedStructType(st);
     }
 
-    // field not tracked and type not tracked
     auto* type = pv.getType();
-    if (!sf && !globals.dbgInfo.isTrackedType(type))
-      return false;
-
-    return true;
+    return !globals.dbgInfo.isTrackedType(type);
   }
 
   auto getParsedVarRhs(Instruction* i, bool annotated) {
@@ -71,7 +63,7 @@ template <typename Globals> class AliasParser {
 
         // parse variable based
         auto pv = InstrParser::parseVarLhs(&I);
-        if (!isTrackedVar(pv))
+        if (isSkipPv(pv))
           continue;
 
         // lhs---------------------------------------------
@@ -98,7 +90,7 @@ template <typename Globals> class AliasParser {
 
         // lhs-----------------------------------
         auto pv = InstrParser::parseVarLhs(&I);
-        if (!isTrackedVar(pv))
+        if (isSkipPv(pv))
           continue;
 
         ag.insert(pv);
@@ -129,7 +121,7 @@ template <typename Globals> class AliasParser {
 
       AliasGroups ag(AAR);
       createAliasSets(funcSet, ag);
-      // addInstrInfo(funcSet, ag);
+      addInstrInfo(funcSet, ag);
     }
   }
 
