@@ -208,9 +208,10 @@ public:
 
     // obj---------------------------------------------
     if (isa<AllocaInst>(v) || isa<Argument>(v) || isa<CallInst>(v) ||
-        isa<LoadInst>(v)) {
+        isa<LoadInst>(v) || isa<Constant>(v)) {
       return ParsedVariable(i, obj, opnd, type, isLocRef);
     }
+    
 
     // field-------------------------------------------
     else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
@@ -218,8 +219,11 @@ public:
       auto [st, idx] = getStructInfo(gepi);
 
       // disable dynamic offsets
-      if (idx < 0)
-        return ParsedVariable();
+      if (idx < 0){
+        //fix type
+        type = obj->getType();
+        return ParsedVariable(i, obj, opnd, type, isLocRef);
+      }
 
       if (st && isa<StructType>(st)) {
         auto* structType = dyn_cast<StructType>(st);

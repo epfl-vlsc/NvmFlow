@@ -16,8 +16,7 @@ class NameFilter {
 
   static constexpr const char* flushfenceFunctions[] = {
       "_Z13pm_flushfencePKv", "flush_range",
-      "_Z11flush_rangePKvm",  "_ZN7storageL14__pmem_persistEPvmi",
-      "persist_obj",          "pmfs_flush_buffer.312"};
+      "_ZN7storageL14__pmem_persistEPvmi", "persist_obj", "pmfs_flush_buffer"};
 
   static constexpr const char* pfenceFunctions[] = {"_Z6pfencev"};
 
@@ -87,12 +86,12 @@ public:
   }
 
   static bool isFlushFunction(StringRef& n) {
-    return equals(n, flushFunctions, sizeof(flushFunctions) / ElementSize);
+    return contains(n, flushFunctions, sizeof(flushFunctions) / ElementSize);
   }
 
   static bool isFlushFenceFunction(StringRef& n) {
-    return equals(n, flushfenceFunctions,
-                  sizeof(flushfenceFunctions) / ElementSize);
+    return contains(n, flushfenceFunctions,
+                    sizeof(flushfenceFunctions) / ElementSize);
   }
 
   static bool isStoreFunction(StringRef& n) {
@@ -104,11 +103,13 @@ public:
   }
 
   static bool isTxBeginFunction(StringRef& n) {
-    return contains(n, txBeginFunctions, sizeof(txBeginFunctions) / ElementSize);
+    return contains(n, txBeginFunctions,
+                    sizeof(txBeginFunctions) / ElementSize);
   }
 
   static bool isLoggingFunction(StringRef& n) {
-    return contains(n, loggingFunctions, sizeof(loggingFunctions) / ElementSize);
+    return contains(n, loggingFunctions,
+                    sizeof(loggingFunctions) / ElementSize);
   }
 
   // parser functions

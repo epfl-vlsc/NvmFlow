@@ -24,12 +24,11 @@ public:
     auto* instr = ii->getInstruction();
     auto srcLoc = DbgInstr::getSourceLocation(instr);
 
-    if (this->isBugVar(var) || this->isBugLoc(srcLoc))
+    if (this->isBugLoc(srcLoc))
       return;
 
     auto& val = state[var];
     if (val.isFlushed()) {
-      this->addBugVar(var);
       this->addBugLoc(srcLoc);
 
       auto* instr = ii->getInstruction();

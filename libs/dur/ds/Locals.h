@@ -124,6 +124,9 @@ void UnitInfo::print(raw_ostream& O) const {
 
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
+    if(ii.isIpInstr())
+      continue;
+
     O << "\t";
     ii.print(O);
   }

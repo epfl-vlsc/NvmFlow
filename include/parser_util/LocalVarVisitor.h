@@ -65,6 +65,11 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
 
   Value* visitInvokeInst(InvokeInst& I) { return &I; }
 
+  Value* visitSExtInst(SExtInst& I) {
+    auto* v = I.getOperand(0);
+    return visit(*v);
+  }
+
   Value* visit(Value& V) {
     if (auto* a = dyn_cast<Argument>(&V)) {
       return a;
