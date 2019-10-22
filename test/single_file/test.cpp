@@ -5,16 +5,25 @@ struct Data {
   Data* next;
 };
 
+void pmfs_flush_buffer(void* ptr);
+
+void memcpy_to_nvmm(char* ptr, int offset){
+  pmfs_flush_buffer(ptr + offset);
+}
+
 struct DurObj {
   dur_field Data* valid;
 
   void nvm_fnc correct() {
     auto* ptr = new Data();
-    pm_flush(ptr);
-    pfence();
+
+    int offset = 5;
+    char* xm = (char*)ptr;
+    memcpy_to_nvmm((char *)ptr, offset);
+		pmfs_flush_buffer(xm + offset);
     valid = ptr;
   }
-
+/*
   void nvm_fnc fenceNotFlushedData(Data* ptr) { valid = ptr; }
 
   void nvm_fnc correctParam(Data* ptr) {
@@ -42,5 +51,6 @@ struct DurObj {
       pm_flushfence(ptr);
     valid = ptr;
   }
+  */
 };
 

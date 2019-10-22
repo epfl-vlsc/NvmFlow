@@ -1,70 +1,80 @@
-
-
 #include "ExpPass.h"
 #include "Common.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 #include "llvm/Analysis/CFLSteensAliasAnalysis.h"
-#include "llvm/Analysis/MemoryLocation.h"
-#include "llvm/Analysis/MemorySSA.h"
-#include "llvm/Analysis/ScalarEvolutionAliasAnalysis.h"
-#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
-#include "llvm/Passes/PassBuilder.h"
 
-#include "analysis_util/DfUtil.h"
-
-#include "parser_util/InstrParser.h"
+#include "llvm/Analysis/AliasSetTracker.h"
 
 #include "parser_util/AliasGroups.h"
-//#include "llvm/Analysis/AliasSetTracker.h"
+#include "analysis_util/DfUtil.h"
+#include "parser_util/InstrParser.h"
 
 #include <cassert>
 #include <set>
 using namespace std;
 namespace llvm {
 
-void ExpPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
+void ExpPass::print(raw_ostream& OS, const Module* m) const {
+  OS << "pass\n";
+}
 
-bool ExpPass::runOnModule(Module& M) {
-  /*
-  AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
-  auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
-  AAR.addAAResult(cflResult);
-  auto* f = M.getFunction("_ZN3Dur7correctEv");
+struct AA {
+  std::set<Value*> values;
+  AliasGroups ag;
 
-  AliasGroups ags;
-  for (Instruction& I : instructions(*f)) {
-    if (auto* si = dyn_cast<StoreInst>(&I)) {
-      ags.add(si);
-    } else if (auto* ci = dyn_cast<CallInst>(&I)) {
-      auto* f2 = ci->getCalledFunction();
-      if (!f2->getName().equals("_Z10clflushoptPKv"))
-        continue;
+  AA(Module& M, AAResults& AAR) : ag(AAR) {
+    auto& F = *M.getFunction("main");
+    traverse(F);
+    analyze(AAR);
+    ag.print(errs());
+  }
 
-      ags.add(ci);
+  void traverse(Function& F) {
+    errs() << F.getName() << "\n";
+    for (auto& I : instructions(F)) {
+      auto pv = InstrParser::parseVarLhs(&I);
+      if (pv.isUsed()) {
+        pv.print(errs());
+        auto* obj = pv.getObj();
+        auto* opnd = pv.getOpnd();
+
+        values.insert(obj);
+        values.insert(opnd);
+
+        ag.insert(opnd);
+        //ag.insert(obj);
+      } else if (auto* ci = dyn_cast<CallInst>(&I)) {
+        auto* f = ci->getCalledFunction();
+        if (f->isDeclaration() || f->isIntrinsic())
+          continue;
+
+        traverse(*f);
+      }
     }
   }
-  ags.createGroups(&AAR);
-  ags.print(errs());
-   */
 
-  for (auto& F : M) {
-    if (F.getName().contains("m1"))
-      for (Instruction& I : instructions(F)) {
-        if (auto* ci = dyn_cast<CallInst>(&I)) {
-          auto* f = ci->getCalledFunction();
-          if (f->isIntrinsic() || f->getName().contains("_Znwm") ||
-              f->getName().contains("x"))
-            continue;
-        }
-
-        auto pv = InstrParser::parseInstruction(&I);
-        errs() << I << "\n";
-        pv.print(errs());
-        errs() << "\n";
-      }
+  void analyze(AAResults& AAR) {
+    errs() << "Analyze\n";
+    for (Value* v1 : values)
+      for (Value* v2 : values)
+        errs() << AAR.alias(v1, v2) << " " << *v1 << " " << *v2 << "\n";
   }
+};
+
+bool ExpPass::runOnModule(Module& M) {
+  AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+  // auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
+  auto& cflResult = getAnalysis<CFLSteensAAWrapperPass>().getResult();
+  AAR.addAAResult(cflResult);
+
+  AA a(M, AAR);
+  // printPV(M);
+  // runAlias(M, AAR);
+  // runAliasGroup(M, AAR);
+  // runAliasSetTracker(M, AAR);
+  // runAliasAnders(M, cflResult);
 
   return false;
 }
@@ -72,17 +82,12 @@ bool ExpPass::runOnModule(Module& M) {
 void ExpPass::getAnalysisUsage(AnalysisUsage& AU) const {
   AU.addRequired<TargetLibraryInfoWrapperPass>();
   AU.addRequired<CFLAndersAAWrapperPass>();
-
-  // AU.addRequired<CFLSteensAAWrapperPass>();
-  // AU.addRequired<TypeBasedAAWrapperPass>();
-  // AU.addRequired<SCEVAAWrapperPass>();
-  // AU.addRequired<AAResultsWrapperPass>();
-  // AU.addRequired<MemorySSAWrapperPass>();
+  AU.addRequired<CFLSteensAAWrapperPass>();
 
   AU.setPreservesAll();
 }
 
 char ExpPass::ID = 0;
-RegisterPass<ExpPass> X("exp", "Experimental pass");
+RegisterPass<ExpPass> X("exp", "Exp pass");
 
 } // namespace llvm

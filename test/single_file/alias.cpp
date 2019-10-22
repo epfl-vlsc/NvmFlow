@@ -1,21 +1,32 @@
+#include "annot.h"
 #include <iostream>
 
 using namespace std;
 
-void f(int* c){
-    *c = 5;
+int* newint(){
+  //return new int;
+  return pm_malloc();
 }
 
-int main(){
-    int* a = new int;
-    int *b = new int;
-    
-    *a = 4;
-    *b = 6;
+int* f(int* c) {
+  *c = 5;
+  return c;
+}
 
-    f(a);
+int nvm_fnc main() {
+  int* a = newint();
+  int* b = newint();
+  int* c = newint();
 
-    cout << a << b;
+  *a = 4;
+  *b = 6;
 
-    return 0;
+  c = f(a);
+
+  pm_flush(a);
+  pm_flush(b);
+  pm_flush(c);
+  cout << a << b << c;
+
+  return 0;
 }

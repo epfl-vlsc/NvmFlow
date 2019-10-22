@@ -28,3 +28,4 @@ extern void no_inline tx_begin();
 extern void no_inline tx_end();
 
 extern int cond();
+extern int* pm_malloc();
