@@ -30,9 +30,9 @@ BUILD_DIR="${BASE_DIR}/dfbuild"
 SINGLE_DIR="${BASE_DIR}/test/single_file"
 BENCH_DIR=${BASE_DIR}/../NvmBenchmarks
 
-CHECKERS=("pair" "dur" "log")
+CHECKERS=("pair" "dur" "log" "alloc")
 
-ALL_CHECKERS=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse")
+ALL_CHECKERS=("pair" "dur" "log" "exp" "cons" "simp" "alias" "parse" "alloc")
 
 BENCHMARKS=("echo" "nstore" "nvml" "pmfs" "pmgd" "splitfs")
 

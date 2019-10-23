@@ -28,6 +28,8 @@ class NameFilter {
 
   static constexpr const char* loggingFunctions[] = {"tx_log"};
 
+  static constexpr const char* allocFunctions[] = {"pm_malloc"};
+
   static constexpr const size_t ElementSize = sizeof(const char*);
 
 public:
@@ -112,6 +114,10 @@ public:
                     sizeof(loggingFunctions) / ElementSize);
   }
 
+  static bool isAllocFunction(StringRef& n) {
+    return contains(n, allocFunctions, sizeof(allocFunctions) / ElementSize);
+  }
+
   // parser functions
   static bool isPersistentVar(Value* v) {
     if (auto* ci = dyn_cast<CallInst>(v)) {
@@ -121,6 +127,20 @@ public:
     }
 
     return false;
+  }
+
+  static bool isAllocFunction(Function& F) {
+    auto funcName = F.getName();
+    return isAllocFunction(funcName);
+  }
+
+  static bool isAllocFunction(CallBase* ci) {
+    auto* func = ci->getCalledFunction();
+    if (!func) {
+      return false;
+    }
+    auto funcName = func->getName();
+    return isAllocFunction(funcName);
   }
 
   static bool isVarCall(CallInst* ci) {
