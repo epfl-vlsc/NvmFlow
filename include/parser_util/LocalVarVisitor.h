@@ -70,6 +70,11 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
     return visit(*v);
   }
 
+  Value* visitExtractValueInst(ExtractValueInst& I) {
+    auto* v = I.getOperand(0);
+    return visit(*v);
+  }
+
   Value* visit(Value& V) {
     if (auto* a = dyn_cast<Argument>(&V)) {
       return a;
@@ -109,12 +114,28 @@ struct ObjFinder {
   }
 
   static Value* findPersist(Value* v) {
-    assert(v);
-    LocalVarVisitor lvv;
-    auto* obj = lvv.visit(*v);
+    auto* callInst = dyn_cast<CallInst>(v);
+    assert(callInst && NameFilter::isPersistentVar(callInst));
+    auto* opnd = callInst->getOperand(0);
 
-    assert(obj && checkValidObj(obj));
-    return obj;
+    assert(opnd);
+    LocalVarVisitor lvv;
+    auto* allocaAgg = lvv.visit(*opnd);
+    assert(allocaAgg && checkValidObj(allocaAgg));
+
+    //find the real node
+    auto* user = allocaAgg->user_back();
+    auto* castInst = dyn_cast<CastInst>(user);
+    assert(castInst);
+    auto* memCpy = castInst->getPrevNode();
+    auto* memCpyCall = dyn_cast<CallInst>(memCpy);
+    assert(memCpyCall && NameFilter::isStoreFunction(memCpyCall));
+    auto* oid = memCpyCall->getOperand(1);
+    
+    LocalVarVisitor lvvOid;
+    auto* realNode = lvvOid.visit(*oid);
+    
+    return realNode;
   }
 };
 

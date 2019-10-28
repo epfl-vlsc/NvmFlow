@@ -34,17 +34,20 @@ template <typename Globals> class AliasParser {
     return pv.isAnnotated() && pv.getAnnotation().equals(DurableField);
   }
 
-  Variable* getVariableRhs(ParsedVariable& pvRhs, AliasGroups& ag) {
-    if (!ag.isValidAlias(pvRhs)) {
+  template<typename AliasInfo>
+  Variable* getVariableRhs(ParsedVariable& pvRhs, AliasInfo& ai) {
+    auto* aliasRhs = pvRhs.getAlias();
+    int rhsSetNo = ai.getSetNo(aliasRhs);
+    if (!ai.isValidSet(rhsSetNo)) {
       return nullptr;
     }
 
-    int rhsSetNo = ag.getAliasSetNo(pvRhs);
     auto* rhs = globals.locals.getVariable(rhsSetNo);
     return rhs;
   }
 
-  void addInstrInfo(FunctionSet& funcSet, AliasGroups& ag) {
+  template<typename AliasInfo>
+  void addInstrInfo(FunctionSet& funcSet, AliasInfo& ai) {
     for (auto* f : funcSet) {
       for (auto& I : instructions(*f)) {
         // get instruction type
@@ -68,12 +71,13 @@ template <typename Globals> class AliasParser {
           continue;
 
         // lhs---------------------------------------------
-        int lhsSetNo = ag.getAliasSetNo(pv);
+        auto* aliasLhs = pv.getAlias();
+        int lhsSetNo = ai.getSetNo(aliasLhs);
         auto* lhs = globals.locals.getVariable(lhsSetNo);
 
         // rhs--------------------------------------------
         auto pvRhs = getParsedVarRhs(&I, isAnnotated(pv));
-        auto* rhs = getVariableRhs(pvRhs, ag);
+        auto* rhs = getVariableRhs(pvRhs, ai);
 
         // add var based instruction
         globals.locals.addInstrInfo(&I, instrType, lhs, rhs, pv, pvRhs);
@@ -81,7 +85,8 @@ template <typename Globals> class AliasParser {
     }
   }
 
-  void createAliasSets(FunctionSet& funcSet, AliasGroups& ag) {
+  template<typename AliasInfo>
+  void createAliasSets(FunctionSet& funcSet, AliasInfo& ai) {
     for (auto* f : funcSet) {
       for (auto& I : instructions(*f)) {
         // get instruction type
@@ -94,7 +99,8 @@ template <typename Globals> class AliasParser {
         if (isSkipPv(pv))
           continue;
 
-        ag.insert(pv);
+        auto* aliasLhs = pv.getAlias();
+        ai.insert(aliasLhs);
 
         // rhs-------------------------------------
         bool isAnnot = isAnnotated(pv);
@@ -104,12 +110,13 @@ template <typename Globals> class AliasParser {
         auto pvRhs = getParsedVarRhs(&I, isAnnot);
         if (!pvRhs.isUsed())
           continue;
-        ag.insert(pvRhs);
+        auto* aliasRhs = pvRhs.getAlias();
+        ai.insert(aliasRhs);
       }
     }
 
     // create lattice variables
-    for (int i = 0; i < ag.size(); ++i) {
+    for (int i = 0; i < ai.size(); ++i) {
       globals.locals.addVariable(i);
     }
   }

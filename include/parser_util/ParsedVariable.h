@@ -1,8 +1,8 @@
 #pragma once
 #include "Common.h"
 
-#include "data_util/NameFilter.h"
 #include "LocalVarVisitor.h"
+#include "data_util/NameFilter.h"
 
 namespace llvm {
 
@@ -182,10 +182,16 @@ struct ParsedVariable {
     return (Value*)nullptr;
   }
 
-  auto* getAlias() {
+  auto* getObjAlias() {
     if (isPersistentVar()) {
       return getPersist();
-    } else if (isVarRef() && lhs) {
+    } else {
+      return getObj();
+    }
+  }
+
+  auto* getAlias() {
+    if (isVarRef() && lhs) {
       return getObj();
     } else {
       return getOpnd();

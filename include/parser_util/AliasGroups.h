@@ -1,11 +1,9 @@
 #pragma once
 #include "Common.h"
 
-#include "ParsedVariable.h"
-
 namespace llvm {
 
-struct AliasGroups {
+struct AliasGroupsBase {
   using AliasSet = std::vector<Value*>;
   using AliasSets = std::vector<AliasSet>;
   using ValueCat = std::map<Value*, int>;
@@ -19,59 +17,14 @@ struct AliasGroups {
 
   size_t size() const { return aliasSets.size(); }
 
-  int getAliasSetNo(Value* v) {
+  int getSetNo(Value* v) {
     if (valueCat.count(v)) {
       return valueCat[v];
     }
     return InvalidSetNo;
   }
 
-  bool isValidAlias(ParsedVariable& pv) {
-    auto* v = pv.getAlias();
-    auto aliasSetNo = getAliasSetNo(v);
-
-    return aliasSetNo != InvalidSetNo;
-  }
-
-  int getAliasSetNo(ParsedVariable& pv) {
-    auto* v = pv.getAlias();
-    return getAliasSetNo(v);
-  }
-
-  static bool isInvalidNo(int no) { return no == InvalidSetNo; }
-
-  void addToAliasSet(int setNo, Value* v) {
-    auto& aliasSet = aliasSets[setNo];
-    aliasSet.push_back(v);
-    valueCat[v] = setNo;
-  }
-
-  void insert(ParsedVariable& pv) {
-    auto* v = pv.getAlias();
-    insert(v);
-  }
-
-  void insert(Value* v) {
-    // todo check
-    auto* type = v->getType();
-    if (!type->isPointerTy())
-      return;
-
-    int setNo = 0;
-    for (auto& aliasSet : aliasSets) {
-      auto* e = aliasSet[0];
-      auto res = AAR.alias(v, e);
-      if (res != NoAlias) {
-        addToAliasSet(setNo, v);
-        return;
-      }
-      setNo++;
-    }
-
-    // create new set
-    aliasSets.push_back(AliasSet());
-    addToAliasSet(setNo, v);
-  }
+  bool isValidSet(int setNo) { return setNo != InvalidSetNo; }
 
   void print(raw_ostream& O) const {
     O << "Alias Groups\n";
@@ -86,7 +39,75 @@ struct AliasGroups {
     }
   }
 
-  AliasGroups(AAResults& AAR_) : AAR(AAR_) {}
+  void addToAliasSet(Value* v, int setNo) {
+    auto& aliasSet = aliasSets[setNo];
+    aliasSet.push_back(v);
+    valueCat[v] = setNo;
+  }
+
+  AliasGroupsBase(AAResults& AAR_) : AAR(AAR_) {}
+
+  virtual void insert(Value* v) = 0;
+};
+
+struct AliasGroups : public AliasGroupsBase {
+  void insert(Value* v) {
+    // todo check
+    auto* type = v->getType();
+    if (!type->isPointerTy())
+      return;
+
+    int setNo = 0;
+    for (auto& aliasSet : aliasSets) {
+      auto* e = aliasSet[0];
+      auto res = AAR.alias(v, e);
+      if (res != NoAlias) {
+        addToAliasSet(v, setNo);
+        return;
+      }
+      setNo++;
+    }
+
+    // create new set
+    aliasSets.push_back(AliasSet());
+    addToAliasSet(v, setNo);
+  }
+
+  AliasGroups(AAResults& AAR_) : AliasGroupsBase(AAR_) {}
+};
+
+struct SparseAliasGroups : public AliasGroupsBase {
+  void insert(Value* v) {
+    // todo check
+    auto* type = v->getType();
+    if (!type->isPointerTy())
+      return;
+
+    int setNo = 0;
+    for (auto& aliasSet : aliasSets) {
+      bool addSet = true;
+      for (auto* e : aliasSet) {
+        auto res = AAR.alias(v, e);
+        if (res == NoAlias) {
+          addSet = false;
+          break;
+        }
+      }
+
+      if (addSet) {
+        addToAliasSet(v, setNo);
+        return;
+      }
+
+      setNo++;
+    }
+
+    // create new set
+    aliasSets.push_back(AliasSet());
+    addToAliasSet(v, setNo);
+  }
+
+  SparseAliasGroups(AAResults& AAR_) : AliasGroupsBase(AAR_) {}
 };
 
 } // namespace llvm
