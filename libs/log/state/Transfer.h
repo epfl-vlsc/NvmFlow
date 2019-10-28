@@ -60,7 +60,7 @@ public:
       : globals(globals_), breporter(breporter_) {
     auto& llvmContext = M_.getContext();
     auto* st = StructType::create(llvmContext, "TxVal");
-    txVar = new Variable(st);
+    txVar = new Variable(st, 0);
   }
 
   ~Transfer() {}
@@ -101,7 +101,8 @@ public:
     }
 
 #ifdef DBGMODE
-    errs() << "Analyze " << ii->getName() << "\n";
+    errs() << "Analyze "; 
+    ii->print(errs());
     if (stateChanged)
       printState(state);
 #endif

@@ -2,14 +2,29 @@
 #include "Common.h"
 
 #include "ds/InstrInfo.h"
+#include "parser_util/AliasGroups.h"
 #include "parser_util/InstrParser.h"
 
 namespace llvm {
 
 template <typename Globals> class VarParser {
-  void addInstrInfo(Function* func) {
-    std::set<StructType*> seenSts;
-    for (auto* f : globals.functions.getUnitFunctions(func)) {
+  bool isSkipPv(ParsedVariable& pv) {
+    if (!pv.isUsed())
+      return true;
+
+    if (pv.isField()) {
+      auto [st, idx] = pv.getStructInfo();
+
+      return !globals.dbgInfo.isUsedStructType(st);
+    }
+
+    return false;
+  }
+
+  template<typename AliasInfo>
+  void addInstrInfo(FunctionSet& funcSet, AliasInfo& ai) {
+    std::set<std::pair<StructType*, int>> seenSts;
+    for (auto* f : funcSet) {
       for (auto& I : instructions(*f)) {
         // get instruction type
         auto instrType = InstrInfo::getInstrType(&I, globals);
@@ -34,12 +49,14 @@ template <typename Globals> class VarParser {
           continue;
 
         Variable* var = nullptr;
+        auto* alias = pv.getObjAlias();
+        int setNo = ai.getSetNo(alias);
         // add st variable
-        if (!seenSts.count(st)) {
-          var = globals.locals.addVariable(st);
-          seenSts.insert(st);
+        if (!seenSts.count({st, setNo})) {
+          var = globals.locals.addVariable(st, setNo);
+          seenSts.insert({st, setNo});
         } else {
-          var = globals.locals.getVariable(st);
+          var = globals.locals.getVariable(st, setNo);
         }
 
         // sf info
@@ -47,7 +64,7 @@ template <typename Globals> class VarParser {
           // field
           auto [st, idx] = pv.getStructInfo();
           auto* sf = globals.dbgInfo.getStructField(st, idx);
-          var = globals.locals.addVariable(sf);
+          var = globals.locals.addVariable(sf, setNo);
         }
 
         globals.locals.addInstrInfo(&I, instrType, var, pv);
@@ -55,10 +72,36 @@ template <typename Globals> class VarParser {
     }
   }
 
+  template<typename AliasInfo>
+  void createAliasSets(FunctionSet& funcSet, AliasInfo& ai) {
+    for (auto* f : funcSet) {
+      for (auto& I : instructions(*f)) {
+        // get instruction type
+        auto instrType = InstrInfo::getInstrType(&I, globals);
+        if (!InstrInfo::isVarInstr(instrType))
+          continue;
+
+        // lhs-----------------------------------
+        auto pv = InstrParser::parseVarLhs(&I);
+        if (isSkipPv(pv))
+          continue;
+
+        auto* aliasLhs = pv.getObjAlias();
+
+        ai.insert(aliasLhs);
+      }
+    }
+  }
+
   void addVars() {
     for (auto* f : globals.functions.getAnalyzedFunctions()) {
       globals.setActiveFunction(f);
-      addInstrInfo(f);
+      auto funcSet = globals.functions.getUnitFunctionSet(f);
+      auto& AAR = globals.getAliasAnalysis();
+
+      AliasGroups ag(AAR);
+      createAliasSets(funcSet, ag);
+      addInstrInfo(funcSet, ag);
     }
   }
 

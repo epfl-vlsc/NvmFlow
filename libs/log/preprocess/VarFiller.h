@@ -12,7 +12,8 @@ template <typename Globals> class VarFiller {
         continue;
 
       auto* st = var->getStructType();
-      auto* obj = globals.locals.getVariable(st);
+      int setNo = var->getSetNo();
+      auto* obj = globals.locals.getVariable(st, setNo);
       var->addToWriteSet(obj);
     }
   }
@@ -25,11 +26,12 @@ template <typename Globals> class VarFiller {
         continue;
 
       auto* st = var->getStructType();
+      int setNo = var->getSetNo();
       for (auto* sf : globals.dbgInfo.getFieldMap(st)) {
-        if (!globals.locals.inVariables(sf))
+        if (!globals.locals.inVariables(sf, setNo))
           continue;
 
-        auto* field = globals.locals.getVariable(sf);
+        auto* field = globals.locals.getVariable(sf, setNo);
         var->addToFlushSet(field);
       }
     }

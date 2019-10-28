@@ -81,7 +81,13 @@ struct InstrInfo {
     return it == TxBegInstr || it == TxEndInstr || it == IpInstr;
   }
 
+  static bool isVarInstr(InstrType it) {
+    return it == WriteInstr || isLogBasedInstr(it);
+  }
+
   static bool isWriteInstr(InstrType it) { return it == WriteInstr; }
+
+  static bool isLogBasedInstr(InstrType it) { return it == LoggingInstr; }
 
   template <typename Globals>
   static auto getInstrType(Instruction* i, Globals& globals) {

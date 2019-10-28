@@ -41,16 +41,16 @@ public:
     return varPtr;
   }
 
-  auto* addVariable(StructField* sf) {
+  auto* addVariable(StructField* sf, int alias) {
     assert(activeUnit);
-    auto var = Variable(sf);
+    auto var = Variable(sf, alias);
     auto* varPtr = addVariable(var);
     return varPtr;
   }
 
-  auto* addVariable(StructType* st) {
+  auto* addVariable(StructType* st, int alias) {
     assert(activeUnit);
-    auto var = Variable(st);
+    auto var = Variable(st, alias);
     auto* varPtr = addVariable(var);
     return varPtr;
   }
@@ -69,9 +69,9 @@ public:
     return activeUnit->vars;
   }
 
-  bool inVariables(StructField* sf) const {
+  bool inVariables(StructField* sf, int setNo) const {
     assert(activeUnit);
-    auto var = Variable(sf);
+    auto var = Variable(sf, setNo);
     auto& vars = activeUnit->vars;
     return vars.count(var);
   }
@@ -86,15 +86,15 @@ public:
     return varPtr;
   }
 
-  auto* getVariable(StructField* sf) {
+  auto* getVariable(StructField* sf, int setNo) {
     assert(activeUnit);
-    auto var = Variable(sf);
+    auto var = Variable(sf, setNo);
     return getVariable(var);
   }
 
-  auto* getVariable(StructType* st) {
+  auto* getVariable(StructType* st, int setNo) {
     assert(activeUnit);
-    auto var = Variable(st);
+    auto var = Variable(st, setNo);
     return getVariable(var);
   }
 
@@ -154,7 +154,8 @@ void UnitInfo::print(raw_ostream& O) const {
   O << "inst to vars sample:---\n";
   for (auto& [i, ii] : iiMap) {
     if (!ii.isIpInstr())
-      O << "\t" << ii.getName() << "\n";
+      O << "\t";
+      ii.print(O);
   }
 }
 
