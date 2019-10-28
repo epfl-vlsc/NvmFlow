@@ -2,6 +2,7 @@
 #include "Common.h"
 
 #include "data_util/NameFilter.h"
+#include "LocalVarVisitor.h"
 
 namespace llvm {
 
@@ -172,16 +173,27 @@ struct ParsedVariable {
     return opnd;
   }
 
+  auto* getPersist() {
+    if (isPersistentVar()) {
+      return ObjFinder::findPersist(obj);
+    }
+
+    report_fatal_error("not persistent var");
+    return (Value*)nullptr;
+  }
+
   auto* getAlias() {
-    if (isVarRef() && lhs) {
+    if (isPersistentVar()) {
+      return getPersist();
+    } else if (isVarRef() && lhs) {
       return getObj();
     } else {
       return getOpnd();
     }
   }
 
-  void assertValue(Value* v) const{
-    if(!v){
+  void assertValue(Value* v) const {
+    if (!v) {
       print(errs());
       errs() << *v << "\n";
       report_fatal_error("Failed value");

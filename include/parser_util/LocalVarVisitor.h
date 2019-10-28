@@ -107,6 +107,15 @@ struct ObjFinder {
     assert(obj && checkValidObj(obj));
     return obj;
   }
+
+  static Value* findPersist(Value* v) {
+    assert(v);
+    LocalVarVisitor lvv;
+    auto* obj = lvv.visit(*v);
+
+    assert(obj && checkValidObj(obj));
+    return obj;
+  }
 };
 
 } // namespace llvm
