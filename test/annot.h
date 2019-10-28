@@ -11,10 +11,7 @@
 
 #define skip_fnc __attribute((annotate("SkipCode")))
 #define nvm_fnc __attribute((annotate("NvmCode")))
-
-//deprecated used in earlier version of log checker
-#define log_fnc __attribute((annotate("LogCode")))
-#define log_field __attribute((annotate("LogField")))
+#define tx_fnc __attribute((annotate("TxCode")))
 
 #define no_inline __attribute__((optnone))
 

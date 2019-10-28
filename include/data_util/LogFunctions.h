@@ -9,11 +9,15 @@ namespace llvm {
 
 class LogFunctions : public FunctionsBase {
 private:
+  static constexpr const char* TX = "TxCode";
+
   LoggingFunctions loggingFunctions;
   TxBeginFunctions txBeginFunctions;
   TxEndFunctions txEndFunctions;
 
 public:
+  LogFunctions() : FunctionsBase(TX) {}
+
   bool skipFunction(Function* f) const override {
     return isLoggingFunction(f) || isTxBeginFunction(f) || isTxEndFunction(f) ||
            isSkippedFunction(f);

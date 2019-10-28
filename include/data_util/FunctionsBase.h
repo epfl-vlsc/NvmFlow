@@ -20,6 +20,9 @@ protected:
 public:
   FunctionsBase() : analyzedFunctions(NVM), skippedFunctions(SKIP) {}
 
+  FunctionsBase(const char* TX)
+      : analyzedFunctions(TX), skippedFunctions(SKIP) {}
+
   auto& getAnalyzedFunctions() { return analyzedFunctions; }
 
   auto& getAllAnalyzedFunctions() { return allAnalyzedFunctions; }
