@@ -44,6 +44,9 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
     if (NameFilter::isVarCall(&I)) {
       auto* v = I.getOperand(0);
       return visit(*v);
+    } else if (backtrackPersistVar && NameFilter::isPersistentVar(&I)) {
+      auto* v = I.getOperand(0);
+      return visit(*v);
     } else {
       return &I;
     }
@@ -88,6 +91,10 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
     report_fatal_error("parse fail - not supported");
     return nullptr;
   }
+
+  bool backtrackPersistVar;
+  LocalVarVisitor() : backtrackPersistVar(false) {}
+  LocalVarVisitor(bool backtrack) : backtrackPersistVar(backtrack) {}
 };
 
 struct ObjFinder {
@@ -114,16 +121,19 @@ struct ObjFinder {
   }
 
   static Value* findPersist(Value* v) {
-    auto* callInst = dyn_cast<CallInst>(v);
-    assert(callInst && NameFilter::isPersistentVar(callInst));
-    auto* opnd = callInst->getOperand(0);
+    LocalVarVisitor lvv(true);
+    auto* allocaAgg = lvv.visit(*v);
+    assert(allocaAgg && isa<AllocaInst>(allocaAgg) && checkValidObj(allocaAgg));
 
-    assert(opnd);
-    LocalVarVisitor lvv;
-    auto* allocaAgg = lvv.visit(*opnd);
-    assert(allocaAgg && checkValidObj(allocaAgg));
+    auto* allocaType = allocaAgg->getType();
+    if (auto* allocaPtrType = dyn_cast<PointerType>(allocaType)) {
+      auto* baseType = allocaPtrType->getPointerElementType();
+      auto* st = dyn_cast<StructType>(baseType);
+      if (st->getName().contains("_toid"))
+        return allocaAgg;
+    }
 
-    //find the real node
+    // find the real node
     auto* user = allocaAgg->user_back();
     auto* castInst = dyn_cast<CastInst>(user);
     assert(castInst);
@@ -131,10 +141,10 @@ struct ObjFinder {
     auto* memCpyCall = dyn_cast<CallInst>(memCpy);
     assert(memCpyCall && NameFilter::isStoreFunction(memCpyCall));
     auto* oid = memCpyCall->getOperand(1);
-    
+
     LocalVarVisitor lvvOid;
     auto* realNode = lvvOid.visit(*oid);
-    
+
     return realNode;
   }
 };
