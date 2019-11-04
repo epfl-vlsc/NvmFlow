@@ -122,19 +122,23 @@ struct ObjFinder {
 
   static Value* findPersist(Value* v) {
     LocalVarVisitor lvv(true);
-    auto* allocaAgg = lvv.visit(*v);
-    assert(allocaAgg && isa<AllocaInst>(allocaAgg) && checkValidObj(allocaAgg));
+    auto* agg = lvv.visit(*v);
+    if(isa<Argument>(agg)){
+      return agg;
+    }
 
-    auto* allocaType = allocaAgg->getType();
+    assert(agg && isa<AllocaInst>(agg) && checkValidObj(agg));
+
+    auto* allocaType = agg->getType();
     if (auto* allocaPtrType = dyn_cast<PointerType>(allocaType)) {
       auto* baseType = allocaPtrType->getPointerElementType();
       auto* st = dyn_cast<StructType>(baseType);
       if (st->getName().contains("_toid"))
-        return allocaAgg;
+        return agg;
     }
 
     // find the real node
-    auto* user = allocaAgg->user_back();
+    auto* user = agg->user_back();
     auto* castInst = dyn_cast<CastInst>(user);
     assert(castInst);
     auto* memCpy = castInst->getPrevNode();

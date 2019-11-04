@@ -64,6 +64,9 @@ template <typename Globals> class VarParser {
           // field
           auto [st, idx] = pv.getStructInfo();
           auto* sf = globals.dbgInfo.getStructField(st, idx);
+          if(!sf)
+            continue;
+
           var = globals.locals.addVariable(sf, setNo);
         }
 

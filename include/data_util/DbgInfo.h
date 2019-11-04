@@ -274,9 +274,10 @@ public:
     assertField(st, idx);
     assertInDs(fieldMap, st);
     auto& fields = fieldMap[st];
-    assert(idx < fields.size());
-    auto* field = fields[idx];
-    return field;
+    if(idx < fields.size())
+      return fields[idx];
+    else
+      return nullptr;
   }
 
   StructField* getStructField(std::string& fieldStr) {
