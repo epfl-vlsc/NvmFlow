@@ -99,8 +99,8 @@ template <typename StateMachine> class DataflowAnalysis {
       return false;
 
 #ifdef DBGMODE
-    /*
     errs() << "Analyze call " << callee->getName() << "\n";
+    /*
     printState(state);
     */
 #endif

@@ -32,9 +32,9 @@ struct AliasGroupsBase {
     for (auto& [val, setNo] : valueCat) {
       O << "(";
       if (auto* i = dyn_cast<Instruction>(val))
-        O << DbgInstr::getSourceLocation(i);
-      else
-        O << *val;
+        O << DbgInstr::getSourceLocation(i) << ",";
+      
+      O << *val;
       O << "," << setNo << ")\n";
     }
   }
