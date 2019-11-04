@@ -1,56 +1,44 @@
 #include "annot.h"
 
-struct Data {
-  int data;
-  Data* next;
-};
+struct DurInt {
+  dur_field int* valid;
 
-void pmfs_flush_buffer(void* ptr);
+  /*
+    void nvm_fnc fenceNotFlushedData(int* ptr) { valid = ptr; }
 
-void memcpy_to_nvmm(char* ptr, int offset){
-  pmfs_flush_buffer(ptr + offset);
-}
-
-struct DurObj {
-  dur_field Data* valid;
-
-  void nvm_fnc correct() {
-    auto* ptr = new Data();
-
-    int offset = 5;
-    char* xm = (char*)ptr;
-    memcpy_to_nvmm((char *)ptr, offset);
-		pmfs_flush_buffer(xm + offset);
-    valid = ptr;
-  }
-/*
-  void nvm_fnc fenceNotFlushedData(Data* ptr) { valid = ptr; }
-
-  void nvm_fnc correctParam(Data* ptr) {
-    pm_flushfence(ptr);
-    valid = ptr;
-  }
-
-  void nvm_fnc correctObj() {
-    auto* data = new Data();
-    data->data = 5;
-
-    pm_flushfence(data);
-    valid = data;
-  }
-
-  void nvm_fnc wrongObj() {
-    auto* data = new Data();
-    pm_flushfence(data);
-    data->data = 5;
-    valid = data;
-  }
-
-  void nvm_fnc branchFlush(Data* ptr) {
-    if (ptr->data == 1)
+    void nvm_fnc correctParam(int* ptr) {
       pm_flushfence(ptr);
-    valid = ptr;
-  }
-  */
+      valid = ptr;
+    }
+
+    void nvm_fnc branchFlush(int* ptr) {
+      if (cond())
+        pm_flushfence(ptr);
+      valid = ptr;
+    }
+
+    void nvm_fnc doubleFlush(int* ptr) {
+      if (cond())
+        pm_flushfence(ptr);
+      pm_flushfence(ptr);
+      valid = ptr;
+    }
+    */
 };
 
+int nvm_fnc main() {
+  DurInt* dptr = new DurInt;
+  int* ptr = new int(1);
+  pm_flushfence(ptr);
+  pfence();
+
+  dptr->valid = ptr;
+  //pm_flushfence(dptr);
+
+  int* ptr2 = new int(1);
+  pm_flushfence(ptr2);
+  pfence();
+  mutate(ptr2);
+
+ 
+}
