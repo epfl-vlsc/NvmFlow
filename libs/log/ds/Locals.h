@@ -152,11 +152,13 @@ void UnitInfo::print(raw_ostream& O) const {
   }
 
   O << "inst to vars sample:---\n";
+  /*
   for (auto& [i, ii] : iiMap) {
     if (!ii.isIpInstr())
       O << "\t";
       ii.print(O);
   }
+  */
 }
 
 } // namespace llvm

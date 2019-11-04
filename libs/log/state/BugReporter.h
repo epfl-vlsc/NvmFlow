@@ -37,6 +37,7 @@ public:
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
       auto* bugData = new DoubleLogBug(varName, srcLoc, prevLoc);
+      bugData->print(errs());
       this->addBugData(bugData);
     }
   }
@@ -55,6 +56,7 @@ public:
       auto varName = var->getName();
 
       auto* bugData = new CommitBug(varName, srcLoc);
+      bugData->print(errs());
       this->addBugData(bugData);
     }
   }
@@ -75,6 +77,7 @@ public:
       
 
       auto* bugData = new OutTxBug(varName, srcLoc);
+      bugData->print(errs());
       this->addBugData(bugData);
     }
   }
