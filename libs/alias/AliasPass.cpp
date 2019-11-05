@@ -8,9 +8,15 @@ void AliasPass::print(raw_ostream& OS, const Module* m) const {
   OS << "pass\n";
 }
 
+bool isNoAliasCall(const Value* V) {
+  if (const auto* Call = dyn_cast<CallBase>(V))
+    return Call->hasRetAttr(Attribute::NoAlias);
+  return false;
+}
+
 bool AliasPass::runOnModule(Module& M) {
 
-  /*
+  
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
   // auto& cflResult = getAnalysis<CFLAndersAAWrapperPass>().getResult();
   auto& cflResult = getAnalysis<CFLSteensAAWrapperPass>().getResult();
@@ -22,19 +28,34 @@ bool AliasPass::runOnModule(Module& M) {
   // runAliasGroup(M, AAR);
   // runAliasSetTracker(M, AAR);
   // runAliasAnders(M, cflResult);
-  */
+  
 
+  /*
   auto& TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
   AAResults AAR(TLI);
   PointsTo pt(TLI);
   auto& steens = pt.getResult();
+  AAR.addAAResult(steens);
   AA a(M, AAR);
-
+  */
+/*
+  for (auto& F : M) {
+    //errs() << F.getName() << "\n";
+    for(auto&I : instructions(&F)){
+      if(auto* ci = dyn_cast<CallBase>(&I)){
+        int retAttr = ci->hasRetAttr(Attribute::NoAlias);
+        if(retAttr)
+        errs() << I << " " << retAttr << "\n";
+      }
+    }
+  }
+*/
   return false;
 }
 
 void AliasPass::getAnalysisUsage(AnalysisUsage& AU) const {
   AU.addRequired<TargetLibraryInfoWrapperPass>();
+  AU.addRequired<CFLSteensAAWrapperPass>();
   AU.setPreservesAll();
 }
 

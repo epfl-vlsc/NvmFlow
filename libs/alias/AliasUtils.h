@@ -7,8 +7,8 @@
 
 #include "llvm/Analysis/AliasSetTracker.h"
 
-#include "parser_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
+#include "parser_util/AliasGroups.h"
 #include "parser_util/InstrParser.h"
 
 #include <cassert>
@@ -18,7 +18,7 @@ namespace llvm {
 
 struct AA {
   std::set<Value*> values;
-  AliasGroups ag;
+  SparseAliasGroups ag;
 
   AA(Module& M, AAResults& AAR) : ag(AAR) {
     auto& F = *M.getFunction("main");
@@ -34,12 +34,12 @@ struct AA {
       if (pv.isUsed()) {
         pv.print(errs());
         auto* obj = pv.getObj();
-        auto* opnd = pv.getOpnd();
+        //auto* opnd = pv.getOpnd();
 
         values.insert(obj);
-        values.insert(opnd);
+        //values.insert(opnd);
 
-        ag.insert(opnd);
+        //ag.insert(opnd);
         ag.insert(obj);
       } else if (auto* ci = dyn_cast<CallInst>(&I)) {
         auto* f = ci->getCalledFunction();
@@ -54,10 +54,13 @@ struct AA {
   void analyze(AAResults& AAR) {
     errs() << "Analyze\n";
     for (Value* v1 : values)
-      for (Value* v2 : values)
-        errs() << AAR.alias(v1, v2) << " " << *v1 << " " << *v2 << "\n";
+      for (Value* v2 : values) {
+        auto a1 = AAR.alias(v1, v2);
+        auto a2 = AAR.alias(v2, v1);
+        assert(a1 == a2);
+        errs() << a1 << " " << *v1 << " " << *v2 << "\n";
+      }
   }
 };
 
 } // namespace llvm
-
