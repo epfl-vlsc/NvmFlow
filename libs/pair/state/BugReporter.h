@@ -26,6 +26,7 @@ private:
         auto varName = var->getName();
         auto fncName = this->getFunctionName();
         auto* bugData = new VolatileSentinelBug(varName, fncName);
+        bugData->print(errs());
         this->addBugData(bugData);
       }
     }
@@ -51,6 +52,7 @@ public:
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
       auto* bugData = new DoubleFlushBug(varName, srcLoc, prevLoc);
+      bugData->print(errs());
       this->addBugData(bugData);
     }
   }
@@ -80,6 +82,7 @@ public:
         auto prevLoc = DbgInstr::getSourceLocation(otherInst);
 
         auto* bugData = new CommitPairBug(varName, prevName, srcLoc, prevLoc);
+        bugData->print(errs());
         this->addBugData(bugData);
       }
     }

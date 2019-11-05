@@ -28,7 +28,13 @@ class NameFilter {
 
   static constexpr const char* loggingFunctions[] = {"tx_log"};
 
-  static constexpr const char* allocFunctions[] = {"pm_malloc"};
+  static constexpr const char* allocFunctions[] = {
+      "pm_malloc",
+      "kp_malloc",
+      "kp_calloc",
+      "kp_kpalloc",
+      "kp_realloc"
+  };
 
   static constexpr const size_t ElementSize = sizeof(const char*);
 
