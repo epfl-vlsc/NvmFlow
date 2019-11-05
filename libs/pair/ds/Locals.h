@@ -98,6 +98,13 @@ public:
     return vars.count(var);
   }
 
+  bool inVariables(StructType* st, int setNo) const {
+    assert(activeUnit);
+    auto var = Variable(st, setNo);
+    auto& vars = activeUnit->vars;
+    return vars.count(var);
+  }
+
   Variable* getVariable(Variable& var) {
     assert(activeUnit);
     auto& vars = activeUnit->vars;

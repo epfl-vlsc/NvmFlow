@@ -49,6 +49,9 @@ class DataParser {
           if (!globals.dbgInfo.isUsedStructType(stFieldType))
             continue;
 
+          if (!globals.locals.inVariables(stFieldType, setNo))
+            continue;
+
           data = globals.locals.getVariable(stFieldType, setNo);
           globals.locals.addInstrInfo(&I, instrType, data, pv);
           continue;
@@ -68,15 +71,18 @@ class DataParser {
           if (globals.locals.inVariables(dataSf, setNo)) {
             // field
             data = globals.locals.getVariable(dataSf, setNo);
-          } else {
+          } else if (globals.locals.inVariables(st, setNo)) {
             // objptr
             data = globals.locals.getVariable(st, setNo);
+          } else {
+            continue;
           }
-        } else if (pv.isObj()) {
+        } else if (pv.isObj() && globals.locals.inVariables(st, setNo)) {
           // obj
           data = globals.locals.getVariable(st, setNo);
         } else {
-          report_fatal_error("not possible - either data or ptr");
+          //not matched to any df variable
+          continue;
         }
 
         globals.locals.addInstrInfo(&I, instrType, data, pv);
