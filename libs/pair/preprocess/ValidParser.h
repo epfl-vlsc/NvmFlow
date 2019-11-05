@@ -1,15 +1,17 @@
 #pragma once
 #include "Common.h"
 
+#include "AnnotParser.h"
 #include "ds/InstrInfo.h"
 #include "parser_util/InstrParser.h"
 
 namespace llvm {
 
-template <typename Globals> class ValidParser {
-  void addInstrInfo(Function* func) {
-    std::set<StructType*> seenSts;
-    for (auto* f : globals.functions.getUnitFunctions(func)) {
+template <typename Globals, typename FuncSet, typename AliasInfo>
+class ValidParser {
+  void addInstrInfo() {
+    std::set<std::pair<StructType*, int>> seenSts;
+    for (auto* f : fs) {
       for (auto& I : instructions(*f)) {
         // get instruction type
         auto instrType = InstrInfo::getInstrType(&I, globals);
@@ -39,12 +41,14 @@ template <typename Globals> class ValidParser {
           continue;
 
         Variable* objVar = nullptr;
+        auto* alias = pv.getObjAlias();
+        int setNo = ai.getSetNo(alias);
         // obj
-        if (!seenSts.count(st)) {
-          objVar = globals.locals.addVariable(st);
-          seenSts.insert(st);
+        if (!seenSts.count({st, setNo})) {
+          objVar = globals.locals.addVariable(st, setNo);
+          seenSts.insert({st, setNo});
         } else {
-          objVar = globals.locals.getVariable(st);
+          objVar = globals.locals.getVariable(st, setNo);
         }
 
         // valid
@@ -54,7 +58,7 @@ template <typename Globals> class ValidParser {
           report_fatal_error("not the same type - valid");
         }
         auto* sf = globals.dbgInfo.getStructField(st, idx);
-        Variable* valid = globals.locals.addVariable(sf);
+        Variable* valid = globals.locals.addVariable(sf, setNo);
         globals.locals.addSentinel(valid);
 
         // data
@@ -63,7 +67,7 @@ template <typename Globals> class ValidParser {
         if (!parsedAnnot.empty()) {
           // data
           auto* dataSf = globals.dbgInfo.getStructField(parsedAnnot);
-          data = globals.locals.addVariable(dataSf);
+          data = globals.locals.addVariable(dataSf, setNo);
         } else {
           // use obj
           data = objVar;
@@ -79,17 +83,15 @@ template <typename Globals> class ValidParser {
     }
   }
 
-  void addValids() {
-    for (auto* f : globals.functions.getAnalyzedFunctions()) {
-      globals.setActiveFunction(f);
-      addInstrInfo(f);
-    }
-  }
-
   Globals& globals;
+  FuncSet& fs;
+  AliasInfo& ai;
 
 public:
-  ValidParser(Globals& globals_) : globals(globals_) { addValids(); }
+  ValidParser(Globals& globals_, FuncSet& fs_, AliasInfo& ai_)
+      : globals(globals_), fs(fs_), ai(ai_) {
+    addInstrInfo();
+  }
 };
 
 } // namespace llvm

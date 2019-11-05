@@ -113,7 +113,8 @@ public:
     }
 
 #ifdef DBGMODE
-    errs() << "Analyze " << ii->getName() << "\n";
+    errs() << "Analyze "; 
+    ii->print(errs());
     if (stateChanged)
       printState(state);
 #endif

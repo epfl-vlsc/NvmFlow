@@ -21,7 +21,7 @@ template <typename Globals> class VarParser {
     return false;
   }
 
-  template<typename AliasInfo>
+  template <typename AliasInfo>
   void addInstrInfo(FunctionSet& funcSet, AliasInfo& ai) {
     std::set<std::pair<StructType*, int>> seenSts;
     for (auto* f : funcSet) {
@@ -64,7 +64,7 @@ template <typename Globals> class VarParser {
           // field
           auto [st, idx] = pv.getStructInfo();
           auto* sf = globals.dbgInfo.getStructField(st, idx);
-          if(!sf)
+          if (!sf)
             continue;
 
           var = globals.locals.addVariable(sf, setNo);
@@ -75,7 +75,7 @@ template <typename Globals> class VarParser {
     }
   }
 
-  template<typename AliasInfo>
+  template <typename AliasInfo>
   void createAliasSets(FunctionSet& funcSet, AliasInfo& ai) {
     for (auto* f : funcSet) {
       for (auto& I : instructions(*f)) {

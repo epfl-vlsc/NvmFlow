@@ -6,10 +6,10 @@
 
 namespace llvm {
 
-template <typename Globals> class DataParser {
-  void addInstrInfo(Function* func) {
-    std::set<StructType*> seenSts;
-    for (auto* f : globals.functions.getUnitFunctions(func)) {
+template <typename Globals, typename FuncSet, typename AliasInfo>
+class DataParser {
+  void addInstrInfo() {
+    for (auto* f : fs) {
       for (auto& I : instructions(*f)) {
         // get instruction type
         auto instrType = InstrInfo::getInstrType(&I, globals);
@@ -36,6 +36,8 @@ template <typename Globals> class DataParser {
           continue;
 
         Variable* data = nullptr;
+        auto* alias = pv.getObjAlias();
+        int setNo = ai.getSetNo(alias);
 
         if (!globals.dbgInfo.isUsedStructType(st) && pv.isCallInst()) {
           // flush field that is objptr
@@ -47,7 +49,7 @@ template <typename Globals> class DataParser {
           if (!globals.dbgInfo.isUsedStructType(stFieldType))
             continue;
 
-          data = globals.locals.getVariable(stFieldType);
+          data = globals.locals.getVariable(stFieldType, setNo);
           globals.locals.addInstrInfo(&I, instrType, data, pv);
           continue;
         } else if (!globals.dbgInfo.isUsedStructType(st)) {
@@ -63,16 +65,16 @@ template <typename Globals> class DataParser {
           }
 
           auto* dataSf = globals.dbgInfo.getStructField(st, idx);
-          if (globals.locals.inVariables(dataSf)) {
+          if (globals.locals.inVariables(dataSf, setNo)) {
             // field
-            data = globals.locals.getVariable(dataSf);
+            data = globals.locals.getVariable(dataSf, setNo);
           } else {
             // objptr
-            data = globals.locals.getVariable(st);
+            data = globals.locals.getVariable(st, setNo);
           }
         } else if (pv.isObj()) {
           // obj
-          data = globals.locals.getVariable(st);
+          data = globals.locals.getVariable(st, setNo);
         } else {
           report_fatal_error("not possible - either data or ptr");
         }
@@ -82,17 +84,15 @@ template <typename Globals> class DataParser {
     }
   }
 
-  void addDatas() {
-    for (auto* f : globals.functions.getAnalyzedFunctions()) {
-      globals.setActiveFunction(f);
-      addInstrInfo(f);
-    }
-  }
-
   Globals& globals;
+  FuncSet& fs;
+  AliasInfo& ai;
 
 public:
-  DataParser(Globals& globals_) : globals(globals_) { addDatas(); }
+  DataParser(Globals& globals_, FuncSet& fs_, AliasInfo& ai_)
+      : globals(globals_), fs(fs_), ai(ai_) {
+    addInstrInfo();
+  }
 };
 
 } // namespace llvm

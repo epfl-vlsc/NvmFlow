@@ -88,6 +88,10 @@ struct InstrInfo {
     return it == PfenceInstr || it == IpInstr;
   }
 
+  static bool isVarInstr(InstrType it) {
+    return it == WriteInstr || isFlushBasedInstr(it);
+  }
+
   static bool isWriteInstr(InstrType it) { return it == WriteInstr; }
 
   template <typename Globals>

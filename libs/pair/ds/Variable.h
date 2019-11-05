@@ -15,10 +15,15 @@ class Variable {
   VarSet writeSet;
   VarSet flushSet;
   PairSet pairs;
+  int setNo;
 
 public:
-  Variable(StructField* sf_) : sf(sf_), st(nullptr) { assert(sf); }
-  Variable(StructType* st_) : sf(nullptr), st(st_) { assert(st_); }
+  Variable(StructField* sf_, int setNo_) : sf(sf_), st(nullptr), setNo(setNo_) {
+    assert(sf);
+  }
+  Variable(StructType* st_, int setNo_) : sf(nullptr), st(st_), setNo(setNo_) {
+    assert(st_);
+  }
 
   bool isField() const { return sf != nullptr; }
 
@@ -29,6 +34,8 @@ public:
   void addToFlushSet(Variable* var) { flushSet.insert(var); }
 
   void addToPairs(PairVariable* pv) { pairs.insert(pv); }
+
+  int getSetNo() const { return setNo; }
 
   auto& getWriteSet() { return writeSet; }
 
@@ -47,16 +54,16 @@ public:
 
   std::string getName() const {
     if (sf)
-      return sf->getName();
+      return sf->getName() + ":" + std::to_string(setNo);
     else
-      return st->getName().str();
+      return st->getName().str() + ":" + std::to_string(setNo);
   }
 
   bool operator<(const Variable& X) const {
-    return std::tie(sf, st) < std::tie(X.sf, X.st);
+    return std::tie(sf, st, setNo) < std::tie(X.sf, X.st, X.setNo);
   }
 
-  bool operator==(const Variable& X) const { return sf == X.sf && st == X.st; }
+  bool operator==(const Variable& X) const { return sf == X.sf && st == X.st && setNo == X.setNo; }
 };
 
 class PairVariable {
@@ -69,6 +76,7 @@ public:
   PairVariable(Variable* data_, Variable* valid_, bool useDcl_)
       : data(data_), valid(valid_), useDcl(useDcl_) {
     assert(data && valid);
+    assert(data->getSetNo() == valid->getSetNo());
   }
 
   bool isDcl() const { return useDcl; }
