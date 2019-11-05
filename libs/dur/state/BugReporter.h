@@ -39,29 +39,33 @@ public:
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
       auto* bugData = new DoubleFlushBug(varName, srcLoc, prevLoc);
+      bugData->print(errs());
       this->addBugData(bugData);
     }
   }
 
   void checkCommitPtrBug(InstrInfo* ii, AbstractState& state) {
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+    if (this->isBugLoc(srcLoc))
+      return;
+
     auto pv = ii->getParsedVarLhs();
-    if(!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated())
+    if (!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated())
       return;
-    
+
     auto* var = ii->getVariableRhs();
-    if (this->isBugVar(var))
-      return;
 
     auto& val = state[var];
-    if (!val.isFence()) {
-      this->addBugVar(var);
 
-      auto* instr = ii->getInstruction();
+    if (!val.isFence()) {
+      this->addBugLoc(srcLoc);
 
       auto varName = var->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
 
       auto* bugData = new CommitPtrBug(varName, srcLoc);
+      bugData->print(errs());
       this->addBugData(bugData);
     }
   }

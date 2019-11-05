@@ -54,7 +54,6 @@ template <typename Globals> class DbgParser {
   void fillStructTypes(std::set<Type*>& ptrTypes,
                        std::set<StructType*>& structTypes) {
     for (auto* p : ptrTypes) {
-      errs() << "p" << *p << "\n";
       auto* t = stripPointers(p);
       if (auto* st = dyn_cast<StructType>(t)) {
         structTypes.insert(st);
