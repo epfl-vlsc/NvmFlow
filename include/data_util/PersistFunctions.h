@@ -37,7 +37,7 @@ public:
   bool isAnyFlushFunction(Instruction* i) const {
     assert(i);
     if (auto* ci = dyn_cast<CallInst>(i)) {
-      auto* f = ci->getCalledFunction();
+      auto* f = getCalledFunction(ci);
       return isAnyFlushFunction(f);
     }
 

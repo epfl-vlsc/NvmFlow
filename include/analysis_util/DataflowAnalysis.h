@@ -94,7 +94,7 @@ template <typename StateMachine> class DataflowAnalysis {
   bool analyzeCall(CallBase* ci, AbstractState& state, Function* caller,
                    const Context& context) {
     Context newContext(context, ci);
-    Function* callee = ci->getCalledFunction();
+    Function* callee = getCalledFunction(ci);
     if (!callee || callee->isDeclaration())
       return false;
 

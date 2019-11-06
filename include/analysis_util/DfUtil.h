@@ -27,7 +27,7 @@ public:
 
 const char* getCIStr(CallBase* ci) {
   if (ci) {
-    auto* f = ci->getCalledFunction();
+    auto* f = getCalledFunction(ci);
     // data may not be a null terminating ptr
     return f->getName().data();
   } else {

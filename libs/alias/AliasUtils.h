@@ -42,7 +42,7 @@ struct AA {
         //ag.insert(opnd);
         ag.insert(obj);
       } else if (auto* ci = dyn_cast<CallInst>(&I)) {
-        auto* f = ci->getCalledFunction();
+        auto* f = getCalledFunction(ci);
         if (f->isDeclaration() || f->isIntrinsic())
           continue;
 

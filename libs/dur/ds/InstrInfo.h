@@ -116,7 +116,7 @@ struct InstrInfo {
     } else if (auto* ii = dyn_cast<InvokeInst>(i)) {
       return IpInstr;
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
-      auto* callee = ci->getCalledFunction();
+      auto* callee = getCalledFunction(ci);
 
       if (globals.functions.isPfenceFunction(callee)) {
         return PfenceInstr;

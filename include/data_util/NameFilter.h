@@ -53,7 +53,7 @@ public:
   }
 
   static bool contains(CallInst* ci, const char* const* names, size_t size) {
-    auto* f = ci->getCalledFunction();
+    auto* f = getCalledFunction(ci);
     if (!f)
       return false;
 
@@ -75,7 +75,7 @@ public:
   }
 
   static bool equals(CallInst* ci, const char* const* names, size_t size) {
-    auto* f = ci->getCalledFunction();
+    auto* f = getCalledFunction(ci);
     if (!f)
       return false;
 
@@ -127,7 +127,7 @@ public:
   // parser functions
   static bool isPersistentVar(Value* v) {
     if (auto* ci = dyn_cast<CallInst>(v)) {
-      auto* f = ci->getCalledFunction();
+      auto* f = getCalledFunction(ci);
       if (f->getName().contains(PersistentName))
         return true;
     }
@@ -141,7 +141,7 @@ public:
   }
 
   static bool isAllocFunction(CallBase* ci) {
-    auto* func = ci->getCalledFunction();
+    auto* func = getCalledFunction(ci);
     if (!func) {
       return false;
     }
@@ -151,7 +151,7 @@ public:
 
   static bool isVarCall(CallInst* ci) {
     assert(ci);
-    auto* func = ci->getCalledFunction();
+    auto* func = getCalledFunction(ci);
     if (!func) {
       return false;
     }

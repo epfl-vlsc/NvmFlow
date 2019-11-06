@@ -7,6 +7,15 @@
 
 namespace llvm {
 
+Function* getCalledFunction(CallBase* cb) {
+  auto* f = cb->getCalledFunction();
+  if (!f) {
+    Value* v = cb->getCalledValue();
+    f = dyn_cast<Function>(v->stripPointerCasts());
+  }
+  return f;
+}
+
 struct DbgInstr {
   static auto getSourceLocation(Instruction* instruction,
                                 bool fullPath = false) {

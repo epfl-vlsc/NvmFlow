@@ -52,7 +52,7 @@ public:
   auto* getCurrentFunction(Context& context){
     assert(topFunction);
     if(auto* ci = context.getCallee())
-      return ci->getCalledFunction();
+      return getCalledFunction(ci);
     else
       return topFunction;
   }
@@ -62,7 +62,7 @@ public:
     if(context.isTop())
       return (Function*)nullptr;
     if(auto* ci = context.getCaller())
-      return ci->getCalledFunction();
+      return getCalledFunction(ci);
     else
       return topFunction;
   }

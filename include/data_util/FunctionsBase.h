@@ -32,7 +32,7 @@ public:
 
     for (auto& I : instructions(*f)) {
       if (auto* ci = dyn_cast<CallBase>(&I)) {
-        auto* callee = ci->getCalledFunction();
+        auto* callee = getCalledFunction(ci);
         bool doIp = !visited.count(callee) && !skipFunction(callee);
         if (doIp) {
           getUnitFunctions(callee, visited);
