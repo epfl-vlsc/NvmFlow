@@ -52,7 +52,8 @@ public:
       return;
 
     auto pv = ii->getParsedVarLhs();
-    if (!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated())
+    if (!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated() ||
+        pv.isNull())
       return;
 
     auto* var = ii->getVariableRhs();
