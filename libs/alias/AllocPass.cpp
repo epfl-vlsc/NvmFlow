@@ -11,13 +11,8 @@ void AllocPass::print(raw_ostream& OS, const Module* m) const {
 bool AllocPass::runOnModule(Module& M) {
   for (auto& F : M) {
     if (NameFilter::isAllocFunction(F)) {
-      auto attr =
-          F.getAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-
       F.addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-      auto updatedAttr =
-          F.getAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-      assert(attr == updatedAttr);
+      assert(F.hasAttribute(AttributeList::ReturnIndex, Attribute::NoAlias));
 
       /*
        errs() << F.getName() << "\n";

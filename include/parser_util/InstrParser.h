@@ -106,7 +106,7 @@ class InstrParser {
     if (auto* i = dyn_cast<Instruction>(v)) {
       return ObjFinder::findObj(i);
     }
-    return nullptr;
+    return v;
   }
 
   static bool isUsedLhs(Instruction* i) {

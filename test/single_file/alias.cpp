@@ -5,7 +5,7 @@ using namespace std;
 
 int* newint(){
   //return new int;
-  return pm_malloc();
+  return (int*)pm_malloc(4);
 }
 
 int* f(int* c) {

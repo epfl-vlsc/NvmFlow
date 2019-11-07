@@ -53,6 +53,11 @@ public:
 
   bool isFence() const { return dclCommit.state == DclCommit::Fence; }
 
+  bool isPersistent() const {
+    return dclCommit.state == DclCommit::Fence ||
+           dclCommit.state == DclCommit::Unseen;
+  }
+
   bool isWrite() const {
     return (dclCommit.state == DclCommit::Write &&
             dclFlush.state == DclFlush::Write);

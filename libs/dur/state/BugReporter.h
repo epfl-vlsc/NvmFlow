@@ -52,15 +52,18 @@ public:
       return;
 
     auto pv = ii->getParsedVarLhs();
-    if (!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated() ||
-        pv.isNull())
+    if (!ii->hasVariableRhs() || !pv.isUsed() || !pv.isAnnotated())
+      return;
+
+    auto pvRhs = ii->getParsedVarRhs();
+    if (pvRhs.isNull())
       return;
 
     auto* var = ii->getVariableRhs();
 
     auto& val = state[var];
 
-    if (!val.isFence()) {
+    if (!val.isPersistent()) {
       this->addBugLoc(srcLoc);
 
       auto varName = var->getName();
