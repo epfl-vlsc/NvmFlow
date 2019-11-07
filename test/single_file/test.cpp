@@ -39,6 +39,4 @@ int nvm_fnc main() {
   pm_flushfence(ptr2);
   pfence();
   mutate(ptr2);
-
- 
 }

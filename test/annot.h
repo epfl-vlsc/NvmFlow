@@ -26,4 +26,4 @@ extern void no_inline tx_end();
 
 extern int cond();
 extern void mutate(void* ptr);
-extern int* pm_malloc();
+extern void* pm_malloc(unsigned long size);
