@@ -29,8 +29,8 @@ template <typename Globals> class DbgParser {
   void addFlushedType(ParsedVariable& pv, std::set<Type*>& ptrTypes,
                       std::set<StructType*>& structTypes) {
     auto* ptrType = pv.getType();
-    assert(ptrType->isPointerTy());
-    ptrTypes.insert(ptrType);
+    if (ptrType->isPointerTy())
+      ptrTypes.insert(ptrType);
   }
 
   void addUsedTypes(Function* func, std::set<Type*>& ptrTypes,
