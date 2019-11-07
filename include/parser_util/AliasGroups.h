@@ -27,7 +27,7 @@ struct AliasGroupsBase {
   bool isValidSet(int setNo) { return setNo != InvalidSetNo; }
 
   void print(raw_ostream& O) const {
-    O << "Alias Groups\n";
+    O << "Alias Groups:" << size() << "\n";
     O << "------------\n";
     for (auto& [val, setNo] : valueCat) {
       O << "(";

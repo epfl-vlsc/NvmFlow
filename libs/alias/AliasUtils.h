@@ -19,6 +19,7 @@ namespace llvm {
 struct AA {
   std::set<Value*> values;
   SparseAliasGroups ag;
+  std::set<Function*> seen;
 
   AA(Module& M, AAResults& AAR) : ag(AAR) {
     auto& F = *M.getFunction("main");
@@ -28,22 +29,27 @@ struct AA {
   }
 
   void traverse(Function& F) {
+    if (seen.count(&F))
+      return;
+
+    seen.insert(&F);
+
     errs() << F.getName() << "\n";
     for (auto& I : instructions(F)) {
       auto pv = InstrParser::parseVarLhs(&I);
       if (pv.isUsed()) {
         pv.print(errs());
         auto* obj = pv.getObj();
-        //auto* opnd = pv.getOpnd();
+        // auto* opnd = pv.getOpnd();
 
         values.insert(obj);
-        //values.insert(opnd);
+        // values.insert(opnd);
 
-        //ag.insert(opnd);
+        // ag.insert(opnd);
         ag.insert(obj);
-      } else if (auto* ci = dyn_cast<CallInst>(&I)) {
-        auto* f = getCalledFunction(ci);
-        if (f->isDeclaration() || f->isIntrinsic())
+      } else if (auto* cb = dyn_cast<CallBase>(&I)) {
+        auto* f = getCalledFunction(cb);
+        if (!f || f->isDeclaration() || f->isIntrinsic())
           continue;
 
         traverse(*f);

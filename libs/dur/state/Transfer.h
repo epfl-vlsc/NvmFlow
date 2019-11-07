@@ -9,6 +9,14 @@ namespace llvm {
 template <typename Globals, typename BReporter> class Transfer {
   using AbstractState = std::map<Variable*, Lattice>;
 
+  bool isLocal(InstrInfo* ii) {
+    auto pv = ii->getParsedVarLhs();
+    if (pv.isUsed() && pv.isObjPtrVar())
+      return true;
+
+    return false;
+  }
+
   bool handlePfence(InstrInfo* ii, AbstractState& state) {
     auto instr = ii->getInstruction();
     bool stateChanged = false;
@@ -44,8 +52,19 @@ template <typename Globals, typename BReporter> class Transfer {
 
     breporter.checkCommitPtrBug(ii, state);
 
+    if (isLocal(ii))
+      return false;
+
     auto& val = state[var];
     val = Lattice::getWrite(val);
+
+    //nullptr
+    if (ii->hasVariableRhs()){
+      auto pvRhs = ii->getParsedVarRhs();
+      if (pvRhs.isNull()){
+        val = Lattice::getFence(val);
+      }
+    }
 
     breporter.addLastSeen(var, val, instr);
 

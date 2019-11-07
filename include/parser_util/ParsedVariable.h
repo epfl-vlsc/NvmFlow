@@ -87,6 +87,10 @@ struct ParsedVariable {
 
   bool isLocRef() const { return rc == LocRef; }
 
+  bool isObjPtrVar() const {
+    return isObj() && isPtr() && isVarRef();
+  }
+
   bool isStoreInst() const { return StoreIns == ic; }
 
   bool isCallInst() const { return CallIns == ic; }
