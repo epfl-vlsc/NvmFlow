@@ -228,8 +228,11 @@ struct ParsedVariable {
     O << ")";
 
     // obj part
-    O << " (obj:" << *obj << ")";
-    O << " (type:" << *type << ")";
+    if (obj)
+      O << " (obj:" << *obj << ")";
+
+    if (type)
+      O << " (type:" << *type << ")";
 
     // optional part
     if (isField())

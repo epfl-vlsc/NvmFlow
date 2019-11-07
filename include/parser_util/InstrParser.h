@@ -102,6 +102,13 @@ class InstrParser {
 
   static Value* getObj(Instruction* i) { return ObjFinder::findObj(i); }
 
+  static Value* getObjRhs(Value* v) {
+    if (auto* i = dyn_cast<Instruction>(v)) {
+      return ObjFinder::findObj(i);
+    }
+    return nullptr;
+  }
+
   static bool isUsedLhs(Instruction* i) {
     if (auto* si = dyn_cast<StoreInst>(i)) {
       return true;
@@ -211,7 +218,6 @@ public:
         isa<LoadInst>(v) || isa<Constant>(v)) {
       return ParsedVariable(i, obj, opnd, type, isLocRef);
     }
-    
 
     // field-------------------------------------------
     else if (auto* gepi = dyn_cast<GetElementPtrInst>(v)) {
@@ -219,8 +225,8 @@ public:
       auto [st, idx] = getStructInfo(gepi);
 
       // disable dynamic offsets
-      if (idx < 0){
-        //fix type
+      if (idx < 0) {
+        // fix type
         type = obj->getType();
         return ParsedVariable(i, obj, opnd, type, isLocRef);
       }
@@ -240,8 +246,8 @@ public:
     if (!isUsedRhs(i))
       return ParsedVariable(false);
 
-    auto* obj = getObj(i);
     auto* opnd = getOpnd(i, false);
+    auto* obj = getObjRhs(opnd);
     auto* type = getTypeRhs(i);
     auto isLocRef = getLocRhs(i);
 
@@ -250,8 +256,8 @@ public:
       return ParsedVariable(false);
 
     // nullptr
-    if (auto* cpn = dyn_cast<ConstantPointerNull>(opnd)) {
-      return ParsedVariable(i, obj, opnd, type, false);
+    if (auto* cons = dyn_cast<Constant>(opnd); cons->isNullValue()) {
+      return ParsedVariable(i, obj, opnd, type);
     }
 
     // fill parsed variable------------------------------
