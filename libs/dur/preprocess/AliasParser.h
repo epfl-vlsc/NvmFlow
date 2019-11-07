@@ -127,7 +127,7 @@ template <typename Globals> class AliasParser {
       auto funcSet = globals.functions.getUnitFunctionSet(f);
       auto& AAR = globals.getAliasAnalysis();
 
-      AliasGroups ag(AAR);
+      SparseAliasGroups ag(AAR);
       createAliasSets(funcSet, ag);
       addInstrInfo(funcSet, ag);
     }

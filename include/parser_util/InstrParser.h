@@ -255,9 +255,14 @@ public:
     if (!type->isPointerTy())
       return ParsedVariable(false);
 
-    // nullptr
-    if (auto* cons = dyn_cast<Constant>(opnd); cons->isNullValue()) {
-      return ParsedVariable(i, obj, opnd, type);
+    
+    if (auto* cons = dyn_cast<Constant>(opnd)) {
+      // nullptr
+      if(cons->isNullValue())
+        return ParsedVariable(i, obj, opnd, type);
+    }else if(!obj){
+      //if cannot find object return
+      return ParsedVariable(false);
     }
 
     // fill parsed variable------------------------------

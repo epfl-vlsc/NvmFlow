@@ -54,6 +54,10 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
 
   Value* visitPHINode(PHINode& I) { return &I; }
 
+  Value* visitCmpInst(CmpInst& I) { return &I; }
+
+  Value* visitSelectInst(SelectInst& I) { return &I; }
+
   Value* visitAllocaInst(AllocaInst& I) { return &I; }
 
   Value* visitBinaryOperator(BinaryOperator& I) {
@@ -99,10 +103,10 @@ struct LocalVarVisitor : public InstVisitor<LocalVarVisitor, Value*> {
 
 struct ObjFinder {
   static bool checkValidObj(Value* obj) {
-    bool isValidObj = isa<CallInst>(obj) || isa<InvokeInst>(obj) ||
-                      isa<AllocaInst>(obj) || isa<PHINode>(obj) ||
-                      isa<Argument>(obj) || isa<GlobalVariable>(obj) ||
-                      isa<Constant>(obj);
+    bool isValidObj =
+        isa<CallInst>(obj) || isa<InvokeInst>(obj) || isa<AllocaInst>(obj) ||
+        isa<Constant>(obj) || isa<PHINode>(obj) || isa<CmpInst>(obj) ||
+        isa<SelectInst>(obj) || isa<Argument>(obj) || isa<GlobalVariable>(obj);
     if (!isValidObj) {
       errs() << "obj is not valid: " << *obj
              << " value id:" << obj->getValueID() << "\n";
@@ -123,7 +127,7 @@ struct ObjFinder {
   static Value* findPersist(Value* v) {
     LocalVarVisitor lvv(true);
     auto* agg = lvv.visit(*v);
-    if(isa<Argument>(agg)){
+    if (isa<Argument>(agg)) {
       return agg;
     }
 
