@@ -30,10 +30,7 @@ class NameFilter {
 
   static constexpr const char* allocFunctions[] = {
       "pm_malloc",
-      "kp_malloc",
-      "kp_calloc",
-      "kp_kpalloc",
-      "kp_realloc"
+      "pmalloc"
   };
 
   static constexpr const size_t ElementSize = sizeof(const char*);
