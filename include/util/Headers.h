@@ -1,6 +1,5 @@
 #pragma once
 
-#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "llvm/ADT/APSInt.h"
@@ -10,7 +9,6 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
 
-#include "llvm/Analysis/CFG.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/CallSite.h"
@@ -24,7 +22,11 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 
+#include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/CFLAndersAliasAnalysis.h"
+#include "llvm/Analysis/CallGraph.h"
+#include "llvm/Analysis/CallGraphSCCPass.h"
+#include "llvm/Analysis/ConstantFolding.h"
 
 #include <array>
 #include <cassert>
@@ -34,5 +36,6 @@
 #include <set>
 #include <tuple>
 #include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
