@@ -9,7 +9,8 @@ namespace llvm {
 template <typename Globals, typename BReporter> class Transfer {
   using AbstractState = std::map<Variable*, Lattice>;
 
-  bool handlePfence(InstrInfo* ii, AbstractState& state) {
+  bool handlePfence(InstrInfo* ii, AbstractState& state,
+                    const Context& context) {
     auto instr = ii->getInstruction();
     bool stateChanged = false;
 
@@ -17,7 +18,7 @@ template <typename Globals, typename BReporter> class Transfer {
       if (val.isFlush()) {
         val = Lattice::getFence(val);
         stateChanged = true;
-        breporter.addLastSeen(var, val, instr);
+        breporter.addLastSeen(var, val, instr, context);
       }
     }
 
@@ -33,7 +34,7 @@ template <typename Globals, typename BReporter> class Transfer {
 
     val = Lattice::getFlush(val, useFence);
 
-    breporter.addLastSeen(var, val, instr);
+    breporter.addLastSeen(var, val, instr, context);
   }
 
   bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence,
@@ -56,7 +57,7 @@ template <typename Globals, typename BReporter> class Transfer {
     auto& val = state[var];
     val = Lattice::getWrite(val);
 
-    breporter.addLastSeen(var, val, instr);
+    breporter.addLastSeen(var, val, instr, context);
   }
 
   bool handleWrite(InstrInfo* ii, AbstractState& state,
@@ -110,7 +111,7 @@ public:
       // stateChanged = handleVfence(ii, state);
       break;
     case InstrInfo::PfenceInstr:
-      stateChanged = handlePfence(ii, state);
+      stateChanged = handlePfence(ii, state, context);
       break;
     default:
       report_fatal_error("not correct instruction");

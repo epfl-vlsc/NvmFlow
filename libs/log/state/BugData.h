@@ -13,7 +13,7 @@ struct CommitBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_) {}
 
   void print(raw_ostream& O) const {
-    O << "*) Log " + varName;
+    O << "A) Log " + varName;
     O << " at " + srcLoc;
     O << "\n";
   }
@@ -28,7 +28,7 @@ struct DoubleLogBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_){}
 
   void print(raw_ostream& O) const {
-    O << "*) Double log " + varName;
+    O << "B) Double log " + varName;
     O << " at " + srcLoc + "\n";
     O << "\tLogged before at " + prevLoc;
     O << "\n";
@@ -43,7 +43,7 @@ struct OutTxBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_) {}
 
   void print(raw_ostream& O) const {
-    O << "*) Access " + varName;
+    O << "C) Access " + varName;
     O << " outside tx at " + srcLoc;
     O << "\n";
   }

@@ -80,15 +80,15 @@ public:
     print(errs());
   }
 
-  void addLastSeen(LatVar var, LatVal val, Instruction* i) {
-    lastSeen.addLastSeen(var, val, i);
+  void addLastSeen(LatVar var, LatVal val, Instruction* i, const Context& c) {
+    lastSeen.addLastSeen(var, val, i, c);
   }
 
-  Instruction* getLastCommit(LatVar var, LatVal val) {
+  auto& getLastCommit(LatVar var, LatVal val) {
     return lastSeen.getLastCommit(var, val);
   }
 
-  Instruction* getLastFlush(LatVar var, LatVal val) {
+  auto& getLastFlush(LatVar var, LatVal val) {
     return lastSeen.getLastFlush(var, val);
   }
 

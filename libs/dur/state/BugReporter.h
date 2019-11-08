@@ -30,17 +30,16 @@ public:
 
     auto& val = state[var];
     if (val.isFlushed()) {
+      auto ic = InstCntxt{instr, context};
+      auto previc = this->getLastFlush(var, val);
+
       this->addBugLoc(srcLoc);
 
-      auto* instr = ii->getInstruction();
-      auto* prevInstr = this->getLastFlush(var, val);
-
       auto varName = var->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
-      auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
+      auto cur = ic.getName();
+      auto prev = previc.getName();
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new DoubleFlushBug(varName, loc1, prevLoc);
+      auto* bugData = new DoubleFlushBug(varName, cur, prev);
       bugData->print(errs());
       this->addBugData(bugData);
     }
@@ -67,12 +66,14 @@ public:
     auto& val = state[var];
 
     if (!val.isPersistent()) {
+      auto ic = InstCntxt{instr, context};
+
       this->addBugLoc(srcLoc);
 
       auto varName = var->getName();
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new CommitPtrBug(varName, loc1);
+      auto cur = ic.getName();
+      auto* bugData = new CommitPtrBug(varName, cur);
       bugData->print(errs());
       this->addBugData(bugData);
     }

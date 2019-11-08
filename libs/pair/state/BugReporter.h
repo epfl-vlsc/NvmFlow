@@ -38,22 +38,24 @@ public:
 
   void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state,
                            const Context& context) {
-    if (this->isBugVar(var))
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+    
+    if (this->isBugLoc(srcLoc))
       return;
 
     auto& val = state[var];
     if (val.isFlushed()) {
-      this->addBugVar(var);
+      auto ic = InstCntxt{instr, context};
+      auto previc = this->getLastFlush(var, val);
 
-      auto* instr = ii->getInstruction();
-      auto* prevInstr = this->getLastFlush(var, val);
+      this->addBugLoc(srcLoc);
 
       auto varName = var->getName();
-      auto srcLoc = DbgInstr::getSourceLocation(instr);
-      auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new DoubleFlushBug(varName, loc1, prevLoc);
+      auto cur = ic.getName();
+      auto prev = previc.getName();
+      auto* bugData = new DoubleFlushBug(varName, cur, prev);
       bugData->print(errs());
       this->addBugData(bugData);
     }
@@ -61,7 +63,10 @@ public:
 
   void checkCommitPairBug(Variable* var, InstrInfo* ii, AbstractState& state,
                           const Context& context) {
-    if (this->isBugVar(var))
+    auto* instr = ii->getInstruction();
+    auto srcLoc = DbgInstr::getSourceLocation(instr);
+
+    if (this->isBugLoc(srcLoc))
       return;
 
     for (auto* pair : var->getPairs()) {
@@ -73,19 +78,19 @@ public:
       auto& otherVal = state[otherVar];
 
       if (otherVal.isWriteFlush()) {
-        this->addBugVar(var);
-        this->addBugVar(otherVar);
+        auto ic = InstCntxt{instr, context};
+        auto previc = this->getLastCommit(otherVar, otherVal);
+        auto prevLoc = previc.getLoc();
 
-        auto* instr = ii->getInstruction();
-        auto* otherInst = this->getLastCommit(otherVar, otherVal);
+        this->addBugLoc(srcLoc);
+        this->addBugLoc(prevLoc);
 
         auto varName = var->getName();
         auto prevName = otherVar->getName();
-        auto srcLoc = DbgInstr::getSourceLocation(instr);
-        auto prevLoc = DbgInstr::getSourceLocation(otherInst);
 
-        auto loc1 = context.getFullName() + " - " + srcLoc;
-        auto* bugData = new CommitPairBug(varName, prevName, loc1, prevLoc);
+        auto cur = ic.getName();
+        auto prev = previc.getName();
+        auto* bugData = new CommitPairBug(varName, prevName, cur, prev);
         bugData->print(errs());
         this->addBugData(bugData);
       }

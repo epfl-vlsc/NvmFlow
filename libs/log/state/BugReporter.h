@@ -30,15 +30,16 @@ public:
 
     auto& val = state[var];
     if (val.isLogged()) {
+      auto ic = InstCntxt{instr, context};
+      auto previc = this->getLastFlush(var, val);
+
       this->addBugLoc(srcLoc);
 
-      auto* prevInstr = this->getLastFlush(var, val);
       auto varName = var->getName();
 
-      auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
-
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new DoubleLogBug(varName, loc1, prevLoc);
+      auto cur = ic.getName();
+      auto prev = previc.getName();
+      auto* bugData = new DoubleLogBug(varName, cur, prev);
       bugData->print(errs());
       this->addBugData(bugData);
     }
@@ -54,12 +55,14 @@ public:
 
     auto& val = state[var];
     if (!val.isLog()) {
+      auto ic = InstCntxt{instr, context};
+
       this->addBugLoc(srcLoc);
 
       auto varName = var->getName();
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new CommitBug(varName, loc1);
+      auto cur = ic.getName();
+      auto* bugData = new CommitBug(varName, cur);
       bugData->print(errs());
       this->addBugData(bugData);
     }
@@ -75,13 +78,15 @@ public:
 
     auto& val = state[var];
     if (!val.inTx()) {
+      auto ic = InstCntxt{instr, context};
+
       this->addBugLoc(srcLoc);
 
       auto* accessedVar = ii->getVariable();
       auto varName = accessedVar->getName();
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new OutTxBug(varName, loc1);
+      auto cur = ic.getName();
+      auto* bugData = new OutTxBug(varName, cur);
       bugData->print(errs());
       this->addBugData(bugData);
     }

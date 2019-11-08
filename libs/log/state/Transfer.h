@@ -19,7 +19,7 @@ template <typename Globals, typename BReporter> class Transfer {
 
     val = Lattice::getLogged();
 
-    breporter.addLastSeen(var, val, instr);
+    breporter.addLastSeen(var, val, instr, context);
   }
 
   bool handleLog(InstrInfo* ii, AbstractState& state, const Context& context) {

@@ -17,7 +17,7 @@ template <typename Globals, typename BReporter> class Transfer {
     return false;
   }
 
-  bool handlePfence(InstrInfo* ii, AbstractState& state) {
+  bool handlePfence(InstrInfo* ii, AbstractState& state, const Context& context) {
     auto instr = ii->getInstruction();
     bool stateChanged = false;
 
@@ -25,7 +25,7 @@ template <typename Globals, typename BReporter> class Transfer {
       if (val.isFlush()) {
         val = Lattice::getFence(val);
         stateChanged = true;
-        breporter.addLastSeen(var, val, instr);
+        breporter.addLastSeen(var, val, instr, context);
       }
     }
 
@@ -42,7 +42,7 @@ template <typename Globals, typename BReporter> class Transfer {
     auto& val = state[var];
     val = Lattice::getFlush(val, useFence);
 
-    breporter.addLastSeen(var, val, instr);
+    breporter.addLastSeen(var, val, instr, context);
 
     return true;
   }
@@ -74,7 +74,7 @@ template <typename Globals, typename BReporter> class Transfer {
     else
       val = Lattice::getWrite(val);
 
-    breporter.addLastSeen(var, val, instr);
+    breporter.addLastSeen(var, val, instr, context);
 
     return true;
   }
@@ -118,7 +118,7 @@ public:
       // ignore scl case
       break;
     case InstrInfo::PfenceInstr:
-      stateChanged = handlePfence(ii, state);
+      stateChanged = handlePfence(ii, state, context);
       break;
     default:
       report_fatal_error("not correct instruction");

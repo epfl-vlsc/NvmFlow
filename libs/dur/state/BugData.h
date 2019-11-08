@@ -13,7 +13,7 @@ struct CommitPtrBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_) {}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Commit assigned value to " + varName;
+    errs() << "A) Commit assigned value to " + varName;
     errs() << " at " + srcLoc;
     O << "\n";
   }
@@ -29,7 +29,7 @@ struct DoubleFlushBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_) {}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Double flush " + varName;
+    errs() << "B) Double flush " + varName;
     errs() << " at " + srcLoc + "\n";
     errs() << "\tFlushed before at " + prevLoc;
     O << "\n";
