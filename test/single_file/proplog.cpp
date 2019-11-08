@@ -17,7 +17,7 @@ struct tree_map_node {
   TOID(struct tree_map_node) c;
 };
 
-void nvm_fnc correct(TOID(struct tree_map_node) node) {
+void tx_fnc correct(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop)
   TX_ADD(node);
   D_RW(node)->a = 0;
@@ -26,7 +26,7 @@ void nvm_fnc correct(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc commitBug(TOID(struct tree_map_node) node) {
+void tx_fnc commitBug(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop)
   if (cond()) {
      TX_ADD(node);
@@ -36,7 +36,7 @@ void nvm_fnc commitBug(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc doubleLogBug(TOID(struct tree_map_node) node) {
+void tx_fnc doubleLogBug(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop)
   TX_ADD(node);
   D_RW(node)->a = 0;
@@ -50,7 +50,7 @@ void nvm_fnc doubleLogBug(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc outTxBug(TOID(struct tree_map_node) node) {
+void tx_fnc outTxBug(TOID(struct tree_map_node) node) {
   D_RW(node)->a = 0;
   TX_END
 }

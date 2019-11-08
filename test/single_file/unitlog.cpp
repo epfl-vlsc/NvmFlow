@@ -17,7 +17,7 @@ struct tree_map_node {
   TOID(struct tree_map_node) c;
 };
 
-void nvm_fnc correct(TOID(struct tree_map_node) node) {
+void tx_fnc correct(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop) {
     TX_ADD(node);
     while (cond()) {
@@ -29,7 +29,7 @@ void nvm_fnc correct(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc doubleLoop(TOID(struct tree_map_node) node) {
+void tx_fnc doubleLoop(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop) {
     while (cond()) {
       TX_ADD(node);
@@ -41,7 +41,7 @@ void nvm_fnc doubleLoop(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc doubleLogBug(TOID(struct tree_map_node) node) {
+void tx_fnc doubleLogBug(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop) {
     TX_ADD(node);
     D_RW(node)->a = 0;
@@ -56,7 +56,7 @@ void nvm_fnc doubleLogBug(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc outTxBug(TOID(struct tree_map_node) node) {
+void tx_fnc outTxBug(TOID(struct tree_map_node) node) {
   if (cond()) {
     TX_BEGIN(pop) { TX_ADD(node); }
   }
@@ -70,7 +70,7 @@ void condLog(TOID(struct tree_map_node) node) {
   }
 }
 
-void nvm_fnc ipaMissLog(TOID(struct tree_map_node) node) {
+void tx_fnc ipaMissLog(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop) { 
     condLog(node); 
     D_RW(node)->a = 0;
@@ -78,12 +78,12 @@ void nvm_fnc ipaMissLog(TOID(struct tree_map_node) node) {
   TX_END
 }
 
-void nvm_fnc recurse(TOID(struct tree_map_node) node) {
+void tx_fnc recurse(TOID(struct tree_map_node) node) {
   TX_ADD(node);
   recurse(node);
 }
 
-void nvm_fnc recurseMain(TOID(struct tree_map_node) node) {
+void tx_fnc recurseMain(TOID(struct tree_map_node) node) {
   TX_BEGIN(pop) { recurse(node); }
   TX_END
 }
