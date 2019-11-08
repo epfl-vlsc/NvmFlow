@@ -39,11 +39,17 @@ class Context {
   CallBase* caller;
   CallBase* callee;
 
+  std::vector<CallBase*> callStack;
+
 public:
   Context() : caller(nullptr), callee(nullptr) {}
+
   Context(const Context& X, CallBase* Callee) {
     caller = X.callee;
     callee = Callee;
+
+    callStack = X.callStack;
+    callStack.push_back(callee);
   }
 
   bool operator<(const Context& X) const {
@@ -61,6 +67,19 @@ public:
   auto getName() const {
     auto name = std::string("Context:(") + getCIStr(caller) + "," +
                 getCIStr(callee) + ")";
+    return name;
+  }
+
+  auto getFullName() const {
+    std::string name("top/");
+    name.reserve(200);
+
+    for(auto* cb : callStack){
+      auto* f = getCalledFunction(cb);
+      name += f->getName().str();
+      name += "/";
+    }
+    
     return name;
   }
 

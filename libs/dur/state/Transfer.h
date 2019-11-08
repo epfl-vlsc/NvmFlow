@@ -32,11 +32,12 @@ template <typename Globals, typename BReporter> class Transfer {
     return stateChanged;
   }
 
-  bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
+  bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence,
+                   const Context& context) {
     auto* instr = ii->getInstruction();
     auto* var = ii->getVariableLhs();
 
-    breporter.checkDoubleFlushBug(var, ii, state);
+    breporter.checkDoubleFlushBug(var, ii, state, context);
 
     auto& val = state[var];
     val = Lattice::getFlush(val, useFence);
@@ -46,25 +47,32 @@ template <typename Globals, typename BReporter> class Transfer {
     return true;
   }
 
-  bool handleWrite(InstrInfo* ii, AbstractState& state) {
+  bool rhsIsNull(InstrInfo* ii) {
+    if (ii->hasVariableRhs()) {
+      auto pvRhs = ii->getParsedVarRhs();
+      return pvRhs.isNull();
+    }
+    return false;
+  }
+
+  bool handleWrite(InstrInfo* ii, AbstractState& state,
+                   const Context& context) {
     auto* instr = ii->getInstruction();
     auto* var = ii->getVariableLhs();
 
-    breporter.checkCommitPtrBug(ii, state);
+    bool isNull = rhsIsNull(ii);
+
+    if (!isNull)
+      breporter.checkCommitPtrBug(ii, state, context);
 
     if (isLocal(ii))
       return false;
 
     auto& val = state[var];
-    val = Lattice::getWrite(val);
-
-    //nullptr
-    if (ii->hasVariableRhs()){
-      auto pvRhs = ii->getParsedVarRhs();
-      if (pvRhs.isNull()){
-        val = Lattice::getFence(val);
-      }
-    }
+    if (isNull)
+      val = Lattice::getFence(val);
+    else
+      val = Lattice::getWrite(val);
 
     breporter.addLastSeen(var, val, instr);
 
@@ -88,7 +96,8 @@ public:
     }
   }
 
-  bool handleInstruction(Instruction* i, AbstractState& state) {
+  bool handleInstruction(Instruction* i, AbstractState& state,
+                         const Context& context) {
     bool stateChanged = false;
 
     auto* ii = globals.locals.getInstrInfo(i);
@@ -97,13 +106,13 @@ public:
 
     switch (ii->getInstrType()) {
     case InstrInfo::WriteInstr:
-      stateChanged = handleWrite(ii, state);
+      stateChanged = handleWrite(ii, state, context);
       break;
     case InstrInfo::FlushInstr:
-      stateChanged = handleFlush(ii, state, false);
+      stateChanged = handleFlush(ii, state, false, context);
       break;
     case InstrInfo::FlushFenceInstr:
-      stateChanged = handleFlush(ii, state, true);
+      stateChanged = handleFlush(ii, state, true, context);
       break;
     case InstrInfo::VfenceInstr:
       // ignore scl case

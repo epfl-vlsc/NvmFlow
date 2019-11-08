@@ -13,8 +13,9 @@ struct CommitBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_) {}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Log " + varName;
-    errs() << " at " + srcLoc + "\n";
+    O << "*) Log " + varName;
+    O << " at " + srcLoc;
+    O << "\n";
   }
 };
 
@@ -24,12 +25,13 @@ struct DoubleLogBug : public BugData {
   std::string prevLoc;
 
   DoubleLogBug(std::string varName_, std::string srcLoc_, std::string prevLoc_)
-      : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_) {}
+      : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_){}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Double log " + varName;
-    errs() << " at " + srcLoc + "\n";
-    errs() << "\tLogged before at " + prevLoc + "\n";
+    O << "*) Double log " + varName;
+    O << " at " + srcLoc + "\n";
+    O << "\tLogged before at " + prevLoc;
+    O << "\n";
   }
 };
 
@@ -41,8 +43,9 @@ struct OutTxBug : public BugData {
       : varName(varName_), srcLoc(srcLoc_) {}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Access " + varName;
-    errs() << " outside tx at " + srcLoc + "\n";
+    O << "*) Access " + varName;
+    O << " outside tx at " + srcLoc;
+    O << "\n";
   }
 };
 

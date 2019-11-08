@@ -36,7 +36,8 @@ public:
   BugReporter(Globals& globals_, DfResults& dfResults_)
       : Base(globals_, dfResults_) {}
 
-  void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state,
+                           const Context& context) {
     if (this->isBugVar(var))
       return;
 
@@ -51,13 +52,15 @@ public:
       auto srcLoc = DbgInstr::getSourceLocation(instr);
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
-      auto* bugData = new DoubleFlushBug(varName, srcLoc, prevLoc);
+      auto loc1 = context.getFullName() + " - " + srcLoc;
+      auto* bugData = new DoubleFlushBug(varName, loc1, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
     }
   }
 
-  void checkCommitPairBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void checkCommitPairBug(Variable* var, InstrInfo* ii, AbstractState& state,
+                          const Context& context) {
     if (this->isBugVar(var))
       return;
 
@@ -81,7 +84,8 @@ public:
         auto srcLoc = DbgInstr::getSourceLocation(instr);
         auto prevLoc = DbgInstr::getSourceLocation(otherInst);
 
-        auto* bugData = new CommitPairBug(varName, prevName, srcLoc, prevLoc);
+        auto loc1 = context.getFullName() + " - " + srcLoc;
+        auto* bugData = new CommitPairBug(varName, prevName, loc1, prevLoc);
         bugData->print(errs());
         this->addBugData(bugData);
       }

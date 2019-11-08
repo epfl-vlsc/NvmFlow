@@ -41,8 +41,9 @@ public:
     transition.initLatticeValues(state);
   }
 
-  bool handleInstruction(Instruction* i, AbstractState& state) {
-    return transition.handleInstruction(i, state);
+  bool handleInstruction(Instruction* i, AbstractState& state,
+                         const Context& context) {
+    return transition.handleInstruction(i, state, context);
   }
 
   bool isIpInstruction(Instruction* i) const {

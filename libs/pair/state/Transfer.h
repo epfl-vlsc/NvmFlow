@@ -25,9 +25,9 @@ template <typename Globals, typename BReporter> class Transfer {
   }
 
   void doFlush(Variable* var, InstrInfo* ii, AbstractState& state,
-               bool useFence) {
+               bool useFence, const Context& context) {
     auto* instr = ii->getInstruction();
-    breporter.checkDoubleFlushBug(var, ii, state);
+    breporter.checkDoubleFlushBug(var, ii, state, context);
 
     auto& val = state[var];
 
@@ -36,20 +36,22 @@ template <typename Globals, typename BReporter> class Transfer {
     breporter.addLastSeen(var, val, instr);
   }
 
-  bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence) {
+  bool handleFlush(InstrInfo* ii, AbstractState& state, bool useFence,
+                   const Context& context) {
     auto* var = ii->getVariable();
-    doFlush(var, ii, state, useFence);
+    doFlush(var, ii, state, useFence, context);
 
     for (auto* fvar : var->getFlushSet()) {
-      doFlush(fvar, ii, state, useFence);
+      doFlush(fvar, ii, state, useFence, context);
     }
 
     return true;
   }
 
-  void doWrite(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void doWrite(Variable* var, InstrInfo* ii, AbstractState& state,
+               const Context& context) {
     auto* instr = ii->getInstruction();
-    breporter.checkCommitPairBug(var, ii, state);
+    breporter.checkCommitPairBug(var, ii, state, context);
 
     auto& val = state[var];
     val = Lattice::getWrite(val);
@@ -57,12 +59,13 @@ template <typename Globals, typename BReporter> class Transfer {
     breporter.addLastSeen(var, val, instr);
   }
 
-  bool handleWrite(InstrInfo* ii, AbstractState& state) {
+  bool handleWrite(InstrInfo* ii, AbstractState& state,
+                   const Context& context) {
     auto* var = ii->getVariable();
-    doWrite(var, ii, state);
+    doWrite(var, ii, state, context);
 
     for (auto* wvar : var->getWriteSet()) {
-      doWrite(wvar, ii, state);
+      doWrite(wvar, ii, state, context);
     }
 
     return true;
@@ -85,7 +88,8 @@ public:
     }
   }
 
-  bool handleInstruction(Instruction* i, AbstractState& state) {
+  bool handleInstruction(Instruction* i, AbstractState& state,
+                         const Context& context) {
     bool stateChanged = false;
 
     auto* ii = globals.locals.getInstrInfo(i);
@@ -94,13 +98,13 @@ public:
 
     switch (ii->getInstrType()) {
     case InstrInfo::WriteInstr:
-      stateChanged = handleWrite(ii, state);
+      stateChanged = handleWrite(ii, state, context);
       break;
     case InstrInfo::FlushInstr:
-      stateChanged = handleFlush(ii, state, false);
+      stateChanged = handleFlush(ii, state, false, context);
       break;
     case InstrInfo::FlushFenceInstr:
-      stateChanged = handleFlush(ii, state, true);
+      stateChanged = handleFlush(ii, state, true, context);
       break;
     case InstrInfo::VfenceInstr:
       // stateChanged = handleVfence(ii, state);
@@ -113,7 +117,7 @@ public:
     }
 
 #ifdef DBGMODE
-    errs() << "Analyze "; 
+    errs() << "Analyze ";
     ii->print(errs());
     if (stateChanged)
       printState(state);

@@ -20,7 +20,8 @@ public:
   BugReporter(Globals& globals_, DfResults& dfResults_)
       : Base(globals_, dfResults_) {}
 
-  void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void checkDoubleFlushBug(Variable* var, InstrInfo* ii, AbstractState& state,
+                           const Context& context) {
     auto* instr = ii->getInstruction();
     auto srcLoc = DbgInstr::getSourceLocation(instr);
 
@@ -38,13 +39,15 @@ public:
       auto srcLoc = DbgInstr::getSourceLocation(instr);
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
-      auto* bugData = new DoubleFlushBug(varName, srcLoc, prevLoc);
+      auto loc1 = context.getFullName() + " - " + srcLoc;
+      auto* bugData = new DoubleFlushBug(varName, loc1, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
     }
   }
 
-  void checkCommitPtrBug(InstrInfo* ii, AbstractState& state) {
+  void checkCommitPtrBug(InstrInfo* ii, AbstractState& state,
+                         const Context& context) {
     auto* instr = ii->getInstruction();
     auto srcLoc = DbgInstr::getSourceLocation(instr);
 
@@ -68,7 +71,8 @@ public:
 
       auto varName = var->getName();
 
-      auto* bugData = new CommitPtrBug(varName, srcLoc);
+      auto loc1 = context.getFullName() + " - " + srcLoc;
+      auto* bugData = new CommitPtrBug(varName, loc1);
       bugData->print(errs());
       this->addBugData(bugData);
     }

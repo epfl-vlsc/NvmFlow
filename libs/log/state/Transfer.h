@@ -9,10 +9,11 @@ namespace llvm {
 template <typename Globals, typename BReporter> class Transfer {
   using AbstractState = std::map<Variable*, Lattice>;
 
-  void doLog(Variable* var, InstrInfo* ii, AbstractState& state) {
+  void doLog(Variable* var, InstrInfo* ii, AbstractState& state,
+             const Context& context) {
     auto* instr = ii->getInstruction();
-    breporter.checkOutTxBug(txVar, ii, state);
-    breporter.checkDoubleLogBug(var, ii, state);
+    breporter.checkOutTxBug(txVar, ii, state, context);
+    breporter.checkDoubleLogBug(var, ii, state, context);
 
     auto& val = state[var];
 
@@ -21,21 +22,22 @@ template <typename Globals, typename BReporter> class Transfer {
     breporter.addLastSeen(var, val, instr);
   }
 
-  bool handleLog(InstrInfo* ii, AbstractState& state) {
+  bool handleLog(InstrInfo* ii, AbstractState& state, const Context& context) {
     auto* var = ii->getVariable();
-    doLog(var, ii, state);
+    doLog(var, ii, state, context);
 
     for (auto* fvar : var->getFlushSet()) {
-      doLog(fvar, ii, state);
+      doLog(fvar, ii, state, context);
     }
 
     return true;
   }
 
-  bool handleWrite(InstrInfo* ii, AbstractState& state) {
+  bool handleWrite(InstrInfo* ii, AbstractState& state,
+                   const Context& context) {
     auto* var = ii->getVariable();
-    breporter.checkOutTxBug(txVar, ii, state);
-    breporter.checkCommitBug(var, ii, state);
+    breporter.checkOutTxBug(txVar, ii, state, context);
+    breporter.checkCommitBug(var, ii, state, context);
     return true;
   }
 
@@ -76,7 +78,8 @@ public:
     state[txVar] = Lattice::getInitTx();
   }
 
-  bool handleInstruction(Instruction* i, AbstractState& state) {
+  bool handleInstruction(Instruction* i, AbstractState& state,
+                         const Context& context) {
     bool stateChanged = false;
 
     auto* ii = globals.locals.getInstrInfo(i);
@@ -85,10 +88,10 @@ public:
 
     switch (ii->getInstrType()) {
     case InstrInfo::LoggingInstr:
-      stateChanged = handleLog(ii, state);
+      stateChanged = handleLog(ii, state, context);
       break;
     case InstrInfo::WriteInstr:
-      stateChanged = handleWrite(ii, state);
+      stateChanged = handleWrite(ii, state, context);
       break;
     case InstrInfo::TxBegInstr:
       stateChanged = handleTxBeg(ii, state);
@@ -101,7 +104,7 @@ public:
     }
 
 #ifdef DBGMODE
-    errs() << "Analyze "; 
+    errs() << "Analyze ";
     ii->print(errs());
     if (stateChanged)
       printState(state);
