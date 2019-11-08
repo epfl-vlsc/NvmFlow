@@ -2,8 +2,8 @@
 #include "Common.h"
 
 #include "BugData.h"
-#include "analysis_util/PersistLattice.h"
 #include "analysis_util/BugUtil.h"
+#include "analysis_util/PersistLattice.h"
 #include "ds/InstrInfo.h"
 #include "ds/Variable.h"
 
@@ -37,6 +37,9 @@ public:
 
       auto curLoc = context.getFullName(srcLoc);
       auto prevLoc = val.getFlushInfo();
+      if (curLoc == prevLoc)
+        return;
+
       auto* bugData = new DoubleFlushBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);

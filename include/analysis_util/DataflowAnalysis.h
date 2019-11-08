@@ -99,9 +99,9 @@ template <typename StateMachine> class DataflowAnalysis {
       return false;
 
 #ifdef DBGMODE
+    auto srcLoc = DbgInstr::getSourceLocation(ci);
     errs() << "Analyze call " << callee->getName() << " "
-           << DbgInstr::getSourceLocation(ci) << " " << newContext.getName()
-           << "\n";
+           << newContext.getFullName(srcLoc) << "\n";
     /*
     printState(state);
     */

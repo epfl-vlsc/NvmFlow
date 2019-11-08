@@ -36,6 +36,9 @@ public:
 
       auto curLoc = context.getFullName(srcLoc);
       auto prevLoc = val.getFlushInfo();
+      if (curLoc == prevLoc)
+        return;
+
       auto* bugData = new DoubleLogBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
