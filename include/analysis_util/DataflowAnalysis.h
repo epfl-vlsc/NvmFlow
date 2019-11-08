@@ -99,7 +99,9 @@ template <typename StateMachine> class DataflowAnalysis {
       return false;
 
 #ifdef DBGMODE
-    errs() << "Analyze call " << callee->getName() << "\n";
+    errs() << "Analyze call " << callee->getName() << " "
+           << DbgInstr::getSourceLocation(ci) << " " << newContext.getName()
+           << "\n";
     /*
     printState(state);
     */
@@ -142,8 +144,9 @@ template <typename StateMachine> class DataflowAnalysis {
     return true;
   }
 
-  bool applyTransfer(Instruction* i, AbstractState& state) {
-    return stateMachine.handleInstruction(i, state);
+  bool applyTransfer(Instruction* i, AbstractState& state,
+                     const Context& context) {
+    return stateMachine.handleInstruction(i, state, context);
   }
 
   bool analyzeStmt(Instruction* i, AbstractState& state, Function* caller,
@@ -153,7 +156,7 @@ template <typename StateMachine> class DataflowAnalysis {
       auto* ci = dyn_cast<CallBase>(i);
       return analyzeCall(ci, state, caller, context);
     } else {
-      return applyTransfer(i, state);
+      return applyTransfer(i, state, context);
     }
   }
 
