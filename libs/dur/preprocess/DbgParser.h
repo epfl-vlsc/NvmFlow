@@ -73,8 +73,8 @@ template <typename Globals> class DbgParser {
     fillStructTypes(ptrTypes, structTypes);
 
     // add to global dbg info
-    auto& funcSet = globals.functions.getAllAnalyzedFunctions();
-    globals.dbgInfo.addDbgInfoFunctions(funcSet, ptrTypes, structTypes);
+    auto& funcMap = globals.functions.getAllAnalyzedFunctions();
+    globals.dbgInfo.addDbgInfoFunctions(funcMap, ptrTypes, structTypes);
   }
 
   Globals& globals;

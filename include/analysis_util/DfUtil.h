@@ -23,6 +23,8 @@ public:
   }
 
   bool empty() const { return worklist.empty(); }
+
+  size_t size() const { return worklist.size(); }
 };
 
 const char* getCIStr(CallBase* ci) {
@@ -74,12 +76,12 @@ public:
     std::string name("top/");
     name.reserve(200);
 
-    for(auto* cb : callStack){
+    for (auto* cb : callStack) {
       auto* f = getCalledFunction(cb);
       name += f->getName().str();
       name += "/";
     }
-    
+
     return name;
   }
 

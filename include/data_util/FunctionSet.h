@@ -5,15 +5,11 @@ namespace llvm {
 
 class FunctionSet {
 protected:
-  std::set<Function*> fs;
+  std::unordered_set<Function*> fs;
 
 public:
-  FunctionSet(){}
-  FunctionSet(std::set<Function*>& fs_){
-    fs = std::move(fs_);
-  }
-
-  void insert(Function* f) { fs.insert(f); }
+  FunctionSet() {}
+  FunctionSet(std::unordered_set<Function*>& fs_) { fs = std::move(fs_); }
 
   auto begin() { return fs.begin(); }
 
@@ -31,11 +27,15 @@ public:
 
   auto size() const { return fs.size(); }
 
-  void remove(Function* f){
+  void remove(Function* f) {
     auto it = fs.find(f);
-    if(it != fs.end())
+    if (it != fs.end())
       fs.erase(it);
   }
+
+  void insert(Function* f) { fs.insert(f); }
+
+  void extend(FunctionSet& xs) { fs.insert(xs.begin(), xs.end()); }
 };
 
 } // namespace llvm

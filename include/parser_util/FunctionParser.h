@@ -23,8 +23,7 @@ template <typename Globals> class FunctionParser {
           Function* annotatedFunction =
               dyn_cast<Function>(CS->getOperand(0)->getOperand(0));
 
-          globals.functions.addAnnotFunc(annotatedFunction,
-                                                    annotation);
+          globals.functions.addAnnotFunc(annotatedFunction, annotation);
         }
       }
     }
@@ -36,12 +35,80 @@ template <typename Globals> class FunctionParser {
     }
   }
 
-  void insertAllAnalyzedFunctions() {
-    for (auto* function : globals.functions.getAnalyzedFunctions()) {
-      for (auto* f : globals.functions.getUnitFunctions(function)) {
-        globals.functions.insertToAllAnalyzed(f);
+  template <typename FunctionMap>
+  void addAllAnalyzed(Function* f, FunctionMap& fm) {
+    if (fm.count(f))
+      return;
+
+    fm[f];
+
+    for (auto& I : instructions(*f)) {
+      if (auto* cb = dyn_cast<CallBase>(&I)) {
+        auto* callee = getCalledFunction(cb);
+
+        bool notSeen = !fm.count(callee);
+        bool notSkipped = !globals.functions.skipFunction(callee);
+        if (notSeen && notSkipped) {
+          addAllAnalyzed(callee, fm);
+        }
       }
     }
+  }
+
+  template <typename FunctionMap>
+  void worklistFillAllAnalyzed(FunctionMap& fm) {
+    Worklist<Function*> worklist;
+    std::unordered_map<Function*, int> change;
+
+    for (auto& [f, _] : fm) {
+      worklist.insert(f);
+      change[f] = 0;
+      auto& fs = fm[f];
+      fs.insert(f);
+    }
+
+    while (!worklist.empty()) {
+      auto* f = worklist.popVal();
+
+      errs() << worklist.size() << "\n";
+
+      auto& fs = fm[f];
+      int curSize = fs.size();
+      int prevSize = change[f];
+
+      // not changed
+      if (curSize == prevSize) {
+        continue;
+      }
+
+      std::unordered_set<Function*> seen;
+      for (auto& I : instructions(*f)) {
+        if (auto* cb = dyn_cast<CallBase>(&I)) {
+          auto* callee = getCalledFunction(cb);
+          
+          bool notSeen = !seen.count(callee);
+          bool notSkipped = !globals.functions.skipFunction(callee);
+          bool notSelf = (callee != f);
+          if (notSeen && notSkipped && notSelf) {
+            auto& fsCallee = fm[callee];
+            fs.extend(fsCallee);
+            worklist.insert(callee);
+            seen.insert(callee);
+          }
+        }
+      }
+
+      change[f] = fs.size();
+      worklist.insert(f);
+    }
+  }
+
+  void fillAnalyzedFunctions() {
+    auto& fm = globals.functions.getAllAnalyzedFunctions();
+    for (auto* f : globals.functions.getAnalyzedFunctions()) {
+      addAllAnalyzed(f, fm);
+    }
+    worklistFillAllAnalyzed(fm);
   }
 
   virtual bool isKnownSkipFunction(Function* f) const {
@@ -49,7 +116,7 @@ template <typename Globals> class FunctionParser {
     return false;
   }
 
-  void insertSkipFunctions() {
+  void fillSkipFunctions() {
     for (auto& F : M) {
       if (F.isIntrinsic() || F.isDeclaration())
         continue;
@@ -67,11 +134,11 @@ template <typename Globals> class FunctionParser {
 public:
   FunctionParser(Module& M_, Globals& globals_) : M(M_), globals(globals_) {}
 
-  void parse(){
-    insertSkipFunctions();
+  void parse() {
+    fillSkipFunctions();
     addAnnotFuncs();
     addNamedFuncs();
-    insertAllAnalyzedFunctions();
+    fillAnalyzedFunctions();
   }
 };
 

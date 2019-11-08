@@ -37,8 +37,8 @@ std::string demangleFunctionName(Function* f) {
 class DbgInfo {
   // used for a temporary variable's type
 
-  void addLocalVariables(FunctionSet& funcSet) {
-    for (auto* f : funcSet) {
+  template <typename FunctionMap> void addLocalVariables(FunctionMap& funcMap) {
+    for (auto& [f, _] : funcMap) {
       for (auto& I : instructions(*f)) {
         Value* val = nullptr;
         DILocalVariable* var = nullptr;
@@ -64,10 +64,10 @@ class DbgInfo {
     }
   }
 
-  void addFunctionNames(FunctionSet& funcSet) {
+  template <typename FunctionMap> void addFunctionNames(FunctionMap& funcMap) {
     std::unordered_set<std::string> funcSetNames;
     for (auto& F : M) {
-      if (!funcSet.count(&F))
+      if (!funcMap.count(&F))
         continue;
 
       auto funcName = F.getName().str();
@@ -262,19 +262,20 @@ public:
 
   bool isTrackedType(Type* type) const { return trackedTypes.count(type); }
 
-  void addDbgInfoFunctions(FunctionSet& funcSet, std::set<Type*>& trackTypes,
+  template <typename FunctionMap>
+  void addDbgInfoFunctions(FunctionMap& funcMap, std::set<Type*>& trackTypes,
                            std::set<StructType*>& structTypes) {
-    addFunctionNames(funcSet);
+    addFunctionNames(funcMap);
     addTrackedTypes(trackTypes);
     addTypeFields(structTypes);
-    addLocalVariables(funcSet);
+    addLocalVariables(funcMap);
   }
 
   StructField* getStructField(StructType* st, int idx) {
     assertField(st, idx);
     assertInDs(fieldMap, st);
     auto& fields = fieldMap[st];
-    if(idx < fields.size())
+    if (idx < fields.size())
       return fields[idx];
     else
       return nullptr;

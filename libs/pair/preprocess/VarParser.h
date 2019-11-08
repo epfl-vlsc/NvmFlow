@@ -47,7 +47,7 @@ template <typename Globals> class VarParser {
   void addVars() {
     for (auto* f : globals.functions.getAnalyzedFunctions()) {
       globals.setActiveFunction(f);
-      auto funcSet = globals.functions.getUnitFunctionSet(f);
+      auto funcSet = globals.functions.getUnitFunctions(f);
       auto& AAR = globals.getAliasAnalysis();
 
       SparseAliasGroups ag(AAR);

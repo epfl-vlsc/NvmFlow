@@ -7,13 +7,15 @@
 namespace llvm {
 
 class FunctionsBase {
+  using FunctionMap = std::map<Function*, FunctionSet>;
+
 public:
   static constexpr const char* NVM = "NvmCode";
   static constexpr const char* SKIP = "SkipCode";
 
 protected:
   AnnotatedFunctions analyzedFunctions;
-  FunctionSet allAnalyzedFunctions;
+  FunctionMap allAnalyzedFunctions;
   AnnotatedFunctions skippedFunctions;
   StoreFunctions storeFunctions;
 
@@ -27,32 +29,17 @@ public:
 
   auto& getAllAnalyzedFunctions() { return allAnalyzedFunctions; }
 
-  void getUnitFunctions(Function* f, std::set<Function*>& visited) {
-    visited.insert(f);
-
-    for (auto& I : instructions(*f)) {
-      if (auto* ci = dyn_cast<CallBase>(&I)) {
-        auto* callee = getCalledFunction(ci);
-        bool doIp = !visited.count(callee) && !skipFunction(callee);
-        if (doIp) {
-          getUnitFunctions(callee, visited);
-        }
-      }
-    }
-  }
-
   auto getUnitFunctions(Function* f) {
-    std::set<Function*> visited;
-    getUnitFunctions(f, visited);
-    return visited;
+    assert(allAnalyzedFunctions.count(f));
+    return allAnalyzedFunctions[f];
   }
 
-  auto getUnitFunctionSet(Function* f) {
-    std::set<Function*> visited;
-    getUnitFunctions(f, visited);
-
-    FunctionSet funcSet(visited);
-    return funcSet;
+  bool funcCallsFunc(Function* from, Function* to) {
+    if (allAnalyzedFunctions.count(from)) {
+      auto& callees = allAnalyzedFunctions[from];
+      return callees.count(to);
+    }
+    return false;
   }
 
   bool isAnalyzedFunction(Function* f) const {
@@ -78,12 +65,7 @@ public:
     addNamedFuncChecker(f, name);
   }
 
-  void insertToAllAnalyzed(Function* f) { allAnalyzedFunctions.insert(f); }
-
-  void insertSkipFunction(Function* f) {
-    skippedFunctions.insert(f);
-    allAnalyzedFunctions.remove(f);
-  }
+  void insertSkipFunction(Function* f) { skippedFunctions.insert(f); }
 
   virtual void addAnnotFuncChecker(Function* f, StringRef annotation) = 0;
 
@@ -101,6 +83,21 @@ public:
     skippedFunctions.print(O);
     storeFunctions.print(O);
     printChecker(O);
+
+    O << "\n";
+  }
+
+  void printAllAnalyzed(raw_ostream& O) {
+    O << "Functions Info\n";
+    O << "--------------\n";
+
+    for (auto& [f, fs] : allAnalyzedFunctions) {
+      O << f->getName() << ":";
+      for (auto* callee : fs) {
+        O << callee->getName() << ",";
+      }
+      O << "\n";
+    }
 
     O << "\n";
   }

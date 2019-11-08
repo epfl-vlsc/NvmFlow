@@ -1,12 +1,23 @@
 #include "annot.h"
 
-int main() {
-  int a = 5;
-  if(cond())
-    mutateInt(a);
-  else
-    mutateInt(a);
+void f(int& a);
 
+void f2(int& a) {
+  mutateInt(a);
+  f(a);
+}
+
+void f(int& a) {
+  if (cond()) {
+    mutateInt(a);
+  } else {
+    f2(a);
+  }
+}
+
+int nvm_fnc main() {
+  int a = 5;
+  f(a);
   mutateInt(a);
   return 0;
 }
