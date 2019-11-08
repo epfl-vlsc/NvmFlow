@@ -32,12 +32,10 @@ public:
     if (val.isLogged()) {
       this->addBugLoc(srcLoc);
 
-      auto* prevInstr = this->getLastFlush(var, val);
       auto varName = var->getName();
 
-      auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
-
-      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto curLoc = context.getFullName(srcLoc);
+      auto prevLoc = val.getLocInfo();
       auto* bugData = new DoubleLogBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
@@ -58,7 +56,7 @@ public:
 
       auto varName = var->getName();
 
-      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto curLoc = context.getFullName(srcLoc);
       auto* bugData = new CommitBug(varName, curLoc);
       bugData->print(errs());
       this->addBugData(bugData);
@@ -80,7 +78,7 @@ public:
       auto* accessedVar = ii->getVariable();
       auto varName = accessedVar->getName();
 
-      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto curLoc = context.getFullName(srcLoc);
       auto* bugData = new OutTxBug(varName, curLoc);
       bugData->print(errs());
       this->addBugData(bugData);

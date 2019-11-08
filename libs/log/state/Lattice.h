@@ -92,6 +92,10 @@ public:
     }
   }
 
+  auto getLocInfo() const{
+    return std::string("");
+  }
+
   void print(raw_ostream& O) const {
     if (type == LogType) {
       logCommit.print(O);

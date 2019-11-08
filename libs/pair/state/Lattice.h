@@ -80,6 +80,10 @@ public:
     return dclCommit.getName() + " " + dclFlush.getName();
   }
 
+  auto getLocInfo() const{
+    return std::string("");
+  }
+
   void print(raw_ostream& O) const {
     dclCommit.print(O);
     O << " ";

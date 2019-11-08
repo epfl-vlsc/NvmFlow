@@ -32,13 +32,11 @@ public:
     if (val.isFlushed()) {
       this->addBugLoc(srcLoc);
 
-      auto* prevInstr = this->getLastFlush(var, val);
-
       auto varName = var->getName();
       auto srcLoc = DbgInstr::getSourceLocation(instr);
-      auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
-      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto curLoc = context.getFullName(srcLoc);
+      auto prevLoc = val.getLocInfo();
       auto* bugData = new DoubleFlushBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
@@ -70,7 +68,7 @@ public:
 
       auto varName = var->getName();
 
-      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto curLoc = context.getFullName(srcLoc);
       auto* bugData = new CommitPtrBug(varName, curLoc);
       bugData->print(errs());
       this->addBugData(bugData);

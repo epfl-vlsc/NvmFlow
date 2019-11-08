@@ -70,7 +70,7 @@ public:
     return name;
   }
 
-  auto getFullName() const {
+  auto getFullName(std::string& srcLoc) const {
     std::string name("top/");
     name.reserve(200);
 
@@ -79,6 +79,8 @@ public:
       name += f->getName().str();
       name += "/";
     }
+
+    name += " " + srcLoc;
     
     return name;
   }
