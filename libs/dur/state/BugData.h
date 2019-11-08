@@ -7,30 +7,30 @@ namespace llvm {
 
 struct CommitPtrBug : public BugData {
   std::string varName;
-  std::string srcLoc;
+  std::string curLoc;
 
-  CommitPtrBug(std::string& varName_, std::string& srcLoc_)
-      : varName(varName_), srcLoc(srcLoc_) {}
+  CommitPtrBug(std::string& varName_, std::string& curLoc_)
+      : varName(varName_), curLoc(curLoc_) {}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Commit assigned value to " + varName;
-    errs() << " at " + srcLoc;
+    errs() << "A) Commit assigned value to " + varName;
+    errs() << " at " + curLoc;
     O << "\n";
   }
 };
 
 struct DoubleFlushBug : public BugData {
   std::string varName;
-  std::string srcLoc;
+  std::string curLoc;
   std::string prevLoc;
 
-  DoubleFlushBug(std::string varName_, std::string srcLoc_,
+  DoubleFlushBug(std::string varName_, std::string curLoc_,
                  std::string prevLoc_)
-      : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_) {}
+      : varName(varName_), curLoc(curLoc_), prevLoc(prevLoc_) {}
 
   void print(raw_ostream& O) const {
-    errs() << "*) Double flush " + varName;
-    errs() << " at " + srcLoc + "\n";
+    errs() << "B) Double flush " + varName;
+    errs() << " at " + curLoc + "\n";
     errs() << "\tFlushed before at " + prevLoc;
     O << "\n";
   }

@@ -3,10 +3,10 @@
 int main() {
   int a = 5;
   if(cond())
-    mutateInt(a);
+    mutateInt(&a);
   else
-    mutateInt(a);
+    mutateInt(&a);
 
-  mutateInt(a);
+  mutateInt(&a);
   return 0;
 }

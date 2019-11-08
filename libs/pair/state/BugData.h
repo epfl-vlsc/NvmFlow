@@ -8,17 +8,17 @@ namespace llvm {
 struct CommitPairBug : public BugData {
   std::string varName;
   std::string prevName;
-  std::string srcLoc;
+  std::string curLoc;
   std::string prevLoc;
 
   CommitPairBug(std::string varName_, std::string prevName_,
-                std::string srcLoc_, std::string prevLoc_)
-      : varName(varName_), prevName(prevName_), srcLoc(srcLoc_),
+                std::string curLoc_, std::string prevLoc_)
+      : varName(varName_), prevName(prevName_), curLoc(curLoc_),
         prevLoc(prevLoc_) {}
 
   void print(raw_ostream& O) const {
-    O << "Persist) For " + varName;
-    O << " at " + srcLoc + "\n";
+    O << "A) For " + varName;
+    O << " at " + curLoc + "\n";
     O << "\tCommit " + prevName;
     O << " at " + prevLoc;
     O << "\n";
@@ -27,16 +27,16 @@ struct CommitPairBug : public BugData {
 
 struct DoubleFlushBug : public BugData {
   std::string varName;
-  std::string srcLoc;
+  std::string curLoc;
   std::string prevLoc;
 
-  DoubleFlushBug(std::string varName_, std::string srcLoc_,
+  DoubleFlushBug(std::string varName_, std::string curLoc_,
                  std::string prevLoc_)
-      : varName(varName_), srcLoc(srcLoc_), prevLoc(prevLoc_){}
+      : varName(varName_), curLoc(curLoc_), prevLoc(prevLoc_){}
 
   void print(raw_ostream& O) const {
-    O << "Dflush) Double flush " + varName;
-    O << " at " + srcLoc + "\n";
+    O << "B) Double flush " + varName;
+    O << " at " + curLoc + "\n";
     O << "\tFlushed before at " + prevLoc;
     O << "\n";
   }
@@ -50,7 +50,7 @@ struct VolatileSentinelBug : public BugData {
       : varName(varName_), funcName(funcName_) {}
 
   void print(raw_ostream& O) const {
-    O << "Sentinel) Commit " + varName;
+    O << "C) Commit " + varName;
     O << " at the end of " + funcName;
     O << "\n";
   }

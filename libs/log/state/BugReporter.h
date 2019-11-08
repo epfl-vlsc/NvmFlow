@@ -37,8 +37,8 @@ public:
 
       auto prevLoc = DbgInstr::getSourceLocation(prevInstr);
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new DoubleLogBug(varName, loc1, prevLoc);
+      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto* bugData = new DoubleLogBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
     }
@@ -58,8 +58,8 @@ public:
 
       auto varName = var->getName();
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new CommitBug(varName, loc1);
+      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto* bugData = new CommitBug(varName, curLoc);
       bugData->print(errs());
       this->addBugData(bugData);
     }
@@ -80,8 +80,8 @@ public:
       auto* accessedVar = ii->getVariable();
       auto varName = accessedVar->getName();
 
-      auto loc1 = context.getFullName() + " - " + srcLoc;
-      auto* bugData = new OutTxBug(varName, loc1);
+      auto curLoc = context.getFullName() + " - " + srcLoc;
+      auto* bugData = new OutTxBug(varName, curLoc);
       bugData->print(errs());
       this->addBugData(bugData);
     }
