@@ -2,7 +2,7 @@
 #include "Common.h"
 
 #include "BugData.h"
-#include "Lattice.h"
+#include "analysis_util/PersistLattice.h"
 #include "analysis_util/BugUtil.h"
 #include "ds/InstrInfo.h"
 #include "ds/Variable.h"
@@ -48,7 +48,7 @@ public:
       auto varName = var->getName();
 
       auto curLoc = context.getFullName(srcLoc);
-      auto prevLoc = val.getLocInfo();
+      auto prevLoc = val.getFlushInfo();
       auto* bugData = new DoubleFlushBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);
@@ -74,7 +74,7 @@ public:
         auto prevName = otherVar->getName();
 
         auto curLoc = context.getFullName(srcLoc);
-        auto prevLoc = otherVal.getLocInfo();
+        auto prevLoc = otherVal.getCommitInfo();
         auto* bugData = new CommitPairBug(varName, prevName, curLoc, prevLoc);
         bugData->print(errs());
         this->addBugData(bugData);

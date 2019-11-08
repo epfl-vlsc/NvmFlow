@@ -1,19 +1,29 @@
 #pragma once
 #include "Common.h"
+#include "DfUtil.h"
 
 namespace llvm {
 
 struct DclCommit {
-  enum State { Write, Flush, Fence, Unseen};
+  enum State { Write, Flush, Fence, Unseen };
   static const constexpr char* Str[] = {"Write", "Flush", "Fence", "Unseen"};
 
   State state;
+  Instruction* i;
+  Context c;
 
-  DclCommit(State state_) : state(state_) {}
+  void setValue(State state_, Instruction* i_, const Context& c_) {
+    state = state_;
+    i = i_;
+    c = c_;
+  }
 
-  DclCommit(const DclCommit& X) : state(X.state) {}
+  DclCommit(State state_, Instruction* i_, const Context& c_)
+      : state(state_), i(i_), c(c_) {}
 
-  DclCommit() : state(Unseen) {}
+  DclCommit(const DclCommit& X) : state(X.state), i(X.i), c(X.c) {}
+
+  DclCommit() : state(Unseen), i(nullptr) {}
 
   bool operator<(const DclCommit& X) const { return state < X.state; }
 
@@ -24,12 +34,23 @@ struct DclCommit {
   void meetValue(const DclCommit& X) {
     if (state > X.state) {
       state = X.state;
+      i = X.i;
+      c = X.c;
     }
   }
 
   auto getName() const {
     auto name = std::string("commit:") + Str[(int)state];
     return name;
+  }
+
+  auto getInfo() const {
+    if(i){
+      auto srcLoc = DbgInstr::getSourceLocation(i);
+      return c.getFullName(srcLoc);
+    }
+
+    return std::string("");
   }
 
   void print(raw_ostream& O) const { O << getName(); }
@@ -40,12 +61,21 @@ struct DclFlush {
   static const constexpr char* Str[] = {"Flush", "Write", "Unseen"};
 
   State state;
+  Instruction* i;
+  Context c;
 
-  DclFlush(State state_) : state(state_) {}
+  void setValue(State state_, Instruction* i_, const Context& c_) {
+    state = state_;
+    i = i_;
+    c = c_;
+  }
 
-  DclFlush(const DclFlush& X) : state(X.state) {}
+  DclFlush(State state_, Instruction* i_, const Context& c_)
+      : state(state_), i(i_), c(c_) {}
 
-  DclFlush() : state(Unseen) {}
+  DclFlush(const DclFlush& X) : state(X.state), i(X.i), c(X.c) {}
+
+  DclFlush() : state(Unseen), i(nullptr) {}
 
   bool operator<(const DclFlush& X) const { return state < X.state; }
 
@@ -56,6 +86,8 @@ struct DclFlush {
   void meetValue(const DclFlush& X) {
     if (state > X.state) {
       state = X.state;
+      i = X.i;
+      c = X.c;
     }
   }
 
@@ -64,40 +96,16 @@ struct DclFlush {
     return name;
   }
 
-  void print(raw_ostream& O) const { O << getName(); }
-};
-
-struct SclCommit {
-  enum State { Write, Fence, Unseen };
-  static const constexpr char* Str[] = {"Write", "Fence", "Unseen"};
-
-  State state;
-
-  SclCommit(State state_) : state(state_) {}
-
-  SclCommit(const SclCommit& X) : state(X.state) {}
-
-  SclCommit() : state(Unseen) {}
-
-  bool operator<(const SclCommit& X) const { return state < X.state; }
-
-  bool operator==(const SclCommit& X) const { return state == X.state; }
-
-  bool operator!=(const SclCommit& X) const { return state != X.state; }
-
-  void meetValue(const SclCommit& X) {
-    if (state > X.state) {
-      state = X.state;
+  auto getInfo() const {
+    if(i){
+      auto srcLoc = DbgInstr::getSourceLocation(i);
+      return c.getFullName(srcLoc);
     }
-  }
 
-  auto getName() const {
-    auto name = std::string("scl:") + Str[(int)state];
-    return name;
+    return std::string("");
   }
 
   void print(raw_ostream& O) const { O << getName(); }
 };
-
 
 } // namespace llvm

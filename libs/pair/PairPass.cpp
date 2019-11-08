@@ -9,7 +9,7 @@
 #include "parser_util/Parser.h"
 
 #include "state/BugReporter.h"
-#include "state/Lattice.h"
+#include "analysis_util/PersistLattice.h"
 #include "state/Transfer.h"
 
 namespace llvm {

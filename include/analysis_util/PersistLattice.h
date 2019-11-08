@@ -1,7 +1,7 @@
 #pragma once
 #include "Common.h"
 
-#include "analysis_util/PersistLattices.h"
+#include "PersistLattices.h"
 
 namespace llvm {
 
@@ -14,10 +14,6 @@ public:
 
   Lattice(const Lattice& X) { *this = X; }
 
-  std::pair<int, int> getValuePair() const {
-    return std::pair((int)dclCommit.state, (int)dclFlush.state);
-  }
-
   Lattice meet(const Lattice& X) {
     dclCommit.meetValue(X.dclCommit);
     dclFlush.meetValue(X.dclFlush);
@@ -26,24 +22,23 @@ public:
 
   static Lattice getInit() { return Lattice(); }
 
-  static Lattice getWrite(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Write;
-    lattice.dclFlush.state = DclFlush::Write;
+  static Lattice getWrite(Lattice lattice, Instruction* i, const Context& c) {
+    lattice.dclCommit.setValue(DclCommit::Write, i, c);
+    lattice.dclFlush.setValue(DclFlush::Write, i, c);
     return lattice;
   }
 
-  static Lattice getFlush(Lattice lattice, bool useFence) {
-    if (useFence)
-      lattice.dclCommit.state = DclCommit::Fence;
-    else
-      lattice.dclCommit.state = DclCommit::Flush;
+  static Lattice getFlush(Lattice lattice, bool useFence, Instruction* i,
+                          const Context& c) {
+    auto dclCommitState = (useFence) ? DclCommit::Fence : DclCommit::Flush;
 
-    lattice.dclFlush.state = DclFlush::Flush;
+    lattice.dclCommit.setValue(dclCommitState, i, c);
+    lattice.dclFlush.setValue(DclFlush::Flush, i, c);
     return lattice;
   }
 
-  static Lattice getFence(Lattice lattice) {
-    lattice.dclCommit.state = DclCommit::Fence;
+  static Lattice getFence(Lattice lattice, Instruction* i, const Context& c) {
+    lattice.dclCommit.setValue(DclCommit::Fence, i, c);
     return lattice;
   }
 
@@ -63,6 +58,19 @@ public:
             dclFlush.state == DclFlush::Write);
   }
 
+  bool isWriteCommit() const { return dclCommit.state == DclCommit::Write; }
+
+  bool isDclFlush() const {
+    return dclCommit.state == DclCommit::Flush &&
+           dclFlush.state == DclFlush::Flush;
+  }
+
+  bool isFinal() const {
+    return (dclCommit.state == DclCommit::Fence ||
+            dclCommit.state == DclCommit::Unseen) &&
+           dclFlush.state == DclFlush::Flush;
+  }
+
   bool isWriteFlush() const {
     return dclCommit.state == DclCommit::Write ||
            dclCommit.state == DclCommit::Flush;
@@ -74,9 +82,9 @@ public:
     return dclCommit.getName() + " " + dclFlush.getName();
   }
 
-  auto getLocInfo() const{
-    return std::string("");
-  }
+  auto getCommitInfo() const { return dclCommit.getInfo(); }
+
+  auto getFlushInfo() const { return dclFlush.getInfo(); }
 
   void print(raw_ostream& O) const {
     dclCommit.print(O);

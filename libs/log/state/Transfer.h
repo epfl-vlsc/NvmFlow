@@ -17,7 +17,7 @@ template <typename Globals, typename BReporter> class Transfer {
 
     auto& val = state[var];
 
-    val = Lattice::getLogged();
+    val = Lattice::getLogged(instr, context);
   }
 
   bool handleLog(InstrInfo* ii, AbstractState& state, const Context& context) {

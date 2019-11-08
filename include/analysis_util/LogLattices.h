@@ -1,11 +1,12 @@
 #pragma once
 #include "Common.h"
+#include "DfUtil.h"
 
 namespace llvm {
 
 struct TxValue {
-  using TxState = int;
-  TxState state;
+  using State = int;
+  State state;
 
   TxValue(int state_) : state(state_) {}
 
@@ -32,19 +33,27 @@ struct TxValue {
 };
 
 template <bool normal> struct LogValue {
-  enum LogState { Unseen, Logged };
+  enum State { Unseen, Logged };
   static const constexpr char* Str[] = {"Unseen", "Logged"};
 
   const char* str;
-  LogState state;
+  State state;
+  Instruction* i;
+  Context c;
 
-  LogValue(LogState state_) : state(state_) {}
+  void setValue(State state_, Instruction* i_, const Context& c_){
+    state = state_;
+    i = i_;
+    c = c_;
+  }
 
-  LogValue(const LogValue& X) : state(X.state) {}
+  LogValue(State state_, Instruction* i_, const Context& c_) : state(state_), i(i_), c(c_) {}
 
-  LogValue() : state(Unseen) {}
+  LogValue(const LogValue& X) : state(X.state), i(X.i), c(X.c) {}
 
-  LogValue(const char* str_) : str(str_), state(Unseen) {}
+  LogValue() : state(Unseen), i(nullptr) {}
+
+  LogValue(const char* str_) : str(str_), state(Unseen), i(nullptr) {}
 
   bool operator<(const LogValue& X) const { return state < X.state; }
 
@@ -54,10 +63,14 @@ template <bool normal> struct LogValue {
     if (normal) {
       if (state > X.state) {
         state = X.state;
+        i = X.i;
+        c = X.c;
       }
     } else {
       if (state < X.state) {
         state = X.state;
+        i = X.i;
+        c = X.c;
       }
     }
   }
@@ -67,6 +80,15 @@ template <bool normal> struct LogValue {
     name += ":";
     name += Str[(int)state];
     return name;
+  }
+
+  auto getInfo() const {
+    if(i){
+      auto srcLoc = DbgInstr::getSourceLocation(i);
+      return c.getFullName(srcLoc);
+    }
+
+    return std::string("");
   }
 
   void print(raw_ostream& O) const { O << getName(); }

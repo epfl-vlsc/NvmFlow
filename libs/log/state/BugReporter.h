@@ -35,7 +35,7 @@ public:
       auto varName = var->getName();
 
       auto curLoc = context.getFullName(srcLoc);
-      auto prevLoc = val.getLocInfo();
+      auto prevLoc = val.getFlushInfo();
       auto* bugData = new DoubleLogBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);

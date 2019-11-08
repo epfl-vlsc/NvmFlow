@@ -2,7 +2,7 @@
 #include "Common.h"
 
 #include "BugData.h"
-#include "Lattice.h"
+#include "analysis_util/PersistLattice.h"
 #include "analysis_util/BugUtil.h"
 #include "ds/InstrInfo.h"
 #include "ds/Variable.h"
@@ -36,7 +36,7 @@ public:
       auto srcLoc = DbgInstr::getSourceLocation(instr);
 
       auto curLoc = context.getFullName(srcLoc);
-      auto prevLoc = val.getLocInfo();
+      auto prevLoc = val.getFlushInfo();
       auto* bugData = new DoubleFlushBug(varName, curLoc, prevLoc);
       bugData->print(errs());
       this->addBugData(bugData);

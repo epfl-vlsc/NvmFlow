@@ -24,11 +24,6 @@ public:
   Lattice(LatticeType latticeType)
       : type(latticeType), logCommit("commit"), logFlush("flush") {}
 
-  std::pair<int, int> getValuePair() const {
-    assert(type == LogType);
-    return std::pair((int)logCommit.state, (int)logFlush.state);
-  }
-
   Lattice meet(const Lattice& X) {
     assert(type == X.type);
     if (type == LogType) {
@@ -47,10 +42,10 @@ public:
 
   static Lattice getInitTx() { return Lattice(TxType); }
 
-  static Lattice getLogged() {
+  static Lattice getLogged(Instruction* i, const Context& c) {
     Lattice lattice(LogType);
-    lattice.logCommit.state = LogCommit::Logged;
-    lattice.logFlush.state = LogFlush::Logged;
+    lattice.logCommit.setValue(LogCommit::Logged, i, c);
+    lattice.logFlush.setValue(LogFlush::Logged, i, c);
     return lattice;
   }
 
@@ -92,8 +87,12 @@ public:
     }
   }
 
-  auto getLocInfo() const{
-    return std::string("");
+  auto getCommitInfo() const{
+    return logCommit.getInfo();
+  }
+
+  auto getFlushInfo() const{
+    return logFlush.getInfo();
   }
 
   void print(raw_ostream& O) const {
