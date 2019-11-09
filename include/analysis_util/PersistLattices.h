@@ -25,14 +25,12 @@ struct DclCommit {
 
   DclCommit() : state(Unseen), i(nullptr) {}
 
-  bool operator<(const DclCommit& X) const { return state < X.state; }
+  bool operator<(const DclCommit& X) const { return std::tie(state, i, c) < std::tie(X.state, X.i, X.c); }
 
-  bool operator==(const DclCommit& X) const { return state == X.state; }
-
-  bool operator!=(const DclCommit& X) const { return state != X.state; }
+  bool operator==(const DclCommit& X) const { return std::tie(state, i, c) == std::tie(X.state, X.i, X.c); }
 
   void meetValue(const DclCommit& X) {
-    if (state > X.state) {
+    if (state >= X.state) {
       state = X.state;
       i = X.i;
       c = X.c;
@@ -45,7 +43,7 @@ struct DclCommit {
   }
 
   auto getInfo() const {
-    if(i){
+    if (i) {
       auto srcLoc = DbgInstr::getSourceLocation(i);
       return c.getFullName(srcLoc);
     }
@@ -77,14 +75,12 @@ struct DclFlush {
 
   DclFlush() : state(Unseen), i(nullptr) {}
 
-  bool operator<(const DclFlush& X) const { return state < X.state; }
+  bool operator<(const DclFlush& X) const { return std::tie(state, i, c) < std::tie(X.state, X.i, X.c);}
 
-  bool operator==(const DclFlush& X) const { return state == X.state; }
-
-  bool operator!=(const DclFlush& X) const { return state != X.state; }
+  bool operator==(const DclFlush& X) const { return std::tie(state, i, c) == std::tie(X.state, X.i, X.c); }
 
   void meetValue(const DclFlush& X) {
-    if (state > X.state) {
+    if (state >= X.state) {
       state = X.state;
       i = X.i;
       c = X.c;
@@ -97,7 +93,7 @@ struct DclFlush {
   }
 
   auto getInfo() const {
-    if(i){
+    if (i) {
       auto srcLoc = DbgInstr::getSourceLocation(i);
       return c.getFullName(srcLoc);
     }

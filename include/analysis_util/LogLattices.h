@@ -55,19 +55,19 @@ template <bool normal> struct LogValue {
 
   LogValue(const char* str_) : str(str_), state(Unseen), i(nullptr) {}
 
-  bool operator<(const LogValue& X) const { return state < X.state; }
+  bool operator<(const LogValue& X) const { return std::tie(state, i, c) < std::tie(X.state, X.i, X.c); }
 
-  bool operator==(const LogValue& X) const { return state == X.state; }
+  bool operator==(const LogValue& X) const { return std::tie(state, i, c) == std::tie(X.state, X.i, X.c); }
 
   void meetValue(const LogValue& X) {
     if (normal) {
-      if (state > X.state) {
+      if (state >= X.state) {
         state = X.state;
         i = X.i;
         c = X.c;
       }
     } else {
-      if (state < X.state) {
+      if (state <= X.state) {
         state = X.state;
         i = X.i;
         c = X.c;
