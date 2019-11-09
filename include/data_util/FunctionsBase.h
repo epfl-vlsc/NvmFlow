@@ -60,7 +60,8 @@ public:
   }
 
   bool isSkippedFunction(Function* f) const {
-    return !f || f->isIntrinsic() || skippedFunctions.count(f);
+    return !f || f->isIntrinsic() || f->isDeclaration() ||
+           skippedFunctions.count(f);
   }
 
   bool isStoreFunction(Function* f) const { return storeFunctions.count(f); }
