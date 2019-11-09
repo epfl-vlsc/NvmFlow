@@ -59,6 +59,18 @@ template <typename StateMachine> class DataflowAnalysis {
 
   AbstractState mergePrevStates(BasicBlock* block, Value* blockEntryKey,
                                 FunctionResults& results) {
+
+#ifdef DBGMODE
+    auto *initI = block->getFirstNonPHIOrDbgOrLifetime();
+    if(initI){
+      auto srcLoc = DbgInstr::getSourceLocation(initI);
+      errs() << "Analyze meet " << srcLoc << "\n";
+    }
+    /*
+    printState(state);
+    */
+#endif
+
     AbstractState mergedState;
     AbstractState& inState = results[blockEntryKey];
 
