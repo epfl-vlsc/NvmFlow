@@ -10,7 +10,7 @@ class NameFilter {
   static constexpr const char* PersistentName = "pmemobj_direct";
 
   static constexpr const char* storeFunctions[] = {"llvm.memcpy",
-                                                   "llvm.memmove"};
+                                                   "llvm.memmove", "strncpy"};
 
   static constexpr const char* flushFunctions[] = {"_Z8pm_flushPKv"};
 
@@ -28,10 +28,7 @@ class NameFilter {
 
   static constexpr const char* loggingFunctions[] = {"tx_log"};
 
-  static constexpr const char* allocFunctions[] = {
-      "pm_malloc",
-      "pmalloc"
-  };
+  static constexpr const char* allocFunctions[] = {"pm_malloc", "pmalloc"};
 
   static constexpr const size_t ElementSize = sizeof(const char*);
 
