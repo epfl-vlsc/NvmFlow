@@ -27,7 +27,7 @@ $(BC_DIR)/%.bc: $(SRC_DIR)/%.cpp
 	opt -mem2reg $(SIMP_FLAGS) -o $@ $@ > /dev/null 2>&1
 
 $(BC_DIR)/%.bc: $(SRC_DIR)/%.c
-	clang++ $(INITOPT) $(LLVM_FLAGS) $(INC_FLAGS) -o $@ $<
+	clang $(INITOPT) $(LLVM_FLAGS) $(INC_FLAGS) -o $@ $<
 	opt $(ALLOC_FLAGS) -o $@ $@ > /dev/null 2>&1
 	opt $(CONS_FLAGS) -o $@ $@ > /dev/null 2>&1
 	opt -mem2reg $(SIMP_FLAGS) -o $@ $@ > /dev/null 2>&1
