@@ -112,13 +112,19 @@ class InstrParser {
   }
 
   static auto parseTxAlloc(Instruction* i) {
+    auto* cb = dyn_cast<CallBase>(i);
+    assert(cb);
     auto* storeInst = getStoreFromTxAlloc(i);
-    LocalVarVisitor lvv;
+    LocalVarVisitor lvv(true);
     auto* allocVal = lvv.visit(*storeInst);
     auto* obj = dyn_cast<AllocaInst>(allocVal);
-    assert(obj);
-    
-    auto* type = getRealTxAllocType(obj);
+
+    if (!obj) {
+      errs() << *storeInst << " " << *allocVal << "\n";
+      report_fatal_error("parse tx alloc failed");
+    }
+
+    auto* type = getRealTxAllocType(cb, obj);
     return ParsedVariable(i, obj, i, type, false);
   }
 

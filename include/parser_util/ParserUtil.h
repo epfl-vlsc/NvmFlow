@@ -26,29 +26,49 @@ StructType* getToidTxAllocType(Value* v) {
 
 bool isTxAllocType(Value* v) {
   if (auto* toidType = getToidTxAllocType(v)) {
-    auto toidStName = toidType->getStructName(); 
+    auto toidStName = toidType->getStructName();
     if (toidStName.contains("_toid"))
       return true;
   }
   return false;
 }
 
-Type* getRealTxAllocType(AllocaInst* ai) {
+bool hasToidType(StructType* st, StructType* toid) {
+  for (auto* field : st->elements()) {
+    if (auto* array = dyn_cast<ArrayType>(field)) {
+      auto* eleType = array->getArrayElementType();
+      if (eleType == toid)
+        return true;
+    } else if (field == toid) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+Type* getRealTxAllocType(CallBase* txAlloc, AllocaInst* ai) {
+  auto* sizeVal = txAlloc->getOperand(0);
+  auto* sizeConst = dyn_cast<ConstantInt>(sizeVal);
+  auto size = sizeConst->getZExtValue();
+
   auto* m = ai->getParent()->getParent()->getParent();
   auto* toidSt = getToidTxAllocType(ai);
 
+  auto& dl = m->getDataLayout();
   for (auto* st : m->getIdentifiedStructTypes()) {
-    auto numElements = st->getNumElements();
-    if(numElements != 3)
+    if (!st->isSized())
       continue;
 
-    auto* possibleToId = st->getElementType(2);
-    if(possibleToId == toidSt){
+    auto stSize = dl.getTypeStoreSize(st);
+    if (stSize != size)
+      continue;
+
+    if (hasToidType(st, toidSt))
       return st->getPointerTo();
-    }
-      
   }
 
+  errs() << *ai << " " << toidSt->getStructName() << "\n";
   report_fatal_error("toid unmatched");
   return nullptr;
 }
