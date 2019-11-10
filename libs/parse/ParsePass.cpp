@@ -5,8 +5,8 @@
 #include "llvm/Analysis/CFLAndersAliasAnalysis.h"
 #include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 
-#include "parser_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
+#include "parser_util/AliasGroups.h"
 #include "parser_util/InstrParser.h"
 
 #include <algorithm>
@@ -61,25 +61,24 @@ bool ParsePass::runOnModule(Module& M) {
   for (auto& F : M) {
     if (F.isIntrinsic() || F.isDeclaration() || isSkipFunction(F))
       continue;
-/*
-    if(!F.getName().equals("__pmfs_xip_file_write"))
+
+    if (!F.getName().equals("main") && !F.getName().contains("ipafnc"))
       continue;
-*/
+
     errs() << "function:" << F.getName() << "\n";
     for (auto& I : instructions(F)) {
-      errs() << I << "\n";
 
       auto pvLhs = InstrParser::parseVarLhs(&I);
       if (!pvLhs.isUsed())
         continue;
       pvLhs.print(errs());
 
+      errs() << I << "\n";
+
       auto pvRhs = InstrParser::parseVarRhs(&I);
       if (!pvRhs.isUsed())
         continue;
       pvRhs.print(errs());
-
-      
     }
   }
 

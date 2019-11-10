@@ -7,8 +7,10 @@ struct DurInt {
 
   void nvm_fnc correct() {
     int* ptr = (int*)pm_malloc(sizeof(int));
-    x(ptr);
-    pm_flushfence(ptr);
+    if (cond())
+      x(ptr);
+    else
+      pm_flushfence(ptr);
     valid = ptr;
   }
 };

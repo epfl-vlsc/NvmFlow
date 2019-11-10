@@ -7,8 +7,8 @@
 
 #include "llvm/Analysis/AliasSetTracker.h"
 
-#include "parser_util/AliasGroups.h"
 #include "analysis_util/DfUtil.h"
+#include "parser_util/AliasGroups.h"
 #include "parser_util/InstrParser.h"
 
 #include <cassert>
@@ -16,52 +16,7 @@
 using namespace std;
 namespace llvm {
 
-void ExpPass::print(raw_ostream& OS, const Module* m) const {
-  OS << "pass\n";
-}
-
-struct AA {
-  std::set<Value*> values;
-  AliasGroups ag;
-
-  AA(Module& M, AAResults& AAR) : ag(AAR) {
-    auto& F = *M.getFunction("main");
-    traverse(F);
-    analyze(AAR);
-    ag.print(errs());
-  }
-
-  void traverse(Function& F) {
-    errs() << F.getName() << "\n";
-    for (auto& I : instructions(F)) {
-      auto pv = InstrParser::parseVarLhs(&I);
-      if (pv.isUsed()) {
-        pv.print(errs());
-        auto* obj = pv.getObj();
-        auto* opnd = pv.getOpnd();
-
-        values.insert(obj);
-        values.insert(opnd);
-
-        ag.insert(opnd);
-        //ag.insert(obj);
-      } else if (auto* ci = dyn_cast<CallInst>(&I)) {
-        auto* f = ci->getCalledFunction();
-        if (f->isDeclaration() || f->isIntrinsic())
-          continue;
-
-        traverse(*f);
-      }
-    }
-  }
-
-  void analyze(AAResults& AAR) {
-    errs() << "Analyze\n";
-    for (Value* v1 : values)
-      for (Value* v2 : values)
-        errs() << AAR.alias(v1, v2) << " " << *v1 << " " << *v2 << "\n";
-  }
-};
+void ExpPass::print(raw_ostream& OS, const Module* m) const { OS << "pass\n"; }
 
 bool ExpPass::runOnModule(Module& M) {
   AAResults AAR(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
@@ -69,13 +24,39 @@ bool ExpPass::runOnModule(Module& M) {
   auto& cflResult = getAnalysis<CFLSteensAAWrapperPass>().getResult();
   AAR.addAAResult(cflResult);
 
-  AA a(M, AAR);
-  // printPV(M);
-  // runAlias(M, AAR);
-  // runAliasGroup(M, AAR);
-  // runAliasSetTracker(M, AAR);
-  // runAliasAnders(M, cflResult);
+  std::unordered_set<Value*> as;
+  for (auto& F : M) {
+    if (F.isIntrinsic() || F.isDeclaration())
+      continue;
 
+    if (!F.getName().equals("main") && !F.getName().contains("ipafnc"))
+      continue;
+
+    errs() << "function:" << F.getName() << "\n";
+    for (auto& I : instructions(F)) {
+
+      auto pv = InstrParser::parseVarLhs(&I);
+      if (!pv.isUsed() || !pv.isPersistentVar())
+        continue;
+      pv.print(errs());
+      auto* alias = pv.getObjAlias();
+      errs() << *alias << "\n";
+      as.insert(alias);
+
+      errs() << I << "\n";
+    }
+  }
+
+  std::unordered_set<Value*> seen;
+  for (auto* p1 : as) {
+    for (auto* p2 : as) {
+      if(seen.count(p2))
+        continue;
+      auto r = AAR.alias(p1, p2);
+      errs() << r << " " << *p1 << " " << *p2 << "\n";
+    }
+    seen.insert(p1);
+  }
   return false;
 }
 
