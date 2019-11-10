@@ -88,6 +88,10 @@ template <typename Globals> class VarParser {
         ai.insert(alias);
       }
     }
+
+    #ifdef DBGMODE
+    ai.print(errs());
+    #endif
   }
 
   void addVars() {
@@ -96,7 +100,7 @@ template <typename Globals> class VarParser {
       auto funcSet = globals.functions.getUnitFunctionSet(f);
       auto& AAR = globals.getAliasAnalysis();
 
-      AliasGroups ag(AAR);
+      Sparse2AliasGroups ag(AAR);
       createAliasSets(funcSet, ag);
       addInstrInfo(funcSet, ag);
     }

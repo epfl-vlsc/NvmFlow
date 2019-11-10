@@ -112,16 +112,13 @@ class InstrParser {
   }
 
   static auto parseTxAlloc(Instruction* i) {
-    auto* extVal = i->user_back();
-    auto* extInst = dyn_cast<Instruction>(extVal);
-    assert(isa<ExtractValueInst>(extInst));
-    auto* storeVal = extInst->user_back();
-    auto* storeInst = dyn_cast<Instruction>(storeVal);
+    auto* storeInst = getStoreFromTxAlloc(i);
     LocalVarVisitor lvv;
     auto* allocVal = lvv.visit(*storeInst);
     auto* obj = dyn_cast<AllocaInst>(allocVal);
     assert(obj);
-    auto* type = obj->getType();
+    
+    auto* type = getRealTxAllocType(obj);
     return ParsedVariable(i, obj, i, type, false);
   }
 

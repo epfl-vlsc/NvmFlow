@@ -3,6 +3,56 @@
 
 namespace llvm {
 
+StoreInst* getStoreFromTxAlloc(Instruction* i) {
+  auto* extVal = i->user_back();
+  auto* extInst = dyn_cast<Instruction>(extVal);
+  assert(isa<ExtractValueInst>(extInst));
+  auto* storeVal = extInst->user_back();
+  auto* storeInst = dyn_cast<StoreInst>(storeVal);
+  assert(storeInst);
+  return storeInst;
+}
+
+StructType* getToidTxAllocType(Value* v) {
+  auto* type = v->getType();
+  if (auto* ptrType = dyn_cast<PointerType>(type)) {
+    auto* eleType = ptrType->getPointerElementType();
+    if (auto* objType = dyn_cast<StructType>(eleType)) {
+      return objType;
+    }
+  }
+  return nullptr;
+}
+
+bool isTxAllocType(Value* v) {
+  if (auto* toidType = getToidTxAllocType(v)) {
+    auto toidStName = toidType->getStructName(); 
+    if (toidStName.contains("_toid"))
+      return true;
+  }
+  return false;
+}
+
+Type* getRealTxAllocType(AllocaInst* ai) {
+  auto* m = ai->getParent()->getParent()->getParent();
+  auto* toidSt = getToidTxAllocType(ai);
+
+  for (auto* st : m->getIdentifiedStructTypes()) {
+    auto numElements = st->getNumElements();
+    if(numElements != 3)
+      continue;
+
+    auto* possibleToId = st->getElementType(2);
+    if(possibleToId == toidSt){
+      return st->getPointerTo();
+    }
+      
+  }
+
+  report_fatal_error("toid unmatched");
+  return nullptr;
+}
+
 Value* stripCasts(Value* v) {
   assert(v);
   while (true) {

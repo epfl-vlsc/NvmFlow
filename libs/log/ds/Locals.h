@@ -56,7 +56,7 @@ public:
   }
 
   void addInstrInfo(Instruction* i, InstrType instrType, Variable* var,
-                    ParsedVariable pv) {
+                    ParsedVariable& pv) {
     assert(activeUnit);
     auto& iiMap = activeUnit->iiMap;
     auto ii = InstrInfo(i, instrType, var, pv);
@@ -152,13 +152,9 @@ void UnitInfo::print(raw_ostream& O) const {
   }
 
   O << "inst to vars sample:---\n";
-  /*
   for (auto& [i, ii] : iiMap) {
-    if (!ii.isIpInstr())
-      O << "\t";
       ii.print(O);
   }
-  */
 }
 
 } // namespace llvm

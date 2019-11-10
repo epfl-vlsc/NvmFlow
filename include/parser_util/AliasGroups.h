@@ -110,4 +110,55 @@ struct SparseAliasGroups : public AliasGroupsBase {
   SparseAliasGroups(AAResults& AAR_) : AliasGroupsBase(AAR_) {}
 };
 
+
+struct Sparse2AliasGroups : public AliasGroupsBase {
+  Function* getFunction(Value* v) const{
+    if(auto* i = dyn_cast<Instruction>(v)){
+      return i->getParent()->getParent();
+    }else if(auto* a = dyn_cast<Argument>(v)){
+      return a->getParent();
+    }
+
+    report_fatal_error("alias crash");
+    return nullptr;
+  }
+
+  void insert(Value* v) {
+    // todo check
+    auto* type = v->getType();
+    if (!type->isPointerTy())
+      return;
+
+    auto *fv = getFunction(v);
+
+    int setNo = 0;
+    for (auto& aliasSet : aliasSets) {
+      bool addSet = true;
+      for (auto* e : aliasSet) {
+        auto* fe = getFunction(e);
+        auto res = AAR.alias(v, e);
+        if (res == NoAlias) {
+          addSet = false;
+          break;
+        }else if(fe == fv && v!=e){
+          addSet = false;
+          break;
+        }
+      }
+
+      if (addSet) {
+        addToAliasSet(v, setNo);
+        return;
+      }
+
+      setNo++;
+    }
+
+    // create new set
+    aliasSets.push_back(AliasSet());
+    addToAliasSet(v, setNo);
+  }
+
+  Sparse2AliasGroups(AAResults& AAR_) : AliasGroupsBase(AAR_) {}
+};
 } // namespace llvm

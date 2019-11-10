@@ -2,6 +2,7 @@
 #include "Common.h"
 
 #include "LocalVarVisitor.h"
+#include "ParserUtil.h"
 
 #include "data_util/NameFilter.h"
 
@@ -95,16 +96,11 @@ struct ParsedVariable {
   bool isCallInst() const { return CallIns == ic; }
 
   bool isPersistentVar() const {
-    assert(obj && type);
+    assert(obj);
 
     // txalloc
-    if (auto* ptrType = dyn_cast<PointerType>(type)) {
-      auto* eleType = ptrType->getPointerElementType();
-      if (auto* objType = dyn_cast<StructType>(eleType)) {
-        auto objName = objType->getStructName();
-        if (objName.contains("_toid") && isCallInst())
-          return true;
-      }
+    if (isCallInst() && isTxAllocType(obj)) {
+      return true;
     }
 
     return NameFilter::isPersistentVar(obj);
@@ -245,8 +241,12 @@ struct ParsedVariable {
     if (obj)
       O << " (obj:" << *obj << ")";
 
-    if (type)
-      O << " (type:" << *type << ")";
+    O << " (type:";
+    if (auto* typeSt = dyn_cast<StructType>(type))
+      O << typeSt->getStructName();
+    else
+      O << *type;
+    O << ")";
 
     // optional part
     if (isField())
