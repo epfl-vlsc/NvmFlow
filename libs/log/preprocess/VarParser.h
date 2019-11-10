@@ -8,19 +8,6 @@
 namespace llvm {
 
 template <typename Globals> class VarParser {
-  bool isSkipPv(ParsedVariable& pv) {
-    if (!pv.isUsed())
-      return true;
-
-    if (pv.isField()) {
-      auto [st, idx] = pv.getStructInfo();
-
-      return !globals.dbgInfo.isUsedStructType(st);
-    }
-
-    return false;
-  }
-
   template <typename AliasInfo>
   void addInstrInfo(FunctionSet& funcSet, AliasInfo& ai) {
     std::set<std::pair<StructType*, int>> seenSts;
@@ -34,7 +21,8 @@ template <typename Globals> class VarParser {
 
         // check non variable based parsing
         if (InstrInfo::isNonVarInstr(instrType)) {
-          globals.locals.addInstrInfo(&I, instrType, nullptr, ParsedVariable());
+          auto pv = ParsedVariable();
+          globals.locals.addInstrInfo(&I, instrType, nullptr, pv);
           continue;
         }
 
@@ -86,12 +74,18 @@ template <typename Globals> class VarParser {
 
         // lhs-----------------------------------
         auto pv = InstrParser::parseVarLhs(&I);
-        if (isSkipPv(pv))
+        if (!pv.isUsed() || !pv.isPersistentVar())
           continue;
 
-        auto* aliasLhs = pv.getObjAlias();
+        if (pv.isField()) {
+          auto [st, idx] = pv.getStructInfo();
 
-        ai.insert(aliasLhs);
+          if (!globals.dbgInfo.isUsedStructType(st))
+            continue;
+        }
+
+        auto* alias = pv.getObjAlias();
+        ai.insert(alias);
       }
     }
   }

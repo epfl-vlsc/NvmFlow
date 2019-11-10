@@ -34,7 +34,6 @@ bool ExpPass::runOnModule(Module& M) {
 
     errs() << "function:" << F.getName() << "\n";
     for (auto& I : instructions(F)) {
-
       auto pv = InstrParser::parseVarLhs(&I);
       if (!pv.isUsed() || !pv.isPersistentVar())
         continue;

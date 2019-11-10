@@ -2,6 +2,7 @@
 #include "Common.h"
 
 #include "LocalVarVisitor.h"
+
 #include "data_util/NameFilter.h"
 
 namespace llvm {
@@ -87,16 +88,25 @@ struct ParsedVariable {
 
   bool isLocRef() const { return rc == LocRef; }
 
-  bool isObjPtrVar() const {
-    return isObj() && isPtr() && isVarRef();
-  }
+  bool isObjPtrVar() const { return isObj() && isPtr() && isVarRef(); }
 
   bool isStoreInst() const { return StoreIns == ic; }
 
   bool isCallInst() const { return CallIns == ic; }
 
   bool isPersistentVar() const {
-    assert(obj);
+    assert(obj && type);
+
+    // txalloc
+    if (auto* ptrType = dyn_cast<PointerType>(type)) {
+      auto* eleType = ptrType->getPointerElementType();
+      if (auto* objType = dyn_cast<StructType>(eleType)) {
+        auto objName = objType->getStructName();
+        if (objName.contains("_toid") && isCallInst())
+          return true;
+      }
+    }
+
     return NameFilter::isPersistentVar(obj);
   }
 

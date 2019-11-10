@@ -11,7 +11,8 @@ class LogFunctions : public FunctionsBase {
 private:
   static constexpr const char* TX = "TxCode";
 
-  LoggingFunctions loggingFunctions;
+  TxLogFunctions txLogFunctions;
+  TxAllocFunctions txAllocFunctions;
   TxBeginFunctions txBeginFunctions;
   TxEndFunctions txEndFunctions;
 
@@ -19,12 +20,14 @@ public:
   LogFunctions() : FunctionsBase(TX) {}
 
   bool skipFunction(Function* f) const override {
-    return isLoggingFunction(f) || isTxBeginFunction(f) || isTxEndFunction(f) ||
-           isSkippedFunction(f);
+    return isTxLogFunction(f) || isTxAllocFunction(f) || isTxBeginFunction(f) ||
+           isTxEndFunction(f) || isSkippedFunction(f);
   }
 
-  bool isLoggingFunction(Function* f) const {
-    return loggingFunctions.count(f);
+  bool isTxLogFunction(Function* f) const { return txLogFunctions.count(f); }
+
+  bool isTxAllocFunction(Function* f) const {
+    return txAllocFunctions.count(f);
   }
 
   bool isTxBeginFunction(Function* f) const {
@@ -34,19 +37,22 @@ public:
   bool isTxEndFunction(Function* f) const { return txEndFunctions.count(f); }
 
   void addAnnotFuncChecker(Function* f, StringRef annotation) override {
-    loggingFunctions.addAnnotFunc(f, annotation);
+    txLogFunctions.addAnnotFunc(f, annotation);
+    txAllocFunctions.addAnnotFunc(f, annotation);
     txBeginFunctions.addAnnotFunc(f, annotation);
     txEndFunctions.addAnnotFunc(f, annotation);
   }
 
   void addNamedFuncChecker(Function* f, StringRef name) override {
-    loggingFunctions.addNamedFunc(f, name);
+    txLogFunctions.addNamedFunc(f, name);
+    txAllocFunctions.addNamedFunc(f, name);
     txBeginFunctions.addNamedFunc(f, name);
     txEndFunctions.addNamedFunc(f, name);
   }
 
   void printChecker(raw_ostream& O) const override {
-    loggingFunctions.print(O);
+    txLogFunctions.print(O);
+    txAllocFunctions.print(O);
     txBeginFunctions.print(O);
     txEndFunctions.print(O);
   }

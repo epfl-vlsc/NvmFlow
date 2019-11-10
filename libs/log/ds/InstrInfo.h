@@ -8,15 +8,16 @@ namespace llvm {
 struct InstrInfo {
   enum InstrType {
     WriteInstr,
-    LoggingInstr,
+    TxLogInstr,
+    TxAllocInstr,
     TxBegInstr,
     TxEndInstr,
     IpInstr,
     None
   };
 
-  static constexpr const char* Strs[] = {"write",  "logging", "tx begin",
-                                         "tx end", "ip",      "none"};
+  static constexpr const char* Strs[] = {
+      "write", "tx_log", "tx_alloc", "tx begin", "tx end", "ip", "none"};
   Instruction* instr;
   InstrType instrType;
   Variable* var;
@@ -56,9 +57,9 @@ struct InstrInfo {
     return instr;
   }
 
-  void print(raw_ostream& O) const{
+  void print(raw_ostream& O) const {
     assert(instr);
-    
+
     O << Strs[(int)instrType];
 
     auto sl = DbgInstr::getSourceLocation(instr);
@@ -67,13 +68,15 @@ struct InstrInfo {
 
     if (var)
       O << " " << var->getName();
-    
+
     O << "\n";
   }
 
   bool isUsedInstr() const { return instrType != None; }
 
-  bool isLogBasedInstr() const { return instrType == LoggingInstr; }
+  bool isLogBasedInstr() const { return instrType == TxLogInstr; }
+
+  bool isAllocBasedInstr() const { return instrType == TxAllocInstr; }
 
   static bool isUsedInstr(InstrType it) { return it != None; }
 
@@ -82,12 +85,14 @@ struct InstrInfo {
   }
 
   static bool isVarInstr(InstrType it) {
-    return it == WriteInstr || isLogBasedInstr(it);
+    return it == WriteInstr || isLogBasedInstr(it) || isAllocBasedInstr(it);
   }
 
   static bool isWriteInstr(InstrType it) { return it == WriteInstr; }
 
-  static bool isLogBasedInstr(InstrType it) { return it == LoggingInstr; }
+  static bool isLogBasedInstr(InstrType it) { return it == TxLogInstr; }
+
+  static bool isAllocBasedInstr(InstrType it) { return it == TxAllocInstr; }
 
   template <typename Globals>
   static auto getInstrType(Instruction* i, Globals& globals) {
@@ -98,8 +103,10 @@ struct InstrInfo {
     } else if (auto* ci = dyn_cast<CallInst>(i)) {
       auto* callee = getCalledFunction(ci);
 
-      if (globals.functions.isLoggingFunction(callee)) {
-        return LoggingInstr;
+      if (globals.functions.isTxLogFunction(callee)) {
+        return TxLogInstr;
+      } else if (globals.functions.isTxAllocFunction(callee)) {
+        return TxAllocInstr;
       } else if (globals.functions.isTxBeginFunction(callee)) {
         return TxBegInstr;
       } else if (globals.functions.isTxEndFunction(callee)) {

@@ -118,16 +118,28 @@ public:
   const char* getName() const { return "tx_end"; }
 };
 
-class LoggingFunctions : public NamedFunctions {
+class TxLogFunctions : public NamedFunctions {
 public:
-  LoggingFunctions(const char* annot_) : NamedFunctions(annot_) {}
-  LoggingFunctions() : NamedFunctions(nullptr) {}
+  TxLogFunctions(const char* annot_) : NamedFunctions(annot_) {}
+  TxLogFunctions() : NamedFunctions(nullptr) {}
 
   bool sameName(StringRef name) const {
-    return NameFilter::isLoggingFunction(name);
+    return NameFilter::isTxLogFunction(name);
   }
 
   const char* getName() const { return "tx_log"; }
+};
+
+class TxAllocFunctions : public NamedFunctions {
+public:
+  TxAllocFunctions(const char* annot_) : NamedFunctions(annot_) {}
+  TxAllocFunctions() : NamedFunctions(nullptr) {}
+
+  bool sameName(StringRef name) const {
+    return NameFilter::isTxAllocFunction(name);
+  }
+
+  const char* getName() const { return "tx_alloc"; }
 };
 
 } // namespace llvm
