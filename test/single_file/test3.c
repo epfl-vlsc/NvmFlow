@@ -20,12 +20,11 @@ struct btree_map {
 	TOID(struct tree_map_node) root;
 };
 
-void ipafnc(TOID(struct tree_map_node) node, TOID(struct tree_map_node) node2) {
+void ipafnc(TOID(struct tree_map_node) node) {
   TOID(struct tree_map_node) node3 = TX_ZNEW(struct tree_map_node);
-  TX_ADD(node);
   D_RW(node)->a = 5;
-  D_RW(node2)->a = 0;
-  D_RW(node2)->c = node3;
+  D_RW(node)->b = 6;
+  D_RW(node3)->a = 4;
   D_RW(node3)->c = node3;
 }
 
@@ -33,6 +32,8 @@ int tx_fnc main() {
   TX_BEGIN(x)
   TOID(struct tree_map_node) node = TX_ZNEW(struct tree_map_node);
   TOID(struct tree_map_node) node2 = TX_ZNEW(struct tree_map_node);
-  ipafnc(node, node2);
+  ipafnc(node);
+  D_RW(node2)->a = 2;
+  D_RW(node2)->b = 3;
   TX_END
 }
