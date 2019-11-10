@@ -9,6 +9,28 @@ namespace llvm {
 template <typename Globals, typename BReporter> class Transfer {
   using AbstractState = std::map<Variable*, Lattice>;
 
+  void doAlloc(Variable* var, InstrInfo* ii, AbstractState& state,
+             const Context& context) {
+    auto* instr = ii->getInstruction();
+    breporter.checkOutTxBug(txVar, ii, state, context);
+
+    auto& val = state[var];
+
+    val = Lattice::getLogged(instr, context);
+  }
+
+  bool handleAlloc(InstrInfo* ii, AbstractState& state,
+                   const Context& context) {
+    auto* var = ii->getVariable();
+    doAlloc(var, ii, state, context);
+
+    for (auto* fvar : var->getFlushSet()) {
+      doAlloc(fvar, ii, state, context);
+    }
+
+    return true;
+  }
+
   void doLog(Variable* var, InstrInfo* ii, AbstractState& state,
              const Context& context) {
     auto* instr = ii->getInstruction();
@@ -85,8 +107,11 @@ public:
       return stateChanged;
 
     switch (ii->getInstrType()) {
-    case InstrInfo::LoggingInstr:
+    case InstrInfo::TxLogInstr:
       stateChanged = handleLog(ii, state, context);
+      break;
+    case InstrInfo::TxAllocInstr:
+      stateChanged = handleAlloc(ii, state, context);
       break;
     case InstrInfo::WriteInstr:
       stateChanged = handleWrite(ii, state, context);
